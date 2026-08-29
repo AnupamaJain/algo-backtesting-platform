@@ -10,7 +10,7 @@ Tests pure functions (no live API, no Flask). Covers:
 import sys
 import os
 
-# Ensure the vibhu package root is on the path so gtt_monitor imports cleanly.
+# Ensure the algo-backtesting-platform package root is on the path so gtt_monitor imports cleanly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest

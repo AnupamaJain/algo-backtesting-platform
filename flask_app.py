@@ -1846,7 +1846,7 @@ def start_instance():
     quantity = f"{buy_quantity}:{sell_quantity}"
 
     # Use absolute path to avoid ambiguity
-    # flask_app.py is in vibhu/, so we get that directory
+    # flask_app.py is in algo-backtesting-platform/, so we get that directory
     base_dir = os.path.dirname(os.path.abspath(__file__))
     script_path = os.path.join(base_dir, _SCRAPER_SCRIPT_NAME)
 

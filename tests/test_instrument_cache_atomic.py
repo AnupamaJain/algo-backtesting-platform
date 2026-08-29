@@ -18,10 +18,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ---------------------------------------------------------------------------
-# Path + dependency mocks — must come before any vibhu-package imports
+# Path + dependency mocks — must come before any algo-backtesting-platform imports
 # ---------------------------------------------------------------------------
 
-# Add vibhu/ directory to path so instrument_cache is importable
+# Add algo-backtesting-platform/ directory to path so instrument_cache is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Mock kiteconnect before anything that imports it

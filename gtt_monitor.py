@@ -224,7 +224,7 @@ def _build_kite_client():
     from kiteconnect import KiteConnect
 
     cfg = configparser.ConfigParser()
-    # configfile.ini lives in the same directory as this file (vibhu/)
+    # configfile.ini lives in the same directory as this file (algo-backtesting-platform/)
     cfg.read(os.path.join(os.path.dirname(os.path.abspath(__file__)), "configfile.ini"))
     api_key: str = cfg.get("kite_login_details", "api_key", fallback="").strip()
     if not api_key:

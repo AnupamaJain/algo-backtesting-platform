@@ -10,7 +10,7 @@ Tests pure logic (no live Kite API, no Flask). Covers:
 import os
 import sys
 
-# Ensure the vibhu package root is on the path so position_guard imports cleanly.
+# Ensure the algo-backtesting-platform package root is on the path so position_guard imports cleanly.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest

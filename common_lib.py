@@ -1613,7 +1613,7 @@ multiplier_scale = ""
 
 def play_sound(times):
     for i in range(1,times):
-        os.system('afplay /Users/vibhu/zd/pykiteconnect-master/vibhu/700187__trader_one__long-buzzer.wav')
+        os.system('afplay /Users/algo-backtesting-platform/zd/pykiteconnect-master/algo-backtesting-platform/700187__trader_one__long-buzzer.wav')
 
 
 def set_scraper_last_price(last_price):
