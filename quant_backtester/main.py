@@ -521,7 +521,108 @@ def run_pead(args) -> None:
     print(f"Win rate:        {metrics.win_rate:.2%}")
     print(f"Trades:          {metrics.num_trades}")
 
+    # ------------------------------------------------------------------
+    # Build per-symbol current signal state + upcoming earnings table.
+    # This is what the UI shows as "stocks coming in" — any symbol whose
+    # PEAD window is open TODAY, or that has a qualifying announcement
+    # coming within the next holding_days sessions.
+    # ------------------------------------------------------------------
+    from quant_backtester.src.pead import pead_signals as _pead_signals
+
+    today = pd.Timestamp.today().normalize()
+
+    signal_rows = []
+    upcoming_rows = []
+
+    for symbol, data in price_data.items():
+        events = calendars.get(symbol)
+        if not events:
+            continue
+
+        signals = _pead_signals(data, events, pead_config)
+        sessions = pd.DatetimeIndex(data.index)
+
+        # Current signal: what is the position as of the last available bar?
+        current_signal = int(signals.iloc[-1]) if not signals.empty else 0
+        last_bar_date = data.index[-1]
+
+        # Find the triggering event for an open position.
+        trigger_event = None
+        trigger_entry = None
+        for event in sorted(events, key=lambda e: e.announced_at, reverse=True):
+            if not event.has_surprise:
+                continue
+            if abs(event.surprise_pct) < pead_config.min_surprise_pct:
+                continue
+            from quant_backtester.src.events import first_tradeable_session
+            entry = first_tradeable_session(event, sessions)
+            if entry is None:
+                continue
+            start_idx = sessions.get_loc(entry)
+            end_idx = min(start_idx + pead_config.holding_days, len(sessions)) - 1
+            end_date = sessions[end_idx]
+            # Check if today is within this window.
+            if entry <= last_bar_date <= end_date:
+                trigger_event = event
+                trigger_entry = entry
+                days_held = int((sessions <= last_bar_date).sum()) - start_idx
+                days_remaining = end_idx - int((sessions <= last_bar_date).sum()) + 1
+                signal_rows.append({
+                    "symbol": symbol,
+                    "signal": current_signal,
+                    "direction": "LONG" if current_signal > 0 else ("SHORT" if current_signal < 0 else "FLAT"),
+                    "surprise_pct": round(event.surprise_pct, 2),
+                    "announced_at": event.announced_at.date().isoformat(),
+                    "entry_date": entry.date().isoformat(),
+                    "days_held": days_held,
+                    "days_remaining": max(days_remaining, 0),
+                    "window_end": end_date.date().isoformat(),
+                    "eps_estimate": event.eps_estimate,
+                    "eps_reported": event.eps_reported,
+                })
+                break
+
+        # Upcoming: next qualifying announcement within the next 30 calendar days.
+        for event in sorted(events, key=lambda e: e.announced_at):
+            ann_date = event.announced_at.date()
+            days_until = (ann_date - today.date()).days
+            if days_until < 0 or days_until > 30:
+                continue
+            if not event.has_surprise:
+                # Upcoming event — surprise not yet known, show as pending.
+                upcoming_rows.append({
+                    "symbol": symbol,
+                    "announced_at": event.announced_at.date().isoformat(),
+                    "days_until": days_until,
+                    "eps_estimate": event.eps_estimate,
+                    "eps_reported": None,
+                    "surprise_pct": None,
+                    "would_trigger": None,
+                    "direction": "pending",
+                })
+            elif abs(event.surprise_pct) >= pead_config.min_surprise_pct:
+                dir_str = "LONG" if event.surprise_pct > 0 else "SHORT"
+                upcoming_rows.append({
+                    "symbol": symbol,
+                    "announced_at": event.announced_at.date().isoformat(),
+                    "days_until": days_until,
+                    "eps_estimate": event.eps_estimate,
+                    "eps_reported": event.eps_reported,
+                    "surprise_pct": round(event.surprise_pct, 2),
+                    "would_trigger": True,
+                    "direction": dir_str,
+                })
+            break  # one upcoming per symbol is enough
+
+    # Build equity curve for UI chart.
+    equity_curve = (1.0 + portfolio_returns).cumprod()
+    equity_df = equity_curve.reset_index()
+    equity_df.columns = ["date", "equity"]
+    equity_df["date"] = equity_df["date"].astype(str).str[:10]
+
+    # ------------------------------------------------------------------
     # Write results to results/pead/.
+    # ------------------------------------------------------------------
     results_root = Path(os.environ.get("QB_RESULTS_DIR", "results"))
     pead_dir = results_root / "pead"
     pead_dir.mkdir(parents=True, exist_ok=True)
@@ -537,11 +638,25 @@ def run_pead(args) -> None:
         "metrics": metrics.to_dict(),
         "symbols_with_data": loaded,
         "symbols_missing_data": missing,
+        "active_signals": len(signal_rows),
+        "upcoming_events": len(upcoming_rows),
+        "as_of": today.date().isoformat(),
     }
     (pead_dir / "summary.json").write_text(_json.dumps(summary, indent=2, default=str))
 
     portfolio_returns.to_csv(pead_dir / "portfolio_returns.csv", header=["return"])
-    logger.info("PEAD artifacts written to %s", pead_dir)
+    equity_df.to_csv(pead_dir / "equity_curve.csv", index=False)
+
+    signals_df = pd.DataFrame(signal_rows).sort_values("surprise_pct", ascending=False, key=abs) if signal_rows else pd.DataFrame(columns=["symbol","signal","direction","surprise_pct","announced_at","entry_date","days_held","days_remaining","window_end","eps_estimate","eps_reported"])
+    signals_df.to_csv(pead_dir / "signals.csv", index=False)
+
+    upcoming_df = pd.DataFrame(upcoming_rows).sort_values("days_until") if upcoming_rows else pd.DataFrame(columns=["symbol","announced_at","days_until","eps_estimate","eps_reported","surprise_pct","would_trigger","direction"])
+    upcoming_df.to_csv(pead_dir / "upcoming.csv", index=False)
+
+    logger.info(
+        "PEAD artifacts written to %s — %s active signals, %s upcoming events",
+        pead_dir, len(signal_rows), len(upcoming_rows),
+    )
 
 
 def run_all(args) -> None:

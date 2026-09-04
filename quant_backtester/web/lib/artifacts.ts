@@ -510,3 +510,115 @@ export async function getPipelineStatus(u: Universe = DEFAULT_UNIVERSE): Promise
     layer4: { done: portfolios.length > 0, portfolios: portfolios.length },
   };
 }
+
+// -- PEAD (Post-Earnings Announcement Drift) ----------------------------
+
+export type PeadSummary = {
+  config: {
+    min_surprise_pct: number;
+    holding_days: number;
+    direction: string;
+  };
+  exposure: {
+    bars: number;
+    bars_in_market: number;
+    time_in_market_pct: number;
+    position_changes: number;
+  };
+  metrics: {
+    total_return: number;
+    cagr: number;
+    annual_volatility: number;
+    sharpe: number;
+    max_drawdown: number;
+    profit_factor: number;
+    num_trades: number;
+    win_rate: number;
+    num_periods: number;
+  };
+  symbols_with_data: string[];
+  symbols_missing_data: string[];
+  active_signals: number;
+  upcoming_events: number;
+  as_of: string;
+};
+
+export type PeadSignal = {
+  symbol: string;
+  signal: number;               // -1 | 0 | 1
+  direction: string;            // LONG | SHORT | FLAT
+  surprise_pct: number | null;
+  announced_at: string;
+  entry_date: string;
+  days_held: number | null;
+  days_remaining: number | null;
+  window_end: string;
+  eps_estimate: number | null;
+  eps_reported: number | null;
+};
+
+export type PeadUpcoming = {
+  symbol: string;
+  announced_at: string;
+  days_until: number | null;
+  eps_estimate: number | null;
+  eps_reported: number | null;
+  surprise_pct: number | null;
+  would_trigger: boolean | null;
+  direction: string;            // LONG | SHORT | pending
+};
+
+export type PeadEquityPoint = { date: string; equity: number };
+
+/** Summary JSON written by `python main.py pead`. Null when not yet run. */
+export const getPeadSummary = (u: Universe = DEFAULT_UNIVERSE) =>
+  readJson<PeadSummary>("pead/summary.json", u);
+
+/** Currently active PEAD drift positions — the "stocks in the window now" signal. */
+export async function getPeadSignals(u: Universe = DEFAULT_UNIVERSE): Promise<PeadSignal[]> {
+  const rows = await readCsv("pead/signals.csv", u);
+  return rows.map((r) => ({
+    symbol: r.symbol,
+    signal: num(r.signal) ?? 0,
+    direction: r.direction ?? "FLAT",
+    surprise_pct: num(r.surprise_pct),
+    announced_at: r.announced_at ?? "",
+    entry_date: r.entry_date ?? "",
+    days_held: num(r.days_held),
+    days_remaining: num(r.days_remaining),
+    window_end: r.window_end ?? "",
+    eps_estimate: num(r.eps_estimate),
+    eps_reported: num(r.eps_reported),
+  }));
+}
+
+/** Upcoming earnings (within 30 days) that would/may trigger a new PEAD trade. */
+export async function getPeadUpcoming(u: Universe = DEFAULT_UNIVERSE): Promise<PeadUpcoming[]> {
+  const rows = await readCsv("pead/upcoming.csv", u);
+  return rows.map((r) => ({
+    symbol: r.symbol,
+    announced_at: r.announced_at ?? "",
+    days_until: num(r.days_until),
+    eps_estimate: num(r.eps_estimate),
+    eps_reported: num(r.eps_reported),
+    surprise_pct: num(r.surprise_pct),
+    would_trigger: r.would_trigger === "True" ? true : r.would_trigger === "False" ? false : null,
+    direction: r.direction ?? "pending",
+  }));
+}
+
+/** Portfolio equity curve (compounded returns, starting at 1.0). */
+export async function getPeadEquityCurve(
+  maxPoints = 500,
+  u: Universe = DEFAULT_UNIVERSE
+): Promise<PeadEquityPoint[]> {
+  const rows = await readCsv("pead/equity_curve.csv", u);
+  if (rows.length === 0) return [];
+  const step = Math.max(1, Math.ceil(rows.length / maxPoints));
+  const points: PeadEquityPoint[] = [];
+  for (let i = 0; i < rows.length; i += step) {
+    const v = num(rows[i].equity);
+    if (v !== null) points.push({ date: rows[i].date, equity: v });
+  }
+  return points;
+}
