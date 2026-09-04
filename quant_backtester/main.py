@@ -452,7 +452,7 @@ def run_pead(args) -> None:
     # Load earnings calendars from the data_events/ directory.
     events_dir = Path(__file__).parent / "data_events"
     calendar = EarningsCalendar(events_dir)
-    calendars = calendar.load_many(symbols)
+    calendars = calendar.get_many(symbols)
 
     loaded = [s for s in symbols if s in calendars and calendars[s]]
     missing = [s for s in symbols if s not in loaded]
