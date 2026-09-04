@@ -292,7 +292,15 @@ def init_scheduler(  # type: ignore[type-arg]
         misfire_grace_time=300,
     )
 
-    job_count = 14 + (1 if scalping_auto_start_fn else 0) + (1 if scalping_auto_stop_fn else 0)
+    _scheduler.add_job(
+        func=_job_pead_scan,
+        trigger=IntervalTrigger(hours=1, timezone="Asia/Kolkata"),
+        id="pead_scan",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    job_count = 15 + (1 if scalping_auto_start_fn else 0) + (1 if scalping_auto_stop_fn else 0)
     _scheduler.start()
     logger.info(
         "Notification scheduler started — %d jobs registered "
@@ -302,7 +310,7 @@ def init_scheduler(  # type: ignore[type-arg]
         "nifty_delta_check @ every 15 min, gtt_monitor_check @ every 10 min, "
         "duplicate_order_check @ every 5 min, copytrade_margin_check @ every 15 min, "
         "position_guard_check @ every 5 min, delta_live_snapshot @ every 1 min, "
-        "nifty_zone_check @ every 5 min, "
+        "nifty_zone_check @ every 5 min, pead_scan @ every 1 hour, "
         "notification_purge @ 4:00 AM%s IST)",
         job_count,
         ", scalping_auto_start @ 10:00 AM, scalping_auto_stop @ 3:45 PM"
@@ -717,6 +725,37 @@ def _job_fetch_candles_eod() -> None:
         logger.info("FETCH_CANDLES_EOD: complete — %s", result)
     except Exception as exc:
         logger.error("FETCH_CANDLES_EOD job failed unexpectedly: %s", exc, exc_info=True)
+
+
+def _job_pead_scan() -> None:
+    """Refresh the PEAD (US-market, post-earnings-drift) research artifacts.
+
+    Runs `python main.py pead` in quant_backtester/ -- a subprocess, not a
+    direct import, since that CLI owns its own argparse-driven config
+    resolution (universe, backtest costs, surprise/holding-day thresholds)
+    and re-implementing that here would drift the moment either changes.
+    Read-only from the trading side: downloads earnings calendars and
+    re-runs a backtest, never touches a broker or places an order. Hourly
+    is plenty -- announcements land pre/post market, not intraday.
+    Never raises -- exceptions are caught and logged.
+    """
+    logger.info("Running PEAD_SCAN job")
+    try:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        quant_dir = Path(__file__).resolve().parent.parent / "quant_backtester"
+        result = subprocess.run(
+            [sys.executable, "main.py", "pead"],
+            cwd=str(quant_dir), capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode != 0:
+            logger.error("PEAD_SCAN job failed: %s", result.stderr[-500:])
+        else:
+            logger.info("PEAD_SCAN: artifacts refreshed")
+    except Exception as exc:
+        logger.error("PEAD_SCAN job failed: %s", exc, exc_info=True)
 
 
 def _job_purge_old_notifications() -> None:

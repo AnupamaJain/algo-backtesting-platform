@@ -73,6 +73,11 @@ JOBS = [
     ("instrument_sync", 3600, "resolve the configured universe"),
     ("cas_tracker", 3600, "CAS tracker background threads (idempotent)"),
     ("notifications_purge", 86400, "delete old non-active notifications"),
+    # US-market research, not an Indian-broker watchdog -- refreshes the PEAD
+    # console page's data. Hourly is plenty: earnings announcements land
+    # pre/post market, not intraday, so nothing meaningful changes faster
+    # than that.
+    ("pead_scan", 3600, "refresh PEAD signals/upcoming earnings"),
     # -- notifications/scheduler.py jobs, migrated off the Kite-only token
     # gate (see instrument_cache.get_kite_token()). Each read here and
     # verified to only ever read positions/orders/margins and dispatch a
@@ -147,6 +152,8 @@ def _run_notifications_purge() -> dict:
     return {"deleted": deleted}
 
 
+
+
 def _scheduler_job(name: str):
     """Wrap one notifications.scheduler._job_* function.
 
@@ -170,6 +177,7 @@ RUNNERS = {
     "instrument_sync": _run_instrument_sync,
     "cas_tracker": _run_cas_tracker,
     "notifications_purge": _run_notifications_purge,
+    "pead_scan": _scheduler_job("_job_pead_scan"),
     "kite_login_check": _scheduler_job("_job_kite_login_check"),
     "early_exit_required": _scheduler_job("_job_early_exit_required"),
     "daily_pnl_summary": _scheduler_job("_job_daily_pnl_summary"),
