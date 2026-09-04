@@ -6,13 +6,16 @@ Layers:
   2  walk-forward backtest + 6-stage validation funnel
   3  parameter sensitivity + bootstrap stress testing
   4  HMM regime detection + dynamic portfolio vs. static baselines
+  pead  post-earnings announcement drift study (event-driven, separate from indicator layers)
 
 Usage:
-    python main.py all                       # run the whole pipeline
+    python main.py all                       # run the whole pipeline (layers 1-4)
     python main.py layer1                    # generate signals only
     python main.py layer2 --symbols SPY,QQQ
     python main.py layer3 --top-n 12
     python main.py layer4 --top-n 12
+    python main.py pead                      # run the PEAD event-driven study
+    python main.py pead --min-surprise 3.0 --holding-days 15
 """
 
 from __future__ import annotations
@@ -61,6 +64,8 @@ from quant_backtester.src.robustness import (
     ParameterSensitivityChecker,
     RobustnessSuite,
 )
+from quant_backtester.src.pead import PEADConfig, pead_portfolio_returns, exposure_stats
+from quant_backtester.src.events import EarningsCalendar
 
 def scope_outputs_to_universe(universe_config) -> None:
     """Point every layer's output at this universe's own results tree.
@@ -414,6 +419,131 @@ def run_layer4(args) -> None:
         print(correlation.mean().round(3).to_string())
 
 
+def run_pead(args) -> None:
+    """Post-earnings announcement drift study.
+
+    Downloads earnings calendars for every symbol in the universe, builds
+    the PEAD signal series for each (entry strictly after the announcement,
+    holding for `holding_days` sessions), backtests them through the same
+    VectorizedBacktester as the indicator strategies, and writes results to
+    `results/pead/`.
+
+    Results are descriptive research, not a validated deployable set —
+    no funnel is applied because PEAD is not a parameter-sweep strategy.
+    """
+    universe_config = load_universe_config(args.universe_config)
+    scope_outputs_to_universe(universe_config)
+    backtest_config = load_backtest_config(args.backtest_config)
+    symbols = resolve_symbols(args, universe_config)
+
+    pead_config = PEADConfig(
+        min_surprise_pct=args.min_surprise,
+        holding_days=args.holding_days,
+        direction=args.direction,
+    )
+    logger.info("PEAD config: %s", pead_config.describe())
+
+    data_manager = HistoricalDataManager(universe_config.data)
+    price_data = data_manager.get_universe_history(symbols)
+    if not price_data:
+        logger.error("No price data; aborting PEAD study.")
+        return
+
+    # Load earnings calendars from the data_events/ directory.
+    events_dir = Path(__file__).parent / "data_events"
+    calendar = EarningsCalendar(events_dir)
+    calendars = calendar.load_many(symbols)
+
+    loaded = [s for s in symbols if s in calendars and calendars[s]]
+    missing = [s for s in symbols if s not in loaded]
+    logger.info(
+        "Earnings calendars: %s symbols loaded, %s without data",
+        len(loaded), len(missing),
+    )
+    if missing:
+        logger.debug("No earnings data for: %s", ", ".join(missing[:10]))
+
+    if not loaded:
+        logger.error(
+            "No earnings calendar data found in %s. "
+            "Download earnings data first (see data_events/).",
+            events_dir,
+        )
+        return
+
+    from quant_backtester.src.backtest import VectorizedBacktester, build_cost_model
+    from quant_backtester.src.risk import RiskOverlay
+
+    backtester = VectorizedBacktester(
+        cost_model=build_cost_model(backtest_config.costs),
+        risk_free_rate=backtest_config.risk_free_rate,
+        periods_per_year=backtest_config.periods_per_year,
+        risk_overlay=RiskOverlay.from_config(backtest_config.risk_overlay),
+    )
+
+    # Exposure summary — logged before the backtest so the numbers are
+    # visible even if the backtest itself fails.
+    exposure = exposure_stats(price_data, calendars, pead_config)
+    logger.info(
+        "PEAD exposure: %.1f%% of bars in-market (%s position changes)",
+        exposure["time_in_market_pct"],
+        exposure["position_changes"],
+    )
+
+    portfolio_returns = pead_portfolio_returns(price_data, calendars, pead_config, backtester)
+
+    if portfolio_returns.empty or (portfolio_returns == 0).all():
+        logger.warning("No PEAD trades generated — check that surprise thresholds are not too tight.")
+        return
+
+    # Compute summary statistics using the backtester's own metric functions.
+    from quant_backtester.src.backtest import compute_metrics, infer_periods_per_year
+    import numpy as np
+
+    periods_per_year = (
+        backtest_config.periods_per_year
+        if backtest_config.periods_per_year is not None
+        else infer_periods_per_year(portfolio_returns.index)
+    )
+    position = (portfolio_returns != 0).astype(float)
+    metrics = compute_metrics(portfolio_returns, position, periods_per_year=periods_per_year)
+
+    print("\n=== PEAD Study ===")
+    print(f"Config:          {pead_config.describe()}")
+    print(f"Symbols:         {len(loaded)} with earnings data")
+    print(f"Time in market:  {exposure['time_in_market_pct']:.1f}%")
+    print(f"Position changes:{exposure['position_changes']}")
+    print(f"Total return:    {metrics.total_return:.2%}")
+    print(f"CAGR:            {metrics.cagr:.2%}")
+    print(f"Sharpe:          {metrics.sharpe:.3f}")
+    print(f"Max drawdown:    {metrics.max_drawdown:.2%}")
+    print(f"Profit factor:   {metrics.profit_factor:.3f}")
+    print(f"Win rate:        {metrics.win_rate:.2%}")
+    print(f"Trades:          {metrics.num_trades}")
+
+    # Write results to results/pead/.
+    results_root = Path(os.environ.get("QB_RESULTS_DIR", "results"))
+    pead_dir = results_root / "pead"
+    pead_dir.mkdir(parents=True, exist_ok=True)
+
+    import json as _json
+    summary = {
+        "config": {
+            "min_surprise_pct": pead_config.min_surprise_pct,
+            "holding_days": pead_config.holding_days,
+            "direction": pead_config.direction,
+        },
+        "exposure": exposure,
+        "metrics": metrics.to_dict(),
+        "symbols_with_data": loaded,
+        "symbols_missing_data": missing,
+    }
+    (pead_dir / "summary.json").write_text(_json.dumps(summary, indent=2, default=str))
+
+    portfolio_returns.to_csv(pead_dir / "portfolio_returns.csv", header=["return"])
+    logger.info("PEAD artifacts written to %s", pead_dir)
+
+
 def run_all(args) -> None:
     for step in (run_layer1, run_layer2, run_layer3, run_layer4):
         logger.info("=" * 70)
@@ -433,7 +563,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "layer",
-        choices=["layer1", "layer2", "layer3", "layer4", "all"],
+        choices=["layer1", "layer2", "layer3", "layer4", "pead", "all"],
         help="Which layer to run.",
     )
     parser.add_argument("--symbols", default=None, help="Comma-separated symbol subset")
@@ -448,6 +578,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backtest-config", default=str(CONFIG_DIR / "backtest.yaml"))
     parser.add_argument("--robustness-config", default=str(CONFIG_DIR / "robustness.yaml"))
     parser.add_argument("--regime-config", default=str(CONFIG_DIR / "regime.yaml"))
+    # PEAD-specific arguments (ignored by other layers).
+    parser.add_argument(
+        "--min-surprise", type=float, default=5.0,
+        help="[pead] Minimum earnings surprise %% to trigger a trade (default: 5.0).",
+    )
+    parser.add_argument(
+        "--holding-days", type=int, default=20,
+        help="[pead] Number of sessions to hold the drift position (default: 20).",
+    )
+    parser.add_argument(
+        "--direction", choices=["both", "long_only", "short_only"], default="both",
+        help="[pead] Trade positive surprises, negative surprises, or both (default: both).",
+    )
     return parser.parse_args()
 
 
@@ -458,6 +601,7 @@ def main() -> None:
         "layer2": run_layer2,
         "layer3": run_layer3,
         "layer4": run_layer4,
+        "pead": run_pead,
         "all": run_all,
     }[args.layer](args)
 

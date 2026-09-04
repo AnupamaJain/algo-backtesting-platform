@@ -16,7 +16,7 @@ import { DEFAULT_UNIVERSE, UNIVERSES } from "@/lib/universes";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_LAYERS = ["layer1", "layer2", "layer3", "layer4", "all"] as const;
+const ALLOWED_LAYERS = ["layer1", "layer2", "layer3", "layer4", "pead", "all"] as const;
 type Layer = (typeof ALLOWED_LAYERS)[number];
 
 const SYMBOL_PATTERN = /^[A-Z0-9.\-]{1,12}$/;

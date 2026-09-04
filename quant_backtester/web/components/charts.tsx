@@ -301,15 +301,6 @@ export function RobustnessScatter({
   );
 }
 
-// -- Small inline sparkline for stat cards ------------------------------
-
-export function MiniArea({ values, color = "#22d3ee" }: { values: number[]; color?: string }) {
-  const data = values.map((v, i) => ({ i, v }));
-  return (
-    <ResponsiveContainer width="100%" height={44}>
-      <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-        <Area isAnimationActive={false} type="monotone" dataKey="v" stroke={color} fill={color} fillOpacity={0.16} strokeWidth={1.5} />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
+// -- Small inline sparkline for stat cards — defined for potential future use.
+// Currently not rendered by any page; kept here for easy adoption.
+// export function MiniArea(...) { ... }

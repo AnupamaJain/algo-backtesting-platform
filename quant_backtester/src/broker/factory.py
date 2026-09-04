@@ -60,6 +60,23 @@ class BrokerFactory:
     def available(self) -> list[str]:
         return list(self._config.get("brokers", {}).keys())
 
+    def override_active(self, broker: str) -> None:
+        """Switch the active broker without mutating the original config dict.
+
+        Used by broker_cli.py's --broker flag to target a specific account
+        per call. Replaces direct _config mutation, which breaks if the
+        BrokerFactory implementation changes.
+        """
+        self._config = {**self._config, "active": broker}
+
+    def broker_settings(self, broker: str) -> dict:
+        """Public accessor for one broker's config block.
+
+        Replaces scattered ``factory._config.get("brokers", {}).get(name)``
+        calls in CLI scripts, keeping the config structure internal.
+        """
+        return dict(self._config.get("brokers", {}).get(broker, {}))
+
     def build_store(self, broker: str | None = None) -> BrokerStore:
         name = broker or self.active_broker
         return BrokerStore(self._state_dir / f"{name}_broker.db")

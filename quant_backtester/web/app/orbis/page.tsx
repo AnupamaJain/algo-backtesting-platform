@@ -8,6 +8,7 @@ import {
   equityCurve,
   getFirstBreak,
   getIntradayFreshness,
+  getLiveSessions,
   getSessions,
   getStudySummary,
   getTrades,
@@ -48,12 +49,13 @@ export default async function OrbisPage({
       ? (picked as Instrument)
       : "NIFTY";
 
-  const [sessions, firstBreak, trades, study, freshness] = await Promise.all([
+  const [sessions, firstBreak, trades, study, freshness, liveSessions] = await Promise.all([
     getSessions(instrument),
     getFirstBreak(instrument),
     getTrades(instrument),
     getStudySummary(),
     getIntradayFreshness(),
+    getLiveSessions(),
   ]);
 
   const summary = study.byInstrument[instrument];
@@ -87,6 +89,12 @@ export default async function OrbisPage({
   const noEdge =
     summary && (summary.expectancy_r === null || Math.abs(summary.expectancy_r) < 0.1);
 
+  // Live session state written by OrbisLiveEngine for today's run.
+  const liveSession = liveSessions.find((s) => s.instrument === instrument) ?? null;
+  const PHASE_TONE: Record<string, string> = {
+    none: "slate", armed: "amber", filled: "cyan", closed: "slate",
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] px-6 py-8 lg:px-10">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -116,6 +124,53 @@ export default async function OrbisPage({
           ))}
         </div>
       </header>
+
+      {/* ---- live session state (only when the engine is running today) --- */}
+      {liveSession ? (
+        <div className="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/[0.05] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+              <span className="text-sm font-semibold text-slate-100">
+                Live session — {liveSession.sessionDate}
+              </span>
+              <Pill tone={PHASE_TONE[liveSession.phase] ?? "slate"}>
+                {liveSession.phase}
+              </Pill>
+              {liveSession.direction ? (
+                <Pill tone={liveSession.direction === "LONG" ? "green" : "red"}>
+                  {liveSession.direction}
+                </Pill>
+              ) : null}
+            </div>
+            <span className="text-[11px] text-slate-500">
+              updated {liveSession.updatedAt}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11.5px] sm:grid-cols-4">
+            {[
+              ["IB high", liveSession.ibHigh?.toFixed(1) ?? "—"],
+              ["IB low", liveSession.ibLow?.toFixed(1) ?? "—"],
+              ["entry", liveSession.entry?.toFixed(1) ?? "—"],
+              ["stop", liveSession.stop?.toFixed(1) ?? "—"],
+              ["target", liveSession.target?.toFixed(1) ?? "—"],
+              ["fill", liveSession.fillPrice?.toFixed(1) ?? "—"],
+              ["exit", liveSession.exitPrice?.toFixed(1) ?? "—"],
+              ["reason", liveSession.exitReason ?? "—"],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between border-b border-[var(--color-line-soft)] pb-1">
+                <span className="text-slate-500">{label}</span>
+                <span className="mono text-slate-200">{value}</span>
+              </div>
+            ))}
+          </div>
+          {liveSession.orderId ? (
+            <p className="mono mt-2 text-[10.5px] text-slate-600">
+              order {liveSession.orderId}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* ---- the verdict, stated before anything else ------------------ */}
       <div

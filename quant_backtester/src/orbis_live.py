@@ -257,7 +257,13 @@ class OrbisLiveEngine:
             tags={"phase": "open" if opening else "close"},
         )
         try:
-            placed = self._service.place(order)
+            placed = self._service.place_order(
+                symbol=order.symbol,
+                side=order.side,
+                quantity=order.quantity,
+                order_type=order.order_type,
+                strategy=order.strategy or "ORBIS-IB60",
+            )
             return placed.broker_order_id or placed.order_id
         except Exception as exc:  # noqa: BLE001 - a rejected order must not lose state
             logger.error("ORBIS order failed for %s: %s", state.instrument, exc)

@@ -217,7 +217,7 @@ def cmd_brokers(factory: BrokerFactory, args) -> dict:
     """
     rows = []
     for name in factory.available():
-        settings = factory._config.get("brokers", {}).get(name, {})
+        settings = factory.broker_settings(name)
         kind = settings.get("adapter", name)
         rows.append(
             {
@@ -279,7 +279,7 @@ def main() -> int:
         if args.broker:
             # Selecting the broker per call lets one config serve several
             # accounts — a US paper book and an NSE one — without editing it.
-            factory._config = {**factory._config, "active": args.broker}
+            factory.override_active(args.broker)
         # Page size is bounded: an unbounded request would let the console
         # pull the entire order history into one response.
         args.page_size = max(1, min(args.page_size, 500))

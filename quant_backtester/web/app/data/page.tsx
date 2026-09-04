@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
  * than silently going missing.
  */
 const STRATEGY_COPY: Record<string, { label: string; family: string; desc: string }> = {
+  // Mean reversion
   RSIReversion: {
     label: "RSI Snapback",
     family: "Mean reversion",
@@ -31,22 +32,102 @@ const STRATEGY_COPY: Record<string, { label: string; family: string; desc: strin
   KeltnerReversion: {
     label: "Keltner Reversion",
     family: "Mean reversion",
-    desc: "Same idea, but the envelope is built from ATR rather than standard deviation.",
+    desc: "Same idea as Bollinger, but the envelope is built from ATR rather than standard deviation.",
   },
+  ZScoreReversion: {
+    label: "Z-Score Reversion",
+    family: "Mean reversion",
+    desc: "Fades statistically extreme deviations from a rolling mean. Scale-free — the same threshold means the same thing on any asset.",
+  },
+  WilliamsRReversion: {
+    label: "Williams %R Reversion",
+    family: "Mean reversion",
+    desc: "Buys extreme Williams %R oversold readings, flips short at overbought extremes.",
+  },
+  CCIReversion: {
+    label: "CCI Reversion",
+    family: "Mean reversion",
+    desc: "Fades Commodity Channel Index extremes away from the typical price.",
+  },
+  // Trend following
   MACrossover: {
     label: "MA Crossover",
     family: "Trend following",
     desc: "Long while the fast average is above the slow one — the classic golden cross.",
   },
-  TurtleBreakout: {
-    label: "Donchian Breakout",
+  MACDTrend: {
+    label: "MACD Trend",
     family: "Trend following",
-    desc: "The Turtle system: enter on an N-day breakout, exit on a shorter channel break.",
+    desc: "Long while the MACD line leads its signal line, short while it lags.",
   },
+  SupertrendFollow: {
+    label: "Supertrend Follow",
+    family: "Trend following",
+    desc: "Follows the Supertrend band direction, which flips when price crosses the ATR-based envelope.",
+  },
+  ADXTrend: {
+    label: "ADX Trend Filter",
+    family: "Trend following",
+    desc: "Takes a directional position only when ADX confirms trend strength, standing aside in choppy markets.",
+  },
+  // Momentum
   SimpleMomentum: {
     label: "Simple Momentum",
-    family: "Trend following",
+    family: "Momentum",
     desc: "Long if price is above where it sat N days ago; short if below.",
+  },
+  ROCMomentum: {
+    label: "ROC Momentum",
+    family: "Momentum",
+    desc: "Long when the trailing rate-of-change clears a threshold, short when it falls below. Dead-bands noise around zero.",
+  },
+  DualMomentum: {
+    label: "Dual Momentum",
+    family: "Momentum",
+    desc: "Requires both a short and a long lookback to agree before taking a position — trades less, holds longer.",
+  },
+  // Breakout
+  TurtleBreakout: {
+    label: "Donchian Breakout",
+    family: "Breakout",
+    desc: "The Turtle system: enter on an N-day high/low breakout, exit on a shorter channel break.",
+  },
+  VolatilityBreakout: {
+    label: "Volatility Breakout",
+    family: "Breakout",
+    desc: "Enters when price travels more than N × ATR from the prior close, self-adjusting to current volatility.",
+  },
+  SqueezeBreakout: {
+    label: "Squeeze Breakout",
+    family: "Breakout",
+    desc: "Identifies Bollinger Band volatility squeezes, then trades the directional expansion that follows.",
+  },
+  // Volatility
+  VolatilityRegime: {
+    label: "Volatility Regime",
+    family: "Volatility",
+    desc: "Holds risk only while realized volatility is below its own historical quantile. Drove 180 of 220 ultra-robust survivors.",
+  },
+  VolatilityMeanReversion: {
+    label: "Volatility Mean Reversion",
+    family: "Volatility",
+    desc: "Buys after a volatility spike exhausts itself — volatility is strongly mean-reverting.",
+  },
+  // Chart patterns
+  StructureBreak: {
+    label: "Structure Break",
+    family: "Chart patterns",
+    desc: "Trades market structure: enters long on new swing highs, short on new swing lows.",
+  },
+  InsideBarBreakout: {
+    label: "Inside Bar Breakout",
+    family: "Chart patterns",
+    desc: "An inside bar marks compression; trades the break of the prior bar's range.",
+  },
+  EngulfingReversal: {
+    label: "Engulfing Reversal",
+    family: "Chart patterns",
+    desc: "Bullish/bearish engulfing candle patterns, optionally filtered to only trade against the prevailing trend.",
   },
 };
 
