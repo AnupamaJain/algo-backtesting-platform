@@ -1,0 +1,26 @@
+# Global universe, last 5 years only.
+#
+# Same 30 assets and the same price cache as universe.yaml — only the window
+# and the output directory differ, so the two runs never overwrite each other
+# and can be compared side by side.
+
+data:
+  source: yfinance
+  cache_dir: data                # shares the 15y cache; no re-download needed
+  results_dir: results_5y        # its own results tree
+  lookback_years: 5
+  start_date: null
+  end_date: null
+  price_field: "Adj Close"
+  max_forward_fill_days: 3
+
+train_test:
+  split_ratio: 0.7
+
+assets:
+  index_etfs: [SPY, QQQ]
+  sector_etfs: [XLK, XLF, XLE, XLV, XLI, XLY, XLP, XLB, XLU, XOP, KRE]
+  commodities: [GLD, USO]
+  fixed_income: [TLT, IEF]
+  crypto: [BTC-USD, ETH-USD]
+  large_cap_equities: [AAPL, NVDA, MSFT, AMZN, GOOGL, META, TSLA, NFLX, JPM, WMT, UNH]

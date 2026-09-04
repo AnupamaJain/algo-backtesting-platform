@@ -1,0 +1,62 @@
+# Layer 4 configuration: regime detection, risk management, portfolio routing.
+
+regime:
+  # Index whose behaviour defines "the market regime" for every asset.
+  benchmark_symbol: SPY
+  n_states: 3
+  # Feature windows used to describe each trading day.
+  volatility_window: 20
+  fast_ma: 50
+  slow_ma: 200
+  atr_period: 14
+  # HMM fitting. covariance_type: full | diag | tied | spherical
+  #
+  # `spherical` is the default deliberately. With 4 features and ~1,800
+  # training rows, `full` (k*d*d free covariance parameters) overfits into
+  # near-duplicate states: it spends two of its three states describing the
+  # same calm regime and never isolates crashes at all. The more constrained
+  # `spherical` fit recovers three genuinely distinct states and flags both
+  # the 2020 COVID crash and the 2022 bear market. Re-check this if you
+  # change the feature set — it is a bias/variance choice, not a constant.
+  covariance_type: spherical
+  n_iter: 200
+  random_seed: 42
+  # The HMM is fit on a training prefix only; regimes for later dates are
+  # inferred, never fit. Prevents the classifier from seeing the future.
+  train_fraction: 0.5
+  # Confirmed regime must persist this many days before capital is rerouted.
+  # Guards against whipsawing on one-day misclassifications.
+  min_regime_persistence_days: 3
+
+risk:
+  # ATR-based volatility targeting.
+  target_annual_volatility: 0.15
+  atr_period: 14
+  max_position_leverage: 1.0    # cap on any single asset-strategy exposure
+  max_portfolio_heat: 3.0       # cap on total simultaneous gross exposure
+  # Equity-curve stop.
+  drawdown_window_days: 20
+  drawdown_threshold: 0.15      # rolling 20d drawdown that trips the stop
+  drawdown_scale_factor: 0.0    # exposure multiplier while tripped (0 = halt)
+  recovery_days: 10             # days below threshold before re-enabling
+
+allocation:
+  # Which strategy families receive capital in each regime.
+  # 0 = Bear/Crash, 1 = Bull/Trending, 2 = Choppy/Ranging
+  regime_strategies:
+    0: [RSIReversion, BBReversion]         # selective, defensive mean reversion
+    1: [TurtleBreakout, SimpleMomentum, MACrossover]
+    2: [RSIReversion, KeltnerReversion, BBReversion]
+  # Overall exposure multiplier applied per regime.
+  regime_exposure:
+    0: 0.3     # scale down hard in a crash
+    1: 1.0
+    2: 0.7
+  # Defensive assets capital rotates into during regime 0.
+  defensive_assets: [TLT, IEF]
+  # Blending: weight overlapping signals inversely to their correlation.
+  correlation_window: 120
+  min_weight: 0.05
+
+output:
+  regime_dir: results/layer4

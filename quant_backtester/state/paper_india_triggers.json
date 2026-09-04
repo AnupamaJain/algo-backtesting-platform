@@ -1,0 +1,17 @@
+[
+ {
+  "symbol": "SBIN-EQ",
+  "side": "SELL",
+  "quantity": 1.0,
+  "trigger_price": 875.5,
+  "direction": "BELOW",
+  "limit_price": null,
+  "product": "INTRADAY",
+  "tag": "",
+  "trigger_id": "SGTT-DDC4C4E6C8",
+  "status": "cancelled",
+  "armed_at": "2026-09-03T12:40:21",
+  "fired_at": null,
+  "order_id": null
+ }
+]

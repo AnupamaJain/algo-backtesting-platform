@@ -1,0 +1,47 @@
+# Indian asset universe — for use with the Flattrade data source.
+#
+# Flattrade covers NSE/BSE/NFO/MCX only. It cannot price SPY, QQQ, AAPL or
+# BTC-USD, so the US universe in universe.yaml does not apply here.
+#
+# Symbols use Flattrade's trading-symbol format: cash equities carry the "-EQ"
+# suffix on NSE. Prefix with an exchange ("BSE:RELIANCE") to override the
+# default exchange.
+
+data:
+  # Flattrade first: no token cooldown, no aggressive feed rate limit, and an
+  # unattended login. Dhan is the fallback — same market, so either alone can
+  # supply the history.
+  source: flattrade
+  # If the Flattrade session lapses, pull the same NSE bars from Dhan rather
+  # than failing the run. Both cover this market; yfinance does not and must
+  # never appear here.
+  source_fallbacks: [dhan]
+  cache_dir: data_india          # kept separate from the US cache
+  results_dir: results_india     # ...and so are its results
+  # Regime benchmark for Layer 4. Must be listed on this market —
+  # SPY has no NSE listing.
+  regime_benchmark: NIFTYBEES-EQ
+  # Risk-off basket for Layer 4. TLT/IEF are US Treasuries with no NSE
+  # listing; gold is the liquid defensive instrument available here.
+  regime_defensive_assets: [GOLDBEES-EQ]
+  lookback_years: 10             # NSE EOD history is shorter than 15y for many names
+  start_date: null
+  end_date: null
+  price_field: "Adj Close"       # Flattrade EOD is already adjusted; factor is 1.0
+  max_forward_fill_days: 3
+
+train_test:
+  split_ratio: 0.7
+
+assets:
+  index_etfs: [NIFTYBEES-EQ, BANKBEES-EQ]
+  large_cap: [RELIANCE-EQ, TCS-EQ, HDFCBANK-EQ, INFY-EQ, ICICIBANK-EQ, HINDUNILVR-EQ,
+              ITC-EQ, SBIN-EQ, BHARTIARTL-EQ, KOTAKBANK-EQ]
+  # TATAMOTORS-EQ removed 2026-09-02: Tata Motors demerged into TMPV/TMLCV,
+  # the symbol no longer trades on NSE, and it is absent from the broker's
+  # instrument master. Its cached history stops at 2025-10-23 and is archived
+  # under data_india/_delisted/ rather than deleted, since the bars are real.
+  mid_cap: [AXISBANK-EQ, MARUTI-EQ, SUNPHARMA-EQ, TITAN-EQ,
+            ULTRACEMCO-EQ, WIPRO-EQ, NESTLEIND-EQ]
+  banking: [BANKBARODA-EQ, PNB-EQ, INDUSINDBK-EQ]
+  commodities: [GOLDBEES-EQ]

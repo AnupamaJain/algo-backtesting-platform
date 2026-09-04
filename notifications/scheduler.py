@@ -22,6 +22,41 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+
+# ---------------------------------------------------------------------------
+# Broker client factory.
+#
+# Migrated off KiteConnect: these modules now reach whichever broker
+# config/broker.yaml selects (Flattrade, Dhan, or a paper account) through
+# the BrokerAdapter abstraction. The returned object presents the same method
+# surface the code already calls, so nothing below changes.
+#
+#   BROKER_BACKEND=kite   restores the original KiteConnect client
+#   BROKER_NAME=<name>    targets a specific configured broker
+# ---------------------------------------------------------------------------
+def _broker_client(api_key=None, account_id=None):
+    import os as _os
+
+    if _os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+    try:
+        from quant_backtester.src.broker.legacy import build_legacy_client
+
+        return build_legacy_client(broker=_os.environ.get("BROKER_NAME") or "flattrade")
+    except Exception as _exc:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.error(
+            "Adapter-backed broker client unavailable (%s); falling back to "
+            "KiteConnect, which needs a Zerodha access token.", _exc,
+        )
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+
+
 logger = logging.getLogger(__name__)
 
 _IST = ZoneInfo("Asia/Kolkata")
@@ -313,7 +348,7 @@ def _job_kite_login_check() -> None:
             logger.error("KITE_LOGIN_CHECK: api_key not found in configfile.ini")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
         kite.profile()  # raises KiteException if token is invalid or expired
         logger.info("KITE_LOGIN_CHECK: session valid at 9:20 AM IST")
@@ -378,7 +413,7 @@ def _job_early_exit_required() -> None:
             logger.error("EARLY_EXIT_REQUIRED: api_key not found in configfile.ini")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
         positions_data = kite.positions()
         net_positions: list[dict] = positions_data.get("net", [])
@@ -485,7 +520,7 @@ def _job_daily_pnl_summary() -> None:
             logger.error("DAILY_PNL_SUMMARY: api_key not found in configfile.ini")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
 
         positions_data = kite.positions()
@@ -603,7 +638,7 @@ def _job_reconcile_journal() -> None:
             logger.error("RECONCILE_JOURNAL: api_key not found in configfile.ini")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
 
         result = reconcile_with_zerodha(kite, date.today())
@@ -761,7 +796,7 @@ def _job_nifty_margin_check() -> None:
             logger.error("NIFTY_MARGIN_CHECK: api_key missing in configfile.ini — skipping")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
 
         # Determine next NIFTY expiry and how many trading days away it is
@@ -890,7 +925,7 @@ def _job_nifty_delta_check() -> None:
             logger.error("NIFTY_DELTA_CHECK: api_key missing in configfile.ini — skipping")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
 
         all_nifty_instruments = get_all_nifty_instruments(kite)
@@ -1042,7 +1077,7 @@ def _job_nifty_itm_loss_check() -> None:
             logger.error("NIFTY_ITM_LOSS_CHECK: api_key missing in configfile.ini — skipping")
             return
 
-        kite = KiteConnect(api_key=api_key)
+        kite = _broker_client(api_key)
         kite.set_access_token(access_token)
 
         all_nifty_instruments = get_all_nifty_instruments(kite)

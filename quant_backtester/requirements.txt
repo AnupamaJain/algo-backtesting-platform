@@ -1,0 +1,19 @@
+# Quant backtester dependencies (all four layers).
+
+# Core numerics — Layers 1-4
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.16.3
+
+# Layer 1: market data + config
+yfinance==0.2.66
+pyyaml==6.0.3
+pyarrow==22.0.0
+
+# Layer 4: HMM regime classifier
+hmmlearn==0.3.3
+scikit-learn==1.9.0
+
+# Testing
+pytest==8.4.2
+pyotp==2.9.0

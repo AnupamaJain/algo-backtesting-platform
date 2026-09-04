@@ -1,0 +1,39 @@
+# Layer 3 configuration: parameter sensitivity + bootstrap stress testing.
+#
+# As with every other layer, no threshold or count is hardcoded in Python.
+
+sensitivity:
+  # How to build the parameter neighbourhood around a surviving config.
+  # Integer parameters step by whole units (RSI 14 -> 12, 13, 15, 16);
+  # float parameters step multiplicatively (num_std 2.0 -> 1.8, 1.9, 2.1, 2.2).
+  int_offsets: [ -2, -1, 1, 2 ]
+  float_relative_offsets: [ -0.2, -0.1, 0.10, 0.20 ]
+
+  # Metric the neighbourhood is judged on. Must be a PerformanceMetrics field.
+  metric: sharpe
+
+  # A neighbour "holds up" if it retains at least this fraction of the
+  # centre configuration's metric.
+  min_retention_ratio: 0.5
+  # ...and the configuration is called stable only if at least this fraction
+  # of its neighbours hold up.
+  min_stability_fraction: 0.6
+
+bootstrap:
+  num_simulations: 500
+  # Fixed seed => reproducible verdicts. Change it deliberately, never
+  # incidentally; two runs with the same seed must agree exactly.
+  random_seed: 42
+  with_replacement: true
+  # Which track record to resample: the honest out-of-sample one, or the
+  # full history. oos | full
+  trade_source: oos
+  min_trades_required: 20
+
+  # Verdict rule: the 5th-percentile alternate universe must still make
+  # money, and the 95th-percentile drawdown must stay tolerable.
+  min_p5_final_return: 0.0
+  max_p95_drawdown: 0.50
+
+output:
+  robustness_dir: results/layer3

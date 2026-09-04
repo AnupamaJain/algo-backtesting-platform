@@ -1,0 +1,121 @@
+# Broker layer configuration.
+#
+# SAFETY: live_trading is false by default and must be turned on deliberately.
+# While it is false, every order is fully constructed, logged and persisted —
+# but never sent to a broker. A fresh install cannot place a real order.
+#
+# Credentials are NEVER written here. Config names the environment variable
+# holding each secret; the value is read at runtime and fails loudly if unset.
+
+active: paper
+
+safety:
+  live_trading: false
+  max_order_value: 50000        # fat-finger ceiling, in account currency
+  duplicate_window_seconds: 30  # identical intent inside this window is blocked
+  max_retries: 3
+  backoff_seconds: 1.0
+
+brokers:
+  paper:
+    adapter: paper
+    auth: none
+    starting_cash: 100000.0
+    commission_pct: 0.0005      # 0.05% of notional
+    slippage_pct: 0.0002        # 0.02% price drag per fill
+    allow_short: true
+    # live = real market quotes (falls back to last cached close if the feed
+    # is unreachable); cached = last close from local history.
+    quote_source: live
+    quote_ttl_seconds: 15
+    exchange: SIM
+    universe:
+      [SPY, QQQ, XLK, XLF, XLE, XLV, GLD, TLT, IEF, AAPL, NVDA, MSFT, AMZN,
+       GOOGL, META, TSLA, JPM, WMT, UNH, BTC-USD, ETH-USD]
+
+  # Paper trading on NSE: simulated money, REAL Flattrade prices. Select it
+  # with `active: paper_india` to practise on Indian instruments.
+  paper_india:
+    adapter: paper
+    auth: none
+    starting_cash: 100000.0
+    commission_pct: 0.0005
+    slippage_pct: 0.0002
+    allow_short: true
+    quote_source: flattrade      # NSE prices, not yfinance; see paper_dhan
+    quote_fallbacks: [dhan]      # same market, different broker
+    max_quote_age_seconds: 900
+    quote_ttl_seconds: 5
+    exchange: NSE
+    token_file: state/flattrade_token.json
+    universe:
+      # TATAMOTORS-EQ removed: demerged, no longer listed.
+      [RELIANCE-EQ, TCS-EQ, HDFCBANK-EQ, INFY-EQ, ICICIBANK-EQ, SBIN-EQ,
+       ITC-EQ, BHARTIARTL-EQ, AXISBANK-EQ, TITAN-EQ,
+       NIFTYBEES-EQ, BANKBEES-EQ, GOLDBEES-EQ]
+
+  # Flattrade — Indian markets (NSE/BSE/NFO/MCX). REAL MONEY when selected as
+  # `active` and live_trading is true. Tokens are minted daily via
+  # `python quant_backtester/flattrade_token.py`.
+  flattrade:
+    adapter: flattrade
+    auth: flattrade
+    exchange: NSE
+    token_file: state/flattrade_token.json
+    token_env: FLATTRADE_TOKEN
+    client_id_env: FLATTRADE_CLIENT_ID
+    universe:
+      [RELIANCE-EQ, TCS-EQ, HDFCBANK-EQ, INFY-EQ, ICICIBANK-EQ, SBIN-EQ,
+       ITC-EQ, BHARTIARTL-EQ, NIFTYBEES-EQ, BANKBEES-EQ]
+
+  # Dhan (DhanHQ v2). Select with `active: dhan`.
+  #
+  # No secrets here. The access token is read, in order, from the
+  # DHAN_ACCESS_TOKEN environment variable, then state/dhan_token.json, then
+  # configfile.ini. Manage it with:
+  #     python quant_backtester/dhan_token.py --check
+  #
+  # Dhan tokens expire (~30 days) and CANNOT be renewed programmatically:
+  # they are minted only from an authenticated web-portal session. The
+  # adapter refuses an expired token with instructions rather than failing
+  # with an opaque 401 mid-session.
+  dhan:
+    adapter: dhan
+    auth: dhan
+    exchange: NSE
+    token_file: state/dhan_token.json
+    token_env: DHAN_ACCESS_TOKEN
+    client_id_env: DHAN_CLIENT_ID
+    universe:
+      [RELIANCE, TCS, HDFCBANK, INFY, ICICIBANK, SBIN, ITC, BHARTIARTL]
+
+  # Paper trading on NSE with simulated money and REAL live prices.
+  #
+  # Named for the universe it was built around rather than the feed: quotes
+  # come from Flattrade first and Dhan second, like every other Indian path
+  # here. Functionally it now differs from paper_india only in its symbol
+  # list, which tracks data_india/ rather than a hand-picked subset.
+  paper_dhan:
+    adapter: paper
+    auth: none
+    starting_cash: 100000.0
+    commission_pct: 0.0003
+    slippage_pct: 0.0002
+    allow_short: true
+    # Flattrade first, everywhere. Two measured reasons, not a preference:
+    #   * Dhan rate-limits token generation to once every 2 minutes and its
+    #     market feed to roughly one request per second; Flattrade does
+    #     neither, so it survives a busy loop.
+    #   * Flattrade's automated login is unattended (see flattrade_token.py).
+    # Dhan remains the fallback: it covers the same NSE instruments, so
+    # either can price the book on its own.
+    quote_source: flattrade
+    quote_fallbacks: [dhan]
+    flattrade_token_file: state/flattrade_token.json
+    max_quote_age_seconds: 900
+    exchange: NSE
+    # Matches the cached Indian history in data_india/. The "-EQ" series
+    # suffix is stripped when resolving against Dhan's scrip master, which
+    # carries the bare symbol.
+    universe:
+      ['AXISBANK-EQ', 'BANKBARODA-EQ', 'BANKBEES-EQ', 'BHARTIARTL-EQ', 'GOLDBEES-EQ', 'HDFCBANK-EQ', 'HINDUNILVR-EQ', 'ICICIBANK-EQ', 'INDUSINDBK-EQ', 'INFY-EQ', 'ITC-EQ', 'KOTAKBANK-EQ', 'MARUTI-EQ', 'NESTLEIND-EQ', 'NIFTYBEES-EQ', 'PNB-EQ', 'RELIANCE-EQ', 'SBIN-EQ', 'SUNPHARMA-EQ', 'TCS-EQ', 'TITAN-EQ', 'ULTRACEMCO-EQ', 'WIPRO-EQ']

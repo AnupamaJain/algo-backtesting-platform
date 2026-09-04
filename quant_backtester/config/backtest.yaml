@@ -1,0 +1,66 @@
+# Layer 2 configuration: execution drag, walk-forward windows, funnel thresholds.
+#
+# Every number the engine and the validation funnel act on lives here. No
+# threshold, cost rate, or window length is hardcoded in Python.
+
+execution:
+  # Signals are acted on with a one-bar delay (decide at close of t, hold
+  # through t+1). This is not configurable on purpose — it is the core
+  # look-ahead guard, not a tuning knob.
+  # auto = infer each asset's own calendar (equities ~252 bars/year, crypto
+  # 365). Pin to a number only to force one figure across every asset —
+  # annualizing a 365-bar series at 252 understates its Sharpe by ~20%.
+  periods_per_year: auto
+  risk_free_rate: 0.0        # annualized; classroom/simulation default of 0
+
+costs:
+  # model: percentage | per_share
+  model: percentage
+  percentage:
+    commission_pct: 0.0005   # 0.05% of traded notional
+    slippage_pct: 0.0002     # 0.02% price drag per execution
+  per_share:
+    commission_per_share: 0.005   # $0.005/share
+    slippage_pct: 0.0002
+    capital_base: 100000.0        # only used to convert exposure -> share count
+
+walk_forward:
+  mode: rolling              # rolling | anchored
+  is_years: 3                # in-sample (tuning) window length
+  oos_years: 1               # out-of-sample (evaluation) window length
+  step_years: 1              # how far the window advances each iteration
+  min_oos_days: 60           # skip windows with too little OOS data to score
+  # Objective used to pick the best parameter set on IS data in optimized
+  # mode. Must be a field of PerformanceMetrics.
+  selection_metric: sharpe
+
+funnel:
+  filter_1_min_trades: 30
+  filter_2_min_oos_sharpe: 0.5
+  filter_3_max_drawdown: 0.35        # 35% peak-to-trough on OOS
+  filter_4_max_is_oos_sharpe_ratio: 2.0   # reject if IS Sharpe > 2x OOS Sharpe
+  filter_5_min_profit_factor: 1.1
+  filter_6:
+    method: fdr              # bonferroni | fdr
+    alpha: 0.05
+    multiplicity: strategies  # count 21 distinct strategy types, not 630 symbol×strategy pairs
+
+output:
+  results_dir: results
+  layer2_dir: results/layer2
+
+# Bar-level risk management applied on top of a strategy's positions.
+#
+# OFF by default, deliberately. A naked backtest answers "does this signal
+# have an edge?"; stops answer "is that edge tradable?". Running stops first
+# conflates the two — a stop-loss can make an edgeless signal look survivable.
+#
+# Measured effect on this universe (30 symbols x 21 strategies, 5y): stops cut
+# median max-drawdown from 0.48 to ~0.33 but did NOT raise median Sharpe.
+# Risk management bounds losses; it does not manufacture an edge.
+risk_overlay:
+  enabled: false
+  stop_atr: 2.0        # stop distance, in ATRs from entry
+  target_atr: null     # take-profit distance in ATRs; null to disable
+  trailing: false      # ratchet the stop as the position moves in favour
+  atr_period: 14

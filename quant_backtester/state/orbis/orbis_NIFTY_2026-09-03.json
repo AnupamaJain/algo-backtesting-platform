@@ -1,0 +1,18 @@
+{
+ "instrument": "NIFTY",
+ "session_date": "2026-09-03",
+ "ib_high": 73210.35,
+ "ib_low": 72941.6,
+ "formed_first": "LOW",
+ "broke_first": "LOW",
+ "phase": "armed",
+ "direction": "LONG",
+ "entry": 73075.975,
+ "stop": 72920.1,
+ "target": 73210.35,
+ "fill_price": null,
+ "exit_price": null,
+ "exit_reason": null,
+ "order_id": null,
+ "updated_at": "2026-09-03T13:24:45"
+}

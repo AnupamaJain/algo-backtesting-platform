@@ -1,0 +1,94 @@
+# Intraday session data + Initial Balance (IB) study configuration.
+#
+# This is the data layer for session-structure strategies (IB-60 and
+# relatives). Everything the study depends on — session bounds, the IB
+# window, the instruments, what counts as a "break" — is declared here rather
+# than baked into code, so a different exchange or a different IB length is a
+# config change, not a patch.
+#
+# NOTE: the rest of the platform works on DAILY bars. This is the only path
+# that loads intraday candles, and it keeps its own cache directory so the
+# two can never be confused for one another.
+
+source:
+  provider: flattrade          # flattrade is the only intraday feed wired up
+  exchange: NSE
+  interval: "5"                # minutes per bar, as the Noren API expects it
+  cache_dir: data_intraday     # relative to quant_backtester/
+  # Flattrade serves a limited intraday window; request in chunks and stitch.
+  max_days_per_request: 30
+  # Broker session. No secrets here — this names where the token lives.
+  auth:
+    token_file: state/flattrade_token.json
+    auto_login: false
+
+session:
+  # Asia/Kolkata. Bars are stored tz-aware so a DST-free exchange and a
+  # DST-observing one can coexist later without silent one-hour errors.
+  timezone: Asia/Kolkata
+  open: "09:15"
+  close: "15:30"
+
+initial_balance:
+  # The IB window: bars from `session.open` for this many minutes.
+  minutes: 60
+  # WICK  — a break is any trade beyond the level (bar high/low)
+  # CLOSE — a break requires a bar to CLOSE beyond the level
+  break_measure: WICK
+  # Bars that breach BOTH IB extremes cannot be ordered from OHLC alone.
+  # "ambiguous" reports them separately (honest, default); "skip" drops them.
+  # There is deliberately no option to guess.
+  straddle_policy: ambiguous
+
+instruments:
+  # NSE index spot symbols. These are indices, not the tradable ETFs in
+  # universe_india.yaml — IB structure is a property of the index.
+  - symbol: "Nifty 50"
+    alias: NIFTY
+  - symbol: "Nifty Bank"
+    alias: BANKNIFTY
+
+study:
+  # How far back to pull. Intraday history is expensive and the broker caps
+  # it; this is the honest limit of what can be measured, not a preference.
+  lookback_days: 120
+  # Two-sided binomial CI on the conditional break frequency.
+  confidence_level: 0.95
+  results_dir: results/intraday
+
+# --------------------------------------------------------------------------
+# IB trade simulation (path-dependent backtest)
+# --------------------------------------------------------------------------
+# Geometry note: this reproduces the ORBIS prototype's REVERSION trade, which
+# fades the first break — after the IB LOW gives way, buy the retrace to the
+# midpoint, stop below the IB low, target the IB high. (The prototype labels
+# that trade "SELL" while giving it long geometry; the geometry is what is
+# implemented here, since it is the half that is internally consistent.)
+ib_trade:
+  mode: REVERSION            # REVERSION (fade the break) | CONTINUATION
+  entry_level: 0.50          # fraction of IB range: 0 = IB low, 1 = IB high
+  stop_buffer_atr: 0.0       # extra room beyond the broken extreme, in IB ranges
+  stop_buffer_frac: 0.08     # ...or as a fraction of the IB range
+  target: FAR_SIDE           # FAR_SIDE | fraction of IB range
+  # Latest time an entry may be filled. After this, a pending setup is dropped
+  # rather than chased into the close.
+  entry_cutoff: "14:30"
+  # Everything is flat by the close — this is an intraday strategy and
+  # carrying overnight would import gap risk the study never measured.
+  exit_at: "15:20"
+  # A bar containing BOTH the stop and the target cannot be ordered from OHLC.
+  #   stop_first — assume the loss (conservative, default)
+  #   ambiguous  — exclude the trade and report the count
+  # There is deliberately no "target_first" option: that is how a backtest
+  # talks itself into an edge.
+  same_bar_policy: stop_first
+  # If price breaks the OPPOSITE extreme before the entry fills, the premise
+  # (a single failed push) is gone and the setup is cancelled.
+  cancel_on_double_break: true
+  costs:
+    # Round-trip cost as a fraction of notional. Indian index options/futures
+    # carry brokerage + STT + impact; 0.03% per side is a realistic retail
+    # figure for liquid index instruments.
+    per_side_pct: 0.0003
+    # Slippage in fractions of the IB range, charged on entry and exit.
+    slippage_frac: 0.02

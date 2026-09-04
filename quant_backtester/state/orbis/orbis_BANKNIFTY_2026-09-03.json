@@ -1,0 +1,18 @@
+{
+ "instrument": "BANKNIFTY",
+ "session_date": "2026-09-03",
+ "ib_high": 57753.6,
+ "ib_low": 57467.05,
+ "formed_first": "LOW",
+ "broke_first": null,
+ "phase": "none",
+ "direction": null,
+ "entry": null,
+ "stop": null,
+ "target": null,
+ "fill_price": null,
+ "exit_price": null,
+ "exit_reason": null,
+ "order_id": null,
+ "updated_at": "2026-09-03T13:24:46"
+}

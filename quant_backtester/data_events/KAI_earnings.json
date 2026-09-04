@@ -1,0 +1,602 @@
+[
+ {
+  "announced_at": "2002-02-11T17:00:00-05:00",
+  "eps_estimate": 0.14,
+  "eps_reported": 0.14,
+  "surprise_pct": 3.7
+ },
+ {
+  "announced_at": "2002-05-01T16:00:00-04:00",
+  "eps_estimate": 0.06,
+  "eps_reported": 0.07,
+  "surprise_pct": 16.67
+ },
+ {
+  "announced_at": "2002-07-24T16:00:00-04:00",
+  "eps_estimate": 0.14,
+  "eps_reported": 0.18,
+  "surprise_pct": 24.14
+ },
+ {
+  "announced_at": "2002-10-23T16:00:00-04:00",
+  "eps_estimate": 0.21,
+  "eps_reported": 0.2,
+  "surprise_pct": -2.44
+ },
+ {
+  "announced_at": "2003-02-12T17:00:00-05:00",
+  "eps_estimate": 0.16,
+  "eps_reported": 0.17,
+  "surprise_pct": 6.25
+ },
+ {
+  "announced_at": "2003-04-30T16:00:00-04:00",
+  "eps_estimate": 0.19,
+  "eps_reported": 0.22,
+  "surprise_pct": 15.79
+ },
+ {
+  "announced_at": "2003-07-23T17:00:00-04:00",
+  "eps_estimate": 0.25,
+  "eps_reported": 0.27,
+  "surprise_pct": 8.0
+ },
+ {
+  "announced_at": "2003-10-22T17:00:00-04:00",
+  "eps_estimate": 0.19,
+  "eps_reported": 0.19,
+  "surprise_pct": 2.7
+ },
+ {
+  "announced_at": "2004-02-18T17:00:00-05:00",
+  "eps_estimate": 0.17,
+  "eps_reported": 0.16,
+  "surprise_pct": -3.03
+ },
+ {
+  "announced_at": "2004-04-28T17:00:00-04:00",
+  "eps_estimate": 0.19,
+  "eps_reported": 0.19,
+  "surprise_pct": null
+ },
+ {
+  "announced_at": "2004-07-28T17:00:00-04:00",
+  "eps_estimate": 0.23,
+  "eps_reported": 0.23,
+  "surprise_pct": 2.22
+ },
+ {
+  "announced_at": "2004-10-27T17:00:00-04:00",
+  "eps_estimate": 0.19,
+  "eps_reported": 0.22,
+  "surprise_pct": 18.92
+ },
+ {
+  "announced_at": "2005-02-16T17:00:00-05:00",
+  "eps_estimate": 0.07,
+  "eps_reported": 0.1,
+  "surprise_pct": 42.86
+ },
+ {
+  "announced_at": "2005-04-27T17:00:00-04:00",
+  "eps_estimate": 0.14,
+  "eps_reported": 0.16,
+  "surprise_pct": 10.34
+ },
+ {
+  "announced_at": "2005-08-03T16:00:00-04:00",
+  "eps_estimate": 0.21,
+  "eps_reported": 0.22,
+  "surprise_pct": 7.32
+ },
+ {
+  "announced_at": "2005-11-02T17:00:00-05:00",
+  "eps_estimate": 0.2,
+  "eps_reported": 0.18,
+  "surprise_pct": -10.0
+ },
+ {
+  "announced_at": "2006-02-15T17:00:00-05:00",
+  "eps_estimate": 0.13,
+  "eps_reported": 0.07,
+  "surprise_pct": -46.15
+ },
+ {
+  "announced_at": "2006-05-03T16:00:00-04:00",
+  "eps_estimate": 0.19,
+  "eps_reported": 0.21,
+  "surprise_pct": 13.51
+ },
+ {
+  "announced_at": "2006-08-02T16:00:00-04:00",
+  "eps_estimate": 0.35,
+  "eps_reported": 0.4,
+  "surprise_pct": 15.94
+ },
+ {
+  "announced_at": "2006-11-01T16:00:00-05:00",
+  "eps_estimate": 0.37,
+  "eps_reported": 0.41,
+  "surprise_pct": 12.33
+ },
+ {
+  "announced_at": "2007-02-14T16:00:00-05:00",
+  "eps_estimate": 0.27,
+  "eps_reported": 0.32,
+  "surprise_pct": 18.52
+ },
+ {
+  "announced_at": "2007-05-02T16:00:00-04:00",
+  "eps_estimate": 0.23,
+  "eps_reported": 0.33,
+  "surprise_pct": 43.48
+ },
+ {
+  "announced_at": "2007-07-25T16:00:00-04:00",
+  "eps_estimate": 0.38,
+  "eps_reported": 0.44,
+  "surprise_pct": 17.33
+ },
+ {
+  "announced_at": "2007-10-24T16:00:00-04:00",
+  "eps_estimate": 0.37,
+  "eps_reported": 0.49,
+  "surprise_pct": 31.37
+ },
+ {
+  "announced_at": "2008-02-13T17:00:00-05:00",
+  "eps_estimate": 0.44,
+  "eps_reported": 0.53,
+  "surprise_pct": 19.64
+ },
+ {
+  "announced_at": "2008-04-23T16:00:00-04:00",
+  "eps_estimate": 0.29,
+  "eps_reported": 0.36,
+  "surprise_pct": 24.14
+ },
+ {
+  "announced_at": "2008-07-23T17:00:00-04:00",
+  "eps_estimate": 0.42,
+  "eps_reported": 0.5,
+  "surprise_pct": 19.05
+ },
+ {
+  "announced_at": "2008-10-22T17:00:00-04:00",
+  "eps_estimate": 0.36,
+  "eps_reported": 0.47,
+  "surprise_pct": 30.56
+ },
+ {
+  "announced_at": "2009-03-04T18:00:00-05:00",
+  "eps_estimate": 0.16,
+  "eps_reported": 0.24,
+  "surprise_pct": 52.87
+ },
+ {
+  "announced_at": "2009-05-06T17:00:00-04:00",
+  "eps_estimate": 0.01,
+  "eps_reported": 0.02,
+  "surprise_pct": 100.0
+ },
+ {
+  "announced_at": "2009-08-05T16:00:00-04:00",
+  "eps_estimate": -0.11,
+  "eps_reported": -0.04,
+  "surprise_pct": 65.22
+ },
+ {
+  "announced_at": "2009-11-04T16:00:00-05:00",
+  "eps_estimate": -0.11,
+  "eps_reported": 0.05,
+  "surprise_pct": 145.45
+ },
+ {
+  "announced_at": "2010-02-24T17:00:00-05:00",
+  "eps_estimate": 0.07,
+  "eps_reported": 0.09,
+  "surprise_pct": 28.57
+ },
+ {
+  "announced_at": "2010-04-28T16:00:00-04:00",
+  "eps_estimate": 0.08,
+  "eps_reported": 0.27,
+  "surprise_pct": 255.26
+ },
+ {
+  "announced_at": "2010-07-28T16:00:00-04:00",
+  "eps_estimate": 0.4,
+  "eps_reported": 0.42,
+  "surprise_pct": 6.33
+ },
+ {
+  "announced_at": "2010-10-27T16:00:00-04:00",
+  "eps_estimate": 0.22,
+  "eps_reported": 0.3,
+  "surprise_pct": 35.14
+ },
+ {
+  "announced_at": "2011-02-23T16:00:00-05:00",
+  "eps_estimate": 0.28,
+  "eps_reported": 0.42,
+  "surprise_pct": 48.67
+ },
+ {
+  "announced_at": "2011-04-27T16:00:00-04:00",
+  "eps_estimate": 0.37,
+  "eps_reported": 0.47,
+  "surprise_pct": 28.18
+ },
+ {
+  "announced_at": "2011-07-27T16:00:00-04:00",
+  "eps_estimate": 0.53,
+  "eps_reported": 0.61,
+  "surprise_pct": 14.38
+ },
+ {
+  "announced_at": "2011-10-26T16:00:00-04:00",
+  "eps_estimate": 0.43,
+  "eps_reported": 0.47,
+  "surprise_pct": 8.46
+ },
+ {
+  "announced_at": "2012-02-22T16:00:00-05:00",
+  "eps_estimate": 0.66,
+  "eps_reported": 0.59,
+  "surprise_pct": -10.15
+ },
+ {
+  "announced_at": "2012-04-25T17:00:00-04:00",
+  "eps_estimate": 0.42,
+  "eps_reported": 0.61,
+  "surprise_pct": 46.11
+ },
+ {
+  "announced_at": "2012-07-30T16:00:00-04:00",
+  "eps_estimate": 0.54,
+  "eps_reported": 0.56,
+  "surprise_pct": 3.23
+ },
+ {
+  "announced_at": "2012-10-29T15:00:00-04:00",
+  "eps_estimate": 0.49,
+  "eps_reported": 0.66,
+  "surprise_pct": 33.78
+ },
+ {
+  "announced_at": "2013-02-26T16:00:00-05:00",
+  "eps_estimate": 0.4,
+  "eps_reported": 0.44,
+  "surprise_pct": 9.09
+ },
+ {
+  "announced_at": "2013-04-29T17:00:00-04:00",
+  "eps_estimate": 0.35,
+  "eps_reported": 0.47,
+  "surprise_pct": 34.29
+ },
+ {
+  "announced_at": "2013-07-29T17:00:00-04:00",
+  "eps_estimate": 0.56,
+  "eps_reported": 0.52,
+  "surprise_pct": -5.78
+ },
+ {
+  "announced_at": "2013-11-04T16:00:00-05:00",
+  "eps_estimate": 0.51,
+  "eps_reported": 0.57,
+  "surprise_pct": 11.43
+ },
+ {
+  "announced_at": "2014-02-19T17:00:00-05:00",
+  "eps_estimate": 0.49,
+  "eps_reported": 0.51,
+  "surprise_pct": 4.79
+ },
+ {
+  "announced_at": "2014-04-29T16:00:00-04:00",
+  "eps_estimate": 0.47,
+  "eps_reported": 0.59,
+  "surprise_pct": 24.5
+ },
+ {
+  "announced_at": "2014-07-28T17:00:00-04:00",
+  "eps_estimate": 0.66,
+  "eps_reported": 0.74,
+  "surprise_pct": 11.83
+ },
+ {
+  "announced_at": "2014-10-27T17:00:00-04:00",
+  "eps_estimate": 0.54,
+  "eps_reported": 0.63,
+  "surprise_pct": 17.76
+ },
+ {
+  "announced_at": "2015-02-25T16:00:00-05:00",
+  "eps_estimate": 0.74,
+  "eps_reported": 0.81,
+  "surprise_pct": 9.46
+ },
+ {
+  "announced_at": "2015-05-04T17:00:00-04:00",
+  "eps_estimate": 0.58,
+  "eps_reported": 0.63,
+  "surprise_pct": 9.25
+ },
+ {
+  "announced_at": "2015-08-05T17:00:00-04:00",
+  "eps_estimate": 0.73,
+  "eps_reported": 0.78,
+  "surprise_pct": 6.36
+ },
+ {
+  "announced_at": "2015-11-04T16:00:00-05:00",
+  "eps_estimate": 0.74,
+  "eps_reported": 0.78,
+  "surprise_pct": 5.54
+ },
+ {
+  "announced_at": "2016-02-24T16:00:00-05:00",
+  "eps_estimate": 0.8,
+  "eps_reported": 0.95,
+  "surprise_pct": 18.75
+ },
+ {
+  "announced_at": "2016-05-02T17:00:00-04:00",
+  "eps_estimate": 0.58,
+  "eps_reported": 0.74,
+  "surprise_pct": 27.0
+ },
+ {
+  "announced_at": "2016-08-03T17:00:00-04:00",
+  "eps_estimate": 0.65,
+  "eps_reported": 0.88,
+  "surprise_pct": 36.04
+ },
+ {
+  "announced_at": "2016-11-01T16:00:00-04:00",
+  "eps_estimate": 0.65,
+  "eps_reported": 0.81,
+  "surprise_pct": 24.09
+ },
+ {
+  "announced_at": "2017-02-23T16:00:00-05:00",
+  "eps_estimate": 0.64,
+  "eps_reported": 0.69,
+  "surprise_pct": 8.24
+ },
+ {
+  "announced_at": "2017-05-02T16:00:00-04:00",
+  "eps_estimate": 0.69,
+  "eps_reported": 0.8,
+  "surprise_pct": 16.36
+ },
+ {
+  "announced_at": "2017-08-01T16:00:00-04:00",
+  "eps_estimate": 0.91,
+  "eps_reported": 1.04,
+  "surprise_pct": 13.97
+ },
+ {
+  "announced_at": "2017-10-30T16:00:00-04:00",
+  "eps_estimate": 1.14,
+  "eps_reported": 1.49,
+  "surprise_pct": 30.7
+ },
+ {
+  "announced_at": "2018-02-15T17:00:00-05:00",
+  "eps_estimate": 1.08,
+  "eps_reported": 1.14,
+  "surprise_pct": 5.56
+ },
+ {
+  "announced_at": "2018-04-30T16:00:00-04:00",
+  "eps_estimate": 0.96,
+  "eps_reported": 1.07,
+  "surprise_pct": 11.75
+ },
+ {
+  "announced_at": "2018-07-30T16:00:00-04:00",
+  "eps_estimate": 0.97,
+  "eps_reported": 1.07,
+  "surprise_pct": 9.93
+ },
+ {
+  "announced_at": "2018-10-29T16:00:00-04:00",
+  "eps_estimate": 1.38,
+  "eps_reported": 1.53,
+  "surprise_pct": 10.67
+ },
+ {
+  "announced_at": "2019-02-13T16:00:00-05:00",
+  "eps_estimate": 1.35,
+  "eps_reported": 1.66,
+  "surprise_pct": 22.74
+ },
+ {
+  "announced_at": "2019-04-29T16:00:00-04:00",
+  "eps_estimate": 1.14,
+  "eps_reported": 1.24,
+  "surprise_pct": 8.53
+ },
+ {
+  "announced_at": "2019-07-30T16:00:00-04:00",
+  "eps_estimate": 1.12,
+  "eps_reported": 1.42,
+  "surprise_pct": 27.35
+ },
+ {
+  "announced_at": "2019-10-29T16:00:00-04:00",
+  "eps_estimate": 1.27,
+  "eps_reported": 1.41,
+  "surprise_pct": 10.73
+ },
+ {
+  "announced_at": "2020-02-12T17:00:00-05:00",
+  "eps_estimate": 1.28,
+  "eps_reported": 1.32,
+  "surprise_pct": 2.8
+ },
+ {
+  "announced_at": "2020-04-29T17:00:00-04:00",
+  "eps_estimate": 0.88,
+  "eps_reported": 1.09,
+  "surprise_pct": 23.3
+ },
+ {
+  "announced_at": "2020-07-28T17:00:00-04:00",
+  "eps_estimate": 0.74,
+  "eps_reported": 1.06,
+  "surprise_pct": 42.47
+ },
+ {
+  "announced_at": "2020-10-27T17:00:00-04:00",
+  "eps_estimate": 0.97,
+  "eps_reported": 1.31,
+  "surprise_pct": 34.5
+ },
+ {
+  "announced_at": "2021-02-17T16:00:00-05:00",
+  "eps_estimate": 1.31,
+  "eps_reported": 1.54,
+  "surprise_pct": 17.56
+ },
+ {
+  "announced_at": "2021-05-04T16:00:00-04:00",
+  "eps_estimate": 1.36,
+  "eps_reported": 1.43,
+  "surprise_pct": 4.84
+ },
+ {
+  "announced_at": "2021-08-03T16:00:00-04:00",
+  "eps_estimate": 1.53,
+  "eps_reported": 2.01,
+  "surprise_pct": 31.59
+ },
+ {
+  "announced_at": "2021-11-02T16:00:00-04:00",
+  "eps_estimate": 1.67,
+  "eps_reported": 1.97,
+  "surprise_pct": 17.82
+ },
+ {
+  "announced_at": "2022-02-16T16:00:00-05:00",
+  "eps_estimate": 2.0,
+  "eps_reported": 2.31,
+  "surprise_pct": 15.38
+ },
+ {
+  "announced_at": "2022-05-03T16:00:00-04:00",
+  "eps_estimate": 2.1,
+  "eps_reported": 2.28,
+  "surprise_pct": 8.78
+ },
+ {
+  "announced_at": "2022-08-02T17:00:00-04:00",
+  "eps_estimate": 2.05,
+  "eps_reported": 2.24,
+  "surprise_pct": 9.48
+ },
+ {
+  "announced_at": "2022-11-01T16:00:00-04:00",
+  "eps_estimate": 2.13,
+  "eps_reported": 2.38,
+  "surprise_pct": 11.95
+ },
+ {
+  "announced_at": "2023-02-15T16:00:00-05:00",
+  "eps_estimate": 2.02,
+  "eps_reported": 2.33,
+  "surprise_pct": 15.23
+ },
+ {
+  "announced_at": "2023-05-02T16:00:00-04:00",
+  "eps_estimate": 2.16,
+  "eps_reported": 2.4,
+  "surprise_pct": 11.28
+ },
+ {
+  "announced_at": "2023-08-01T16:00:00-04:00",
+  "eps_estimate": 2.12,
+  "eps_reported": 2.54,
+  "surprise_pct": 20.09
+ },
+ {
+  "announced_at": "2023-10-31T16:00:00-04:00",
+  "eps_estimate": 2.28,
+  "eps_reported": 2.69,
+  "surprise_pct": 18.11
+ },
+ {
+  "announced_at": "2024-02-14T16:00:00-05:00",
+  "eps_estimate": 2.1,
+  "eps_reported": 2.41,
+  "surprise_pct": 14.9
+ },
+ {
+  "announced_at": "2024-04-30T16:00:00-04:00",
+  "eps_estimate": 1.96,
+  "eps_reported": 2.38,
+  "surprise_pct": 21.64
+ },
+ {
+  "announced_at": "2024-07-30T16:00:00-04:00",
+  "eps_estimate": 2.43,
+  "eps_reported": 2.81,
+  "surprise_pct": 15.52
+ },
+ {
+  "announced_at": "2024-10-29T16:00:00-04:00",
+  "eps_estimate": 2.43,
+  "eps_reported": 2.84,
+  "surprise_pct": 16.87
+ },
+ {
+  "announced_at": "2025-02-12T16:00:00-05:00",
+  "eps_estimate": 2.05,
+  "eps_reported": 2.25,
+  "surprise_pct": 9.76
+ },
+ {
+  "announced_at": "2025-04-29T16:00:00-04:00",
+  "eps_estimate": 1.97,
+  "eps_reported": 2.1,
+  "surprise_pct": 6.87
+ },
+ {
+  "announced_at": "2025-07-29T16:00:00-04:00",
+  "eps_estimate": 1.94,
+  "eps_reported": 2.31,
+  "surprise_pct": 18.92
+ },
+ {
+  "announced_at": "2025-10-28T17:00:00-04:00",
+  "eps_estimate": 2.16,
+  "eps_reported": 2.59,
+  "surprise_pct": 19.72
+ },
+ {
+  "announced_at": "2026-02-18T17:00:00-05:00",
+  "eps_estimate": 2.19,
+  "eps_reported": 2.27,
+  "surprise_pct": 3.53
+ },
+ {
+  "announced_at": "2026-05-05T16:00:00-04:00",
+  "eps_estimate": 2.19,
+  "eps_reported": 2.84,
+  "surprise_pct": 29.48
+ },
+ {
+  "announced_at": "2026-08-04T16:00:00-04:00",
+  "eps_estimate": 2.77,
+  "eps_reported": 3.42,
+  "surprise_pct": 23.61
+ },
+ {
+  "announced_at": "2026-11-03T15:00:00-05:00",
+  "eps_estimate": 2.93,
+  "eps_reported": null,
+  "surprise_pct": null
+ }
+]

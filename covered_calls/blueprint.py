@@ -28,6 +28,41 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from covered_calls import covered_calls_lib as cc_lib
 from covered_calls import pending_orders_db
 
+
+# ---------------------------------------------------------------------------
+# Broker client factory.
+#
+# Migrated off KiteConnect: these modules now reach whichever broker
+# config/broker.yaml selects (Flattrade, Dhan, or a paper account) through
+# the BrokerAdapter abstraction. The returned object presents the same method
+# surface the code already calls, so nothing below changes.
+#
+#   BROKER_BACKEND=kite   restores the original KiteConnect client
+#   BROKER_NAME=<name>    targets a specific configured broker
+# ---------------------------------------------------------------------------
+def _broker_client(api_key=None, account_id=None):
+    import os as _os
+
+    if _os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+    try:
+        from quant_backtester.src.broker.legacy import build_legacy_client
+
+        return build_legacy_client(broker=_os.environ.get("BROKER_NAME") or "flattrade")
+    except Exception as _exc:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.error(
+            "Adapter-backed broker client unavailable (%s); falling back to "
+            "KiteConnect, which needs a Zerodha access token.", _exc,
+        )
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+
+
 logger = logging.getLogger(__name__)
 
 # Initialise the pending-orders DB table on first import
@@ -101,7 +136,7 @@ def _resolve_kite_client() -> Any | None:
         token = session.get("access_token") or instrument_cache.get_kite_token()
         if not token:
             return None
-        client = MonitoredKite(KiteConnect(api_key=kite_api_key), account_id="main")
+        client = _broker_client(kite_api_key, account_id="main")
         client.set_access_token(token)
         return client
     except Exception:

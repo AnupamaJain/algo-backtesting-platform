@@ -1,5 +1,6 @@
 # --- secrets & runtime state: NEVER commit these ---
-configfile.ini
+# Credentials — the file and every backup or variant of it.
+configfile.ini*
 .flask_secret
 .kite_session_token*
 *.pem
@@ -35,7 +36,36 @@ venv/
 # docs build
 site/
 
+# quant_backtester: cached market data + generated signal outputs are
+# reproducible from config + code, not source of truth to commit.
+quant_backtester/data/*
+!quant_backtester/data/.gitkeep
+quant_backtester/data_smallcap/*
+quant_backtester/data_intraday/*
+quant_backtester/results/*
+!quant_backtester/results/.gitkeep
+quant_backtester/results_5y/*
+quant_backtester/results_india/*
+quant_backtester/results_smallcap/*
+
 # editors / OS
 .vscode/
 .idea/
 .DS_Store
+
+# quant_backtester web dashboard
+quant_backtester/web/node_modules/
+quant_backtester/web/.next/
+quant_backtester/web/next-env.d.ts
+
+# Paper broker state (ledger is reproducible/disposable, not source)
+quant_backtester/state/*.db
+!quant_backtester/state/.gitkeep
+
+# Flattrade session token and Indian market cache
+quant_backtester/state/flattrade_token.json
+quant_backtester/data_india/
+
+# Dhan: the scrip master is a 198k-row download, the token is a credential.
+**/state/dhan_scrip_master.csv
+**/state/dhan_token.json

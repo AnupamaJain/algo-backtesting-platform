@@ -821,6 +821,46 @@ def _increment_quote_stat(symbol: str, tier: str) -> None:
         log_index_quote_cache_stats()
 
 
+_flattrade_ticker_token_cache: dict = {}
+_flattrade_session_for_ticker = None  # set by initialise_ticker(), reused here
+
+
+def _resolve_flattrade_ticker_token(symbol: str):
+    """The real Flattrade numeric token for a "EXCH:SYMBOL" quote key.
+
+    Used only to correct `instrument_token` for websocket subscription
+    (see the caller) -- never for pricing. Failures are swallowed (returns
+    None) rather than raised: a stale/expired Flattrade session must not
+    break index-quote fetching for callers that only wanted a price.
+    """
+    if symbol in _flattrade_ticker_token_cache:
+        return _flattrade_ticker_token_cache[symbol]
+
+    exchange, _, tsym = symbol.partition(":")
+    if not tsym:
+        exchange, tsym = "NSE", symbol
+
+    try:
+        from quant_backtester.src.broker.flattrade import FlattradeAuth, FlattradeClient
+
+        session = _flattrade_session_for_ticker
+        if session is None or not session.access_token:
+            # No ticker session yet (e.g. called before initialise_ticker) --
+            # authenticate directly rather than assuming one will show up.
+            session = FlattradeAuth(
+                "flattrade",
+                {"token_file": "state/flattrade_token.json", "auto_login": True},
+            ).authenticate()
+        client = FlattradeClient(token=session.access_token or "", client_id=session.user_id or "")
+        token = int(client.resolve_token(exchange, tsym))
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Could not resolve a Flattrade ticker token for %s: %s", symbol, exc)
+        token = None
+
+    _flattrade_ticker_token_cache[symbol] = token
+    return token
+
+
 def _get_index_quote_cached(symbol: str) -> dict:
     """Fetch an index spot quote with two-tier in-memory caching.
 
@@ -861,6 +901,23 @@ def _get_index_quote_cached(symbol: str) -> dict:
     _increment_quote_stat(symbol, "l3_fetches")
     raw = kite.quote(symbol)
     quote_dict = raw[symbol]
+
+    # Callers subscribe the WebSocket ticker to quote_dict['instrument_token']
+    # (see place_order_at_nifty.py and its siblings). Under the adapter
+    # backend that token came from ChainedQuotes -- whichever broker actually
+    # priced this call, which can be the FALLBACK broker (e.g. Dhan) when the
+    # primary's session hiccupped. But the ticker itself is always
+    # Flattrade's (FlattradeTicker is the only adapter-backed ticker), so a
+    # token from any other broker subscribes to whatever unrelated
+    # instrument happens to share that numeric id on Flattrade -- garbage
+    # ticks that look like a huge, fake price jump. Re-resolve the token
+    # specifically against Flattrade so it always matches the ticker that
+    # will actually use it, independent of which broker served the price.
+    if os.environ.get("BROKER_BACKEND", "adapter").lower() != "kite":
+        flattrade_token = _resolve_flattrade_ticker_token(symbol)
+        if flattrade_token is not None:
+            quote_dict = dict(quote_dict)
+            quote_dict["instrument_token"] = flattrade_token
 
     # Populate L1
     _index_quote_cache[symbol] = (now + _INDEX_QUOTE_L1_TTL, quote_dict)
@@ -1019,7 +1076,52 @@ already_updating_order = 0
 
 
 
-kite = MonitoredKite(KiteConnect(api_key=api_key))
+# ---------------------------------------------------------------------------
+# Broker client.
+#
+# Historically this was KiteConnect directly, which required a Zerodha
+# subscription. It now reaches whichever broker config/broker.yaml selects
+# (Flattrade, Dhan, or the paper account) through the BrokerAdapter
+# abstraction — see quant_backtester/src/broker/legacy.py. The object below
+# presents the same method surface these modules already call, so nothing
+# downstream changes.
+#
+# Set BROKER_BACKEND=kite to restore the original client.
+# ---------------------------------------------------------------------------
+def _build_broker_client():
+    backend = os.environ.get("BROKER_BACKEND", "adapter").lower()
+    if backend == "kite":
+        return MonitoredKite(KiteConnect(api_key=api_key))
+    try:
+        from quant_backtester.src.broker.legacy import build_legacy_client
+
+        # BROKER_NAME picks a specific configured broker; without it the
+        # one broker.yaml marks active is used. These are NSE strategies, so
+        # they default to the Indian paper account rather than the US one.
+        broker_name = os.environ.get("BROKER_NAME") or "flattrade"
+        client = build_legacy_client(broker=broker_name)
+        # Wrap it exactly as the Kite client was. MonitoredKite is a
+        # transparent proxy, so this works over the shim too — without it,
+        # migrating off Kite silently switched off API call recording and
+        # the Broker API Monitor would report "never run" forever.
+        client = MonitoredKite(client, account_id="main")
+        logging.info(
+            "Broker client: %s via the adapter layer (BROKER_BACKEND=kite to override)",
+            broker_name,
+        )
+        return client
+    except Exception as exc:  # noqa: BLE001
+        # Never silently fall back to a client that cannot authenticate: say
+        # what happened, because "no broker" and "wrong broker" look identical
+        # once orders start failing.
+        logging.error(
+            "Could not build the adapter-backed broker client (%s); falling back "
+            "to KiteConnect, which needs a Zerodha access token.", exc,
+        )
+        return MonitoredKite(KiteConnect(api_key=api_key))
+
+
+kite = _build_broker_client()
 website="https://kite.trade/connect/login?api_key="+api_key
 print(website) # This is link used to show the website to get access token
 print("-------------------------")
@@ -3221,7 +3323,17 @@ def get_instrument_details(symbol):
         # Calculate days_to_expiry if needed since SQLite stores raw expiry date
         if 'expiry' in details and details['expiry']:
             today = datetime.date.today()
-            expiry_date = datetime.datetime.strptime(details['expiry'], '%Y-%m-%d').date()
+            raw_expiry = details['expiry']
+            # The instruments table declares `expiry DATE`, and the shared
+            # connection helper enables PARSE_DECLTYPES -- sqlite3 hands back
+            # a real date object for that column, not the string this code
+            # was written against. A pre-existing latent bug: it only ever
+            # crashed once this table actually held a resolvable F&O row for
+            # a symbol this function was asked about.
+            expiry_date = (
+                raw_expiry if isinstance(raw_expiry, datetime.date)
+                else datetime.datetime.strptime(raw_expiry, '%Y-%m-%d').date()
+            )
             details['days_to_expiry'] = int(np.busday_count(today, expiry_date) + 1)
         return details
         
@@ -5301,9 +5413,6 @@ def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
         kws_on_connect: Callback on successful connection.
         kws_on_order_update: Callback for order updates.
     """
-    from twisted.internet import reactor, ssl
-    from autobahn.twisted.websocket import connectWS
-
     global access_token
     global kws
     global _stored_ticker_callbacks
@@ -5316,22 +5425,16 @@ def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
         'on_order_update': kws_on_order_update
     }
 
-    # Wrap on_connect to:
-    #   1. Record _ws_last_connected_at so watchdog can distinguish "connected
-    #      but no ticks (market closed)" from "never connected".
-    #   2. Re-subscribe stored tokens after a watchdog-triggered reconnect.
-    original_on_connect = kws_on_connect
     tokens_to_restore = list(_subscribed_tokens)
-    is_reconnect = reactor.running  # True on watchdog-triggered reconnects
 
     def _wrapped_on_connect(ws, response):
         """Track connection time and re-subscribe tokens on reconnect."""
         global _ws_last_connected_at
         _ws_last_connected_at = time.time()
-        original_on_connect(ws, response)
-        if is_reconnect and tokens_to_restore:
+        kws_on_connect(ws, response)
+        if tokens_to_restore:
             logging.error(
-                "WATCHDOG: Re-subscribing to %d tokens after reconnect.",
+                "WATCHDOG: Re-subscribing to %d tokens after (re)connect.",
                 len(tokens_to_restore)
             )
             try:
@@ -5341,31 +5444,105 @@ def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
                     "WATCHDOG: Failed to re-subscribe tokens: %s", e
                 )
 
-    kws = KiteTicker(api_key, access_token)
+    if os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
+        from twisted.internet import reactor, ssl
+        from autobahn.twisted.websocket import connectWS
+
+        is_reconnect = reactor.running  # True on watchdog-triggered reconnects
+
+        kws = KiteTicker(api_key, access_token)
+        kws.on_ticks = kws_on_ticks
+        kws.on_connect = _wrapped_on_connect
+        kws.on_order_update = kws_on_order_update
+        kws.on_noreconnect = _on_noreconnect_handler
+
+        if not is_reconnect:
+            # First time: start reactor in a new thread
+            kws.connect(threaded=True)
+        else:
+            # Reconnect: reactor already running, use it thread-safely
+            kws._create_connection(
+                kws.socket_url,
+                useragent=kws._user_agent()
+            )
+            context_factory = ssl.ClientContextFactory()
+            reactor.callFromThread(
+                connectWS, kws.factory,
+                contextFactory=context_factory,
+                timeout=kws.connect_timeout
+            )
+            logging.error(
+                "WATCHDOG: Scheduled new WebSocket connection on "
+                "existing reactor."
+            )
+        return
+
+    # Adapter-backed ticker (Flattrade's PiConnectWSAPI). It manages its own
+    # reconnects internally -- a retry loop, not Twisted's reactor -- so
+    # there is no separate "is this a reconnect" branch here: re-calling
+    # initialise_ticker() tears down any existing ticker and starts a fresh
+    # one, with subscriptions replayed from _subscribed_tokens exactly as
+    # the Kite path replays them after its own reconnect.
+    if kws is not None:
+        try:
+            kws.close()
+        except Exception as exc:  # noqa: BLE001 - tearing down a dead ticker must not block a fresh one
+            logging.warning("initialise_ticker: could not close the previous ticker: %s", exc)
+
+    # Flattrade allows exactly one live PiConnectWSAPI feed per client ID --
+    # confirmed live: two strategy processes each authenticating their own
+    # FlattradeTicker kicked each other's connection off every few seconds.
+    # ticker_daemon.py holds the one real connection and fans ticks out over
+    # a local socket; use it when running so this process shares rather than
+    # competes. Falls back to a direct connection (the original, unchanged
+    # behaviour) when no daemon is up -- a solo strategy run needs neither
+    # the daemon nor any change to work.
+    from quant_backtester.src.broker.flattrade_ws import FlattradeTicker, SharedTickerClient
+
+    # A short, fixed path -- AF_UNIX socket paths are capped at ~104 bytes,
+    # and this repo's own directory nesting alone exceeds that.
+    daemon_socket = "/tmp/algo_backtesting_ticker_daemon.sock"
+    if os.path.exists(daemon_socket):
+        logging.info("initialise_ticker: ticker_daemon.py detected — sharing its feed at %s", daemon_socket)
+        kws = SharedTickerClient(daemon_socket)
+        kws.on_ticks = kws_on_ticks
+        kws.on_connect = _wrapped_on_connect
+        kws.on_order_update = kws_on_order_update
+        kws.on_noreconnect = _on_noreconnect_handler
+        kws.connect(threaded=True)
+        return
+
+    # Streaming and order execution are separate concerns. When kite is a
+    # PAPER account (BROKER_NAME=paper_india etc.), kite.adapter.session is
+    # NoAuth's placeholder ("local") -- not a real broker session, and the
+    # websocket would reject it outright. Ticks are only ever available from
+    # Flattrade right now regardless of which broker handles fills, so this
+    # authenticates against Flattrade directly rather than trusting whatever
+    # session the order-placement adapter happens to hold.
+    from quant_backtester.src.broker.flattrade import FlattradeAuth
+
+    session = kite.adapter.session
+    if session is None or session.broker != "flattrade" or not session.access_token:
+        session = FlattradeAuth(
+            "flattrade",
+            {"token_file": "state/flattrade_token.json", "auto_login": True},
+        ).authenticate()
+
+    # Reused by _resolve_flattrade_ticker_token() so index-quote token
+    # resolution rides this same session instead of authenticating a second
+    # time -- Flattrade's own session model does not tolerate repeated
+    # concurrent auto-logins well (observed live: a second authenticate()
+    # call minutes after a successful one gets "Session Expired" on REST
+    # even while the websocket using the first token stays connected).
+    global _flattrade_session_for_ticker
+    _flattrade_session_for_ticker = session
+
+    kws = FlattradeTicker(user_id=session.user_id, token=session.access_token)
     kws.on_ticks = kws_on_ticks
     kws.on_connect = _wrapped_on_connect
     kws.on_order_update = kws_on_order_update
     kws.on_noreconnect = _on_noreconnect_handler
-
-    if not reactor.running:
-        # First time: start reactor in a new thread
-        kws.connect(threaded=True)
-    else:
-        # Reconnect: reactor already running, use it thread-safely
-        kws._create_connection(
-            kws.socket_url,
-            useragent=kws._user_agent()
-        )
-        context_factory = ssl.ClientContextFactory()
-        reactor.callFromThread(
-            connectWS, kws.factory,
-            contextFactory=context_factory,
-            timeout=kws.connect_timeout
-        )
-        logging.error(
-            "WATCHDOG: Scheduled new WebSocket connection on "
-            "existing reactor."
-        )
+    kws.connect(threaded=True)
 
 
 def _on_noreconnect_handler(ws):

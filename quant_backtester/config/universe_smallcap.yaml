@@ -1,0 +1,50 @@
+# US small/mid-cap universe, for testing post-earnings announcement drift
+# where the literature says it actually lives.
+#
+# WHY THIS UNIVERSE EXISTS. PEAD tested on mega-caps (AAPL, MSFT, NVDA)
+# found nothing beyond beta — which is the expected result, not a refutation.
+# Those are the most-analysed companies on earth; under-reaction cannot
+# survive forty analysts publishing within minutes of a release. The
+# anomaly is documented to concentrate in smaller names with thin coverage,
+# so that is where it has to be tested.
+#
+# SURVIVORSHIP BIAS — READ THIS BEFORE BELIEVING ANY RESULT.
+# These tickers are companies that still trade today. Small caps that were
+# acquired, delisted or went bankrupt are absent, and those are
+# disproportionately the ones that disappointed. Any performance figure from
+# this universe is therefore an UPPER BOUND.
+#
+# The honest use of this universe is the *comparison*: large-cap PEAD versus
+# small-cap PEAD, both measured the same way and both survivor-biased in the
+# same direction. If drift is stronger here, the difference is informative
+# even though neither level can be taken at face value.
+
+data:
+  source: yfinance
+  cache_dir: data_smallcap
+  results_dir: results_smallcap
+  regime_benchmark: IWM          # Russell 2000 ETF — the small-cap benchmark
+  lookback_years: 15
+  start_date: null
+  end_date: null
+  price_field: "Adj Close"
+  max_forward_fill_days: 3
+
+train_test:
+  split_ratio: 0.6
+
+assets:
+  # A cross-sector spread of US small/mid caps. Deliberately not concentrated
+  # in one industry: PEAD is a claim about how investors process news, not
+  # about any sector, so a sector bet would confound the test.
+  industrials: [AIT, MLI, GTLS, KAI, WTS, EXPO, MSA, TRN, HUBG, FSS,
+                ALG, MYRG, ROAD, PRIM, CSWI, WERN, MATX, RUSHA, ATRO]
+  technology: [SPSC, PLXS, CTS, DIOD, POWI, SANM, BMI, NSSC, VECO, ONTO,
+               AEIS, SITM, FORM, ICHR, ACLS, KLIC, PLAB, EXTR, INFN]
+  healthcare: [HAE, LNTH, MEDP, CORT, HRMY, ANIP, AMPH, PBH, USPH, PDCO,
+               CRVL, IRMD, UFPT, ATRC, KIDS, TMDX]
+  financials: [PJT, HLI, VIRT, CATY, WSFS, FFIN, TFIN, BANF, CASH, PRAA,
+               EFSC, SFBS, AUB, HOMB, OFG]
+  consumer: [CAKE, TXRH, WING, SHAK, BOOT, HIBB, MOV, JJSF, LANC, CALM,
+             CENTA, FIZZ, WDFC, HELE, LZB]
+  energy_materials: [DNOW, PTEN, HP, ARCH, AMR, CEIX, HCC, WOR, SXC, KALU]

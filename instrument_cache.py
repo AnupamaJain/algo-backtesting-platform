@@ -933,6 +933,132 @@ def _get_all_fut_opt_subset(key_field: str) -> Dict[Any, Dict[str, Any]]:
     return result
 
 
+def sync_option_chain(
+    underlying_names: List[str], exchange: str = "NFO", instrument: str = "OPTIDX"
+) -> int:
+    """Insert (not replace) the live option chain for the given underlyings.
+
+    `sync_instruments()` atomically replaces the WHOLE table with a broker's
+    full dump -- right for the cash universe, wrong here: option strategies
+    (Survivor NIFTY, etc.) need real, currently-tradable option instruments
+    added alongside whatever cash-equity rows already exist, not a table
+    wipe. Only usable when BROKER_BACKEND is the adapter path -- Dhan
+    publishes its option chain in the scrip master; Kite has no need for
+    this since kite.instruments('NFO') already returns options directly.
+
+    Every row inserted is a real, currently-listed contract (real strike,
+    real expiry, real securityId from Dhan's own published master) -- never
+    a synthesized or guessed instrument.
+
+    Returns the number of option rows inserted.
+    """
+    from quant_backtester.src.broker.dhan import DhanInstruments
+    from quant_backtester.src.config import REPO_ROOT
+
+    instruments = DhanInstruments(REPO_ROOT / "state")
+    total = 0
+    init_db()
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # NFO options are published against NSE in Dhan's scrip master, BFO
+        # options against BSE (SENSEX). Deriving this from the destination
+        # `exchange` rather than hardcoding "NSE" is what makes this usable
+        # for SENSEX at all -- the source scope has to match the underlying.
+        source_exchange = "BSE" if exchange.upper() == "BFO" else "NSE"
+        for name in underlying_names:
+            chain = instruments.option_chain(name, exchange=source_exchange, instrument=instrument)
+            for _, row in chain.iterrows():
+                security_id = row.get("SECURITY_ID")
+                expiry_raw = row.get("SM_EXPIRY_DATE")
+                strike = row.get("STRIKE_PRICE")
+                option_type = row.get("OPTION_TYPE")
+                if security_id is None or not expiry_raw or strike is None or not option_type:
+                    continue
+                expiry_date = datetime.datetime.strptime(str(expiry_raw)[:10], "%Y-%m-%d").date()
+                # Dhan's own SYMBOL_NAME is only month-granular ("NIFTY-
+                # Sep2026-...") and collides across every weekly expiry in
+                # that month. This day-qualified format (real expiry date,
+                # real strike -- nothing invented) uniquely names one
+                # contract, which `find_nifty_symbol_from_gap()`'s prefix
+                # match depends on. `DhanAdapter.resolve()` parses this
+                # exact shape back to a securityId.
+                tradingsymbol = (
+                    f"{name}-{expiry_date.strftime('%d%b%Y').upper()}-"
+                    f"{int(strike)}-{option_type}"
+                )
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO instruments
+                        (instrument_token, tradingsymbol, name, expiry, strike,
+                         instrument_type, lot_size, segment, exchange, tick_size)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        int(str(security_id).split(".")[0]),
+                        tradingsymbol,
+                        name,
+                        expiry_date.isoformat(),
+                        strike,
+                        option_type,
+                        int(row.get("LOT_SIZE") or 1),
+                        f"{exchange}-OPT",
+                        exchange,
+                        _dhan_tick_in_rupees(row.get("TICK_SIZE")),
+                    ),
+                )
+                total += 1
+        conn.commit()
+    finally:
+        conn.close()
+    logger.info("Synced %d option instruments for %s from Dhan's scrip master", total, underlying_names)
+    return total
+
+
+def _dhan_tick_in_rupees(value) -> float:
+    try:
+        raw = float(value)
+    except (TypeError, ValueError):
+        return 0.05
+    if raw != raw:  # NaN
+        return 0.05
+    return round(raw / 100.0, 4) if raw and raw >= 1 else float(raw or 0.05)
+
+
+def nearest_expiry_symbol_prefix(name: str, exchange: str = "NFO") -> Optional[str]:
+    """The current contract's symbol prefix, derived from real synced data.
+
+    Never a hardcoded date or expiry string: picks whichever expiry is
+    soonest among what was actually synced by `sync_option_chain()`, then
+    derives the shared prefix from real tradingsymbols (everything before
+    the trailing "-<strike>-<CE/PE>"). Returns None if nothing is synced for
+    this name -- callers must not fall back to guessing one.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # A same-day expiry the market has already closed for can linger in
+        # a not-yet-refreshed scrip-master cache -- excluding anything
+        # before today, not just picking the earliest row, is what keeps
+        # this from handing a strategy a dead, already-settled contract.
+        cursor.execute(
+            """
+            SELECT tradingsymbol, expiry FROM instruments
+            WHERE name = ? AND exchange = ? AND segment = ? AND expiry IS NOT NULL
+              AND expiry >= date('now')
+            ORDER BY expiry ASC LIMIT 1
+            """,
+            (name, exchange, f"{exchange}-OPT"),
+        )
+        row = cursor.fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    tradingsymbol = row["tradingsymbol"]
+    return tradingsymbol.rsplit("-", 2)[0]
+
+
 # ---------------------------------------------------------------------------
 # Public: get_db_stats
 # ---------------------------------------------------------------------------
@@ -1020,9 +1146,28 @@ def save_kite_token(access_token: str) -> None:
 def get_kite_token() -> Optional[str]:
     """Return the most recently persisted Kite access_token, or None.
 
+    Every caller of this function uses it the same way: check truthiness,
+    then pass it to `kite.set_access_token(token)`. The adapter-backed
+    client authenticates itself at construction and treats
+    set_access_token() as a no-op, so it never needs a real Kite token here
+    -- but a dozen call sites all still gated on this returning non-empty,
+    which meant every one of them silently skipped its real work forever
+    once Kite was migrated out. Rather than restructure each call site
+    individually (some do, some don't also read api_key first -- a source
+    of exactly the kind of order-dependent bug this project has hit
+    several times today), the decision is made once, here: when the
+    adapter backend is active, return a sentinel that satisfies the gate
+    without pretending to be a real Kite session token.
+
     Returns:
-        The stored access token string, or None if no token has been saved.
+        The stored access token string, the adapter sentinel, or None if
+        neither applies.
     """
+    import os
+
+    if os.environ.get("BROKER_BACKEND", "adapter").lower() != "kite":
+        return "adapter-authenticated"  # sentinel; set_access_token() ignores it
+
     init_db()
     conn = get_db_connection()
     try:

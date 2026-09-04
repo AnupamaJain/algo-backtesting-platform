@@ -1,0 +1,15 @@
+{
+ "last_pass": "2026-09-04T10:18:12",
+ "jobs": {
+  "position_guard": {
+   "ok": true,
+   "detail": {},
+   "duration_ms": 65
+  },
+  "duplicate_order_monitor": {
+   "ok": true,
+   "detail": {},
+   "duration_ms": 113
+  }
+ }
+}

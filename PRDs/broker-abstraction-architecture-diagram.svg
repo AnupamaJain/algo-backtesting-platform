@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1300" viewBox="0 0 1680 1300">
+<rect x="0" y="0" width="1680" height="1300" fill="#F4F7FC"/>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1E2761"/>
+    </marker>
+<marker id="arrowT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1C7293"/>
+    </marker>
+<marker id="arrowA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00A896"/>
+    </marker>
+<rect x="0" y="0" width="1680" height="92" rx="0" fill="#1E2761" stroke="none" stroke-width="1.5"/>
+<text x="40" y="37" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#00A896" text-anchor="start" letter-spacing="2">ARCHITECTURE TO BUILD</text>
+<text x="40" y="66" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">Broker Abstraction Layer — Adapter Pattern for Multi-Broker Support</text>
+<text x="1640" y="37" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="end">Extends: ui-trading-system</text>
+<text x="1640" y="58" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="end">v1.0 — proposed</text>
+<rect x="40" y="118" width="1600" height="46" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="60" y="147" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">STRATEGY PROCESSES  —  Survivor · Wave Extractor · Expiry Trade · Early Exit · Covered Calls   (UNCHANGED — no broker-specific code)</text>
+<line x1="840" y1="164" x2="840" y2="204" stroke="#1E2761" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="40" y="204" width="1600" height="46" rx="8" fill="#1E2761" stroke="#1E2761" stroke-width="1.5"/>
+<text x="60" y="233" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">common_lib.py  —  place_order(), get_positions(), retry_with_backoff(), dry-run safety gate  (calls the interface below, never a broker SDK)</text>
+<line x1="840" y1="250" x2="840" y2="290" stroke="#1E2761" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="40" y="290" width="1250" height="224" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="40" y="290" width="1250" height="38" rx="14" fill="#00A896" stroke="#00A896" stroke-width="0"/>
+<rect x="40" y="309" width="1250" height="19" rx="0" fill="#00A896" stroke="#00A896" stroke-width="0"/>
+<text x="665.0" y="315" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.4">BrokerAdapter  (interface, one implementation per broker)</text>
+<rect x="60" y="342" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="190.0" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">authenticate()</text>
+<rect x="332" y="342" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="462.0" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">place_order()</text>
+<rect x="604" y="342" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="734.0" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">modify_order()</text>
+<rect x="876" y="342" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="1006.0" y="366.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">cancel_order()</text>
+<rect x="60" y="394" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="190.0" y="418.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">get_positions()</text>
+<rect x="332" y="394" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="462.0" y="418.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">get_quote()</text>
+<rect x="604" y="394" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="734.0" y="418.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">get_instruments()</text>
+<rect x="876" y="394" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="1006.0" y="418.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">subscribe_ws()</text>
+<rect x="60" y="446" width="260" height="40" rx="8" fill="#EAF7F2" stroke="#00A896" stroke-width="1.4"/>
+<text x="190.0" y="470.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#0E5C4F" text-anchor="middle">get_order_status()</text>
+<text x="60" y="504" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="start">raises: AuthError · OrderRejected · RateLimited · InstrumentNotFound · BrokerUnavailable</text>
+<rect x="1330" y="290" width="310" height="90" rx="8" fill="#141B44" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="1485.0" y="328.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">MockAdapter</text>
+<text x="1485.0" y="345.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#FFFFFF" text-anchor="middle">test double — no live credentials required</text>
+<text x="1350" y="402" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">Contract test suite runs against every</text>
+<text x="1350" y="418" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">real adapter AND MockAdapter before</text>
+<text x="1350" y="434" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">an adapter ships (release gate).</text>
+<rect x="1330" y="386" width="310" height="94" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.3"/>
+<text x="1485" y="410" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="bold" font-style="normal" fill="#1C7293" text-anchor="middle">Release gate</text>
+<text x="1485" y="432" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">same suite runs against</text>
+<text x="1485" y="446" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">MockAdapter + every real adapter</text>
+<line x1="840" y1="514" x2="840" y2="554" stroke="#1E2761" stroke-width="1.8" marker-end="url(#arrow)"/>
+<rect x="40" y="554" width="500" height="250" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="40" y="554" width="500" height="38" rx="14" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<rect x="40" y="573" width="500" height="19" rx="0" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<text x="290.0" y="579" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.4">AUTH STRATEGY BASE CLASSES</text>
+<rect x="60" y="604" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="60" y="604" width="6" height="56" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="290.0" y="625.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">OAuthRedirectAuth</text>
+<text x="290.0" y="642.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Zerodha · Fyers · Upstox — redirect + token exchange</text>
+<rect x="60" y="672" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="60" y="672" width="6" height="56" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="290.0" y="693.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">TOTPCredentialAuth</text>
+<text x="290.0" y="710.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Shoonya · Flattrade · Alice Blue — user/pass + TOTP/2FA</text>
+<rect x="60" y="740" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="60" y="740" width="6" height="56" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="290.0" y="761.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">StaticAPIKeyAuth</text>
+<text x="290.0" y="778.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Dhan — API key + access token, no redirect</text>
+<rect x="580" y="554" width="500" height="250" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="580" y="554" width="500" height="38" rx="14" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<rect x="580" y="573" width="500" height="19" rx="0" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<text x="830.0" y="579" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.4">UNIFIED DATA MODELS</text>
+<rect x="600" y="604" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="604" width="6" height="56" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="625.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">UnifiedInstrument</text>
+<text x="830.0" y="642.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">keyed by underlying + expiry + strike + type</text>
+<rect x="600" y="672" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="672" width="6" height="56" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="693.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">UnifiedOrder / UnifiedOrderStatus</text>
+<text x="830.0" y="710.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">normalized product types + lifecycle states</text>
+<rect x="600" y="740" width="460" height="56" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="740" width="6" height="56" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="761.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">UnifiedPosition</text>
+<text x="830.0" y="778.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">normalized qty sign + avg price</text>
+<rect x="1120" y="554" width="500" height="250" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="1120" y="554" width="500" height="38" rx="14" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<rect x="1120" y="573" width="500" height="19" rx="0" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<text x="1370.0" y="579" font-family="Arial, Helvetica, sans-serif" font-size="13.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.4">FACTORY + RESOLUTION</text>
+<rect x="1140" y="604" width="460" height="62" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="604" width="6" height="62" rx="0" fill="#1E2761" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="628.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">BrokerFactory</text>
+<text x="1370.0" y="645.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">reads [broker] config → returns active adapter(s); per-process assignment in multi-broker mode</text>
+<rect x="1140" y="676" width="460" height="62" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="676" width="6" height="62" rx="0" fill="#1E2761" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="700.0" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Instrument Resolver</text>
+<text x="1370.0" y="717.0" font-family="Arial, Helvetica, sans-serif" font-size="9" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">canonical instrument → broker-native identifier, per active broker</text>
+<rect x="1140" y="748" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="748" width="6" height="44" rx="0" fill="#6B759A" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="774.0" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">instrument_cache.py (extended)</text>
+<line x1="290.0" y1="514" x2="290.0" y2="554" stroke="#B9C3DC" stroke-width="1.4" marker-end="none"/>
+<line x1="830.0" y1="514" x2="830.0" y2="554" stroke="#B9C3DC" stroke-width="1.4" marker-end="none"/>
+<line x1="1370.0" y1="514" x2="1370.0" y2="554" stroke="#B9C3DC" stroke-width="1.4" marker-end="none"/>
+<line x1="290.0" y1="514" x2="290.0" y2="554" stroke="#B9C3DC" stroke-width="1.4"/>
+<line x1="1370.0" y1="514" x2="1370.0" y2="554" stroke="#B9C3DC" stroke-width="1.4"/>
+<line x1="840" y1="804" x2="840" y2="854" stroke="#1E2761" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="860" y="840" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="start">BrokerFactory instantiates the adapter(s) below, per config</text>
+<rect x="40.0" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#1E2761" stroke-width="2"/>
+<rect x="40.0" y="854" width="205" height="8" rx="0" fill="#1E2761" stroke="none" stroke-width="1.5"/>
+<text x="142.5" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">ZerodhaAdapter</text>
+<text x="142.5" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: OAuthRedirectAuth</text>
+<circle cx="227.0" cy="872" r="13" fill="#1E2761"/>
+<text x="227.0" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">0</text>
+<text x="142.5" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#1E2761" text-anchor="middle">Phase 0 · existing</text>
+<line x1="142.5" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="272.5" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#1E8E5A" stroke-width="2"/>
+<rect x="272.5" y="854" width="205" height="8" rx="0" fill="#1E8E5A" stroke="none" stroke-width="1.5"/>
+<text x="375.0" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">DhanAdapter</text>
+<text x="375.0" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: StaticAPIKeyAuth</text>
+<circle cx="459.5" cy="872" r="13" fill="#1E8E5A"/>
+<text x="459.5" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="375.0" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#1E8E5A" text-anchor="middle">Phase 2</text>
+<line x1="375.0" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="505.0" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#1C7293" stroke-width="2"/>
+<rect x="505.0" y="854" width="205" height="8" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="607.5" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">ShoonyaAdapter</text>
+<text x="607.5" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: TOTPCredentialAuth</text>
+<circle cx="692.0" cy="872" r="13" fill="#1C7293"/>
+<text x="692.0" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="607.5" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#1C7293" text-anchor="middle">Phase 3</text>
+<line x1="607.5" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="737.5" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#1C7293" stroke-width="2"/>
+<rect x="737.5" y="854" width="205" height="8" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="840.0" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">FlattradeAdapter</text>
+<text x="840.0" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: TOTPCredentialAuth</text>
+<circle cx="924.5" cy="872" r="13" fill="#1C7293"/>
+<text x="924.5" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="840.0" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#1C7293" text-anchor="middle">Phase 3</text>
+<line x1="840.0" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="970.0" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#00A896" stroke-width="2"/>
+<rect x="970.0" y="854" width="205" height="8" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="1072.5" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">FyersAdapter</text>
+<text x="1072.5" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: OAuthRedirectAuth</text>
+<circle cx="1157.0" cy="872" r="13" fill="#00A896"/>
+<text x="1157.0" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="1072.5" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#00A896" text-anchor="middle">Phase 4</text>
+<line x1="1072.5" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="1202.5" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#00A896" stroke-width="2"/>
+<rect x="1202.5" y="854" width="205" height="8" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="1305.0" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">UpstoxAdapter</text>
+<text x="1305.0" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: OAuthRedirectAuth</text>
+<circle cx="1389.5" cy="872" r="13" fill="#00A896"/>
+<text x="1389.5" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="1305.0" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#00A896" text-anchor="middle">Phase 4</text>
+<line x1="1305.0" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<rect x="1435.0" y="854" width="205" height="96" rx="10" fill="#FFFFFF" stroke="#B4790A" stroke-width="2"/>
+<rect x="1435.0" y="854" width="205" height="8" rx="0" fill="#B4790A" stroke="none" stroke-width="1.5"/>
+<text x="1537.5" y="884" font-family="Arial, Helvetica, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">AliceBlueAdapter</text>
+<text x="1537.5" y="904" font-family="Arial, Helvetica, sans-serif" font-size="8.3" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">uses: TOTPCredentialAuth (2FA)</text>
+<circle cx="1622.0" cy="872" r="13" fill="#B4790A"/>
+<text x="1622.0" y="876" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="1537.5" y="930" font-family="Arial, Helvetica, sans-serif" font-size="8.6" font-weight="bold" font-style="normal" fill="#B4790A" text-anchor="middle">Phase 5</text>
+<line x1="1537.5" y1="854" x2="840" y2="854" stroke="#B9C3DC" stroke-width="1" stroke-dasharray="3,3"/>
+<line x1="142.5" y1="950" x2="142.5" y2="996" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="375.0" y1="950" x2="375.0" y2="996" stroke="#1E8E5A" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="607.5" y1="950" x2="607.5" y2="996" stroke="#1C7293" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="840.0" y1="950" x2="840.0" y2="996" stroke="#1C7293" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1072.5" y1="950" x2="1072.5" y2="996" stroke="#00A896" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1305.0" y1="950" x2="1305.0" y2="996" stroke="#00A896" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1537.5" y1="950" x2="1537.5" y2="996" stroke="#B4790A" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40.0" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="142.5" y="1023" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Kite Connect</text>
+<text x="142.5" y="1040" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="middle">(Zerodha)</text>
+<rect x="272.5" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="375.0" y="1031" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Dhan API</text>
+<rect x="505.0" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="607.5" y="1023" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">NorenAPI</text>
+<text x="607.5" y="1040" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="middle">(Shoonya)</text>
+<rect x="737.5" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="840.0" y="1023" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">NorenAPI</text>
+<text x="840.0" y="1040" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="middle">(Flattrade)</text>
+<rect x="970.0" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="1072.5" y="1031" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Fyers API</text>
+<rect x="1202.5" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="1305.0" y="1031" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Upstox API</text>
+<rect x="1435.0" y="996" width="205" height="60" rx="8" fill="#141B44" stroke="#141B44" stroke-width="1.5"/>
+<text x="1537.5" y="1031" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">AliceBlue API</text>
+<rect x="40" y="1106" width="1600" height="150" rx="10" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<text x="65" y="1136" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#1E2761" text-anchor="start" letter-spacing="0.5">LEGEND — ROLLOUT PHASES (per Broker Abstraction PRD §8)</text>
+<circle cx="65" cy="1166" r="11" fill="#1E2761"/>
+<text x="65" y="1170" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">0</text>
+<text x="87" y="1171" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Existing — refactor Kite code into ZerodhaAdapter, zero behavior change</text>
+<circle cx="865" cy="1166" r="11" fill="#6B7280"/>
+<text x="865" y="1170" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="887" y="1171" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Build MockAdapter + contract test suite (release gate for every adapter after)</text>
+<circle cx="65" cy="1194" r="11" fill="#1E8E5A"/>
+<text x="65" y="1198" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="87" y="1199" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Dhan — simplest auth (static API key), first real second broker</text>
+<circle cx="865" cy="1194" r="11" fill="#1C7293"/>
+<text x="865" y="1198" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="887" y="1199" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Shoonya + Flattrade together — shared NorenApi base, most code reuse</text>
+<circle cx="65" cy="1222" r="11" fill="#00A896"/>
+<text x="65" y="1226" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="87" y="1227" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Fyers + Upstox — OAuth-redirect family, reuse OAuthRedirectAuth</text>
+<circle cx="865" cy="1222" r="11" fill="#B4790A"/>
+<text x="865" y="1226" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="887" y="1227" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Alice Blue — 2FA variant</text>
+<circle cx="65" cy="1250" r="11" fill="#B23A2E"/>
+<text x="65" y="1254" font-family="Arial, Helvetica, sans-serif" font-size="10.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="87" y="1255" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Multi-broker concurrent mode — broker-tagging across Trade Journal / Position Guard</text>
+</svg>

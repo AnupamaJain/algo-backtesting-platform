@@ -1,0 +1,112 @@
+# Strategy selection + parameter-sweep grid for the Layer 1 batch generator.
+#
+# NOTE ON GRID WIDTH: widening a sweep does NOT make it easier to find a
+# winner. Filter 6 prices the within-idea search (see MultipleComparisonFilter),
+# so trying twenty RSI settings makes the best one clear a bar twenty times
+# higher than trying one. Width buys a trustworthy *sensitivity surface* —
+# whether an edge sits on a plateau or an island — not significance.
+#
+# Every key under `strategies` must match a name registered in
+# src/registry.py. Grid values are the *data*; they live here, not as
+# literals inside src/batch_runner.py, so sweeps can be widened/narrowed
+# without touching code.
+
+strategies:
+  RSIReversion:
+    rsi_period: [7, 10, 14, 21, 28]
+    oversold_threshold: [15, 20, 25, 30]
+    overbought_threshold: [70, 75, 80, 85]
+
+  BBReversion:
+    period: [10, 14, 20, 30, 40]
+    num_std: [1.0, 1.5, 2.0, 2.5, 3.0]
+
+  KeltnerReversion:
+    ema_period: [10, 20, 40]
+    atr_period: [10, 14, 20]
+    multiplier: [1.0, 1.5, 2.0, 2.5]
+
+  MACrossover:
+    fast_period: [5, 10, 20, 50]
+    slow_period: [50, 100, 150, 200]
+
+  TurtleBreakout:
+    entry_period: [10, 20, 40, 55]
+    exit_period: [5, 10, 20, 27]
+
+  SimpleMomentum:
+    lookback_period: [21, 42, 63, 126, 189, 252]
+
+  # -- mean reversion (additional) ----------------------------------------
+  ZScoreReversion:
+    period: [10, 20, 50, 100]
+    entry_z: [1.0, 1.5, 2.0, 2.5, 3.0]
+
+  WilliamsRReversion:
+    period: [14, 21]
+    oversold: [-90, -80]
+    overbought: [-20, -10]
+
+  CCIReversion:
+    period: [14, 20]
+    threshold: [100, 150]
+
+  # -- trend following (additional) ---------------------------------------
+  MACDTrend:
+    fast: [8, 12, 16]
+    slow: [21, 26, 34]
+    signal: [5, 9, 13]
+
+  SupertrendFollow:
+    atr_period: [7, 10, 14, 21]
+    multiplier: [1.5, 2.0, 2.5, 3.0, 4.0]
+
+  ADXTrend:
+    period: [10, 14, 21]
+    adx_threshold: [15, 20, 25, 30, 35]
+
+  # -- momentum (additional) ----------------------------------------------
+  ROCMomentum:
+    period: [21, 63, 126]
+    threshold: [0.0, 0.02, 0.05]
+
+  DualMomentum:
+    short_period: [21, 42]
+    long_period: [126, 252]
+
+  # -- breakout (additional) ----------------------------------------------
+  VolatilityBreakout:
+    atr_period: [10, 14, 20, 30]
+    multiplier: [0.5, 1.0, 1.5, 2.0, 2.5]
+
+  SqueezeBreakout:
+    period: [20]
+    num_std: [2.0]
+    squeeze_lookback: [120]
+    squeeze_quantile: [0.25, 0.4]
+
+  # -- volatility ---------------------------------------------------------
+  VolatilityRegime:
+    vol_period: [10, 20, 40]
+    calm_quantile: [0.3, 0.4, 0.5, 0.6, 0.7]
+    lookback: [126, 252]
+
+  VolatilityMeanReversion:
+    vol_period: [20]
+    spike_quantile: [0.85, 0.9]
+    lookback: [252]
+
+  # -- chart patterns / structure ------------------------------------------
+  StructureBreak:
+    swing_period: [5, 10, 20, 34, 55]
+
+  InsideBarBreakout:
+    confirm_bars: [1]
+
+  EngulfingReversal:
+    trend_period: [20, 50]
+    require_trend: [0, 1]
+
+output:
+  results_dir: results             # relative to quant_backtester/ root
+  format: parquet                  # parquet | csv

@@ -1,0 +1,24 @@
+# Asset universe & data-acquisition configuration for Layer 1.
+#
+# Nothing here is hardcoded in Python — HistoricalDataManager and the batch
+# runner read every symbol, date, and path from this file (or the env-var
+# overrides layered on top of it, see config/settings.py).
+
+data:
+  cache_dir: data                 # relative to quant_backtester/ root
+  lookback_years: 15              # used only when start_date is null
+  start_date: null                # ISO date "YYYY-MM-DD"; null => today - lookback_years
+  end_date: null                  # ISO date "YYYY-MM-DD"; null => today
+  price_field: "Adj Close"        # canonical close field downstream code should use
+  max_forward_fill_days: 3        # cap on how many consecutive missing days may be ffilled
+
+train_test:
+  split_ratio: 0.7                # default in-sample fraction for train_test_split()
+
+assets:
+  index_etfs: [SPY, QQQ]
+  sector_etfs: [XLK, XLF, XLE, XLV, XLI, XLY, XLP, XLB, XLU, XOP, KRE]
+  commodities: [GLD, USO]
+  fixed_income: [TLT, IEF]
+  crypto: [BTC-USD, ETH-USD]
+  large_cap_equities: [AAPL, NVDA, MSFT, AMZN, GOOGL, META, TSLA, NFLX, JPM, WMT, UNH]

@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1180" viewBox="0 0 1680 1180">
+<rect x="0" y="0" width="1680" height="1180" fill="#F4F7FC"/>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B759A"/>
+    </marker>
+<marker id="arrowNavy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1E2761"/>
+    </marker>
+<marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1C7293"/>
+    </marker>
+<marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00A896"/>
+    </marker>
+<rect x="0" y="0" width="1680" height="92" rx="0" fill="#1E2761" stroke="none" stroke-width="1.5"/>
+<text x="40" y="37" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#00A896" text-anchor="start" letter-spacing="2">HIGH-LEVEL DESIGN (HLD)</text>
+<text x="40" y="66" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="start">Algorithmic Options Trading Platform — System Architecture</text>
+<text x="1640" y="37" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="end">Source: Raahi-Bhushan / ui-trading-system</text>
+<text x="1640" y="58" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#CADCFC" text-anchor="end">v1.0</text>
+<rect x="40" y="130" width="260" height="60" rx="8" fill="#141B44" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="170.0" y="154.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Operator's Browser</text>
+<text x="170.0" y="172.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Dashboard UI (Flask/Jinja2)</text>
+<rect x="1380" y="130" width="260" height="60" rx="8" fill="#141B44" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="1510.0" y="154.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle">Zerodha Kite Connect</text>
+<text x="1510.0" y="172.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Broker API + WebSocket (external)</text>
+<rect x="40" y="240" width="1600" height="100" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="40" y="240" width="1600" height="40" rx="14" fill="#1E2761" stroke="#1E2761" stroke-width="0"/>
+<rect x="40" y="260" width="1600" height="20" rx="0" fill="#1E2761" stroke="#1E2761" stroke-width="0"/>
+<text x="840.0" y="267" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">FLASK DASHBOARD PROCESS  —  flask_app.py</text>
+<text x="70" y="305" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Auth (login + Kite OAuth) · Positions/Greeks view · Process manager (spawns strategies, tracks PID, refuses duplicate spawn per symbol) · Instrument sync trigger</text>
+<line x1="170" y1="190" x2="170" y2="240" stroke="#6B759A" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1510" y1="190" x2="1510" y2="240" stroke="#6B759A" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="390" width="500" height="300" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="40" y="390" width="500" height="40" rx="14" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<rect x="40" y="410" width="500" height="20" rx="0" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<text x="290.0" y="417" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">SHARED ENGINE  (“the brain”)</text>
+<rect x="60" y="445" width="460" height="52" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="290.0" y="471.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">common_lib.py</text>
+<text x="75" y="513" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">core order engine — place_order(), retry_with_backoff(), persistence</text>
+<rect x="60" y="519" width="460" height="52" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="290.0" y="545.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">positions_lib.py / sensex_positions_lib.py</text>
+<text x="75" y="587" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">wraps KiteConnect.positions()</text>
+<rect x="60" y="593" width="460" height="52" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="290.0" y="619.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">instrument_cache.py</text>
+<text x="75" y="661" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">token + lot-size resolution, daily sync</text>
+<rect x="60" y="667" width="460" height="52" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="290.0" y="693.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">greeks_lib.py</text>
+<text x="75" y="735" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="start">Black-Scholes / opengreeks facade</text>
+<rect x="580" y="390" width="500" height="300" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="580" y="390" width="500" height="40" rx="14" fill="#00A896" stroke="#00A896" stroke-width="0"/>
+<rect x="580" y="410" width="500" height="20" rx="0" fill="#00A896" stroke="#00A896" stroke-width="0"/>
+<text x="830.0" y="417" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">STRATEGY PROCESSES  (“the traders”)</text>
+<rect x="600" y="440" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="440" width="6" height="44" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="456.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Survivor</text>
+<text x="830.0" y="474.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">place_order_at_nifty/sensex/stock[.py|_with_buy_auto.py]</text>
+<rect x="600" y="492" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="492" width="6" height="44" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="508.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Wave Extractor</text>
+<text x="830.0" y="526.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">ticker_single_scraper_new.py</text>
+<rect x="600" y="544" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B4790A" stroke-width="1.4" stroke-dasharray="5,4"/>
+<rect x="600" y="544" width="6" height="44" rx="0" fill="#B4790A" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="560.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Expiry Trade</text>
+<text x="830.0" y="578.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">expiry_trade_lib.py</text>
+<text x="1045" y="566" font-family="Arial, Helvetica, sans-serif" font-size="8.5" font-weight="bold" font-style="normal" fill="#B4790A" text-anchor="end">partially documented</text>
+<rect x="600" y="596" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="600" y="596" width="6" height="44" rx="0" fill="#00A896" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="612.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Early Exit</text>
+<text x="830.0" y="630.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">early_exit_lib.py / early_exit_sensex_lib.py</text>
+<rect x="600" y="648" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B4790A" stroke-width="1.4" stroke-dasharray="5,4"/>
+<rect x="600" y="648" width="6" height="44" rx="0" fill="#B4790A" stroke="none" stroke-width="1.5"/>
+<text x="830.0" y="664.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Covered Calls</text>
+<text x="830.0" y="682.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">covered_calls/</text>
+<text x="1045" y="670" font-family="Arial, Helvetica, sans-serif" font-size="8.5" font-weight="bold" font-style="normal" fill="#B4790A" text-anchor="end">partially documented</text>
+<rect x="1120" y="390" width="500" height="300" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="1120" y="390" width="500" height="40" rx="14" fill="#1C7293" stroke="#1C7293" stroke-width="0"/>
+<rect x="1120" y="410" width="500" height="20" rx="0" fill="#1C7293" stroke="#1C7293" stroke-width="0"/>
+<text x="1370.0" y="417" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">WATCHDOGS  (“the observers”)</text>
+<rect x="1140" y="440" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="440" width="6" height="44" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="456.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">GTT Monitor</text>
+<text x="1370.0" y="474.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">watches triggers, dedupes, suppresses stale GTTs</text>
+<rect x="1140" y="492" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="492" width="6" height="44" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="508.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Position Guard</text>
+<text x="1370.0" y="526.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">flags unreviewed exposure (read-only)</text>
+<rect x="1140" y="544" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="544" width="6" height="44" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="560.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Duplicate Order Monitor</text>
+<text x="1370.0" y="578.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">guards against double-firing orders</text>
+<rect x="1140" y="596" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="596" width="6" height="44" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="612.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Trade Journal</text>
+<text x="1370.0" y="630.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">FIFO P&amp;L, reconciled vs. broker tradebook</text>
+<rect x="1140" y="648" width="460" height="44" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<rect x="1140" y="648" width="6" height="44" rx="0" fill="#1C7293" stroke="none" stroke-width="1.5"/>
+<text x="1370.0" y="664.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Kite API Monitor</text>
+<text x="1370.0" y="682.0" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">logs every API call: caller, latency, errors</text>
+<path d="M 290.0 340 L 290.0 365.0 L 290.0 365.0 L 290.0 390" fill="none" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrowNavy)"/>
+<line x1="830.0" y1="340" x2="830.0" y2="390" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrowNavy)"/>
+<path d="M 1370.0 340 L 1370.0 365.0 L 1370.0 365.0 L 1370.0 390" fill="none" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrowNavy)"/>
+<text x="830.0" y="368" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="middle">spawns · tracks PID · configures</text>
+<rect x="40" y="760" width="1600" height="130" rx="14" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<rect x="40" y="760" width="1600" height="40" rx="14" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<rect x="40" y="780" width="1600" height="20" rx="0" fill="#141B44" stroke="#141B44" stroke-width="0"/>
+<text x="840.0" y="787" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">PERSISTENCE LAYER</text>
+<rect x="50.0" y="815" width="300" height="58" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="200.0" y="844.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">instruments.db</text>
+<text x="200.0" y="889" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">SQLite — staged + atomically</text>
+<text x="200.0" y="902" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">swapped daily</text>
+<rect x="370.0" y="815" width="300" height="58" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="520.0" y="844.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">Order-state JSON</text>
+<text x="520.0" y="889" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">per-process, reload on</text>
+<text x="520.0" y="902" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">restart (save/load_todays_orders)</text>
+<rect x="690.0" y="815" width="300" height="58" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="840.0" y="844.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">trade_journal_db</text>
+<text x="840.0" y="889" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">SQLite — FIFO P&amp;L</text>
+<text x="840.0" y="902" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">per strategy</text>
+<rect x="1010.0" y="815" width="300" height="58" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="1160.0" y="844.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">survivor_events_db</text>
+<text x="1160.0" y="889" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">Survivor-specific</text>
+<text x="1160.0" y="902" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">trigger event log</text>
+<rect x="1330.0" y="815" width="300" height="58" rx="8" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.4"/>
+<text x="1480.0" y="844.0" font-family="Arial, Helvetica, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#1B2440" text-anchor="middle">configfile.ini</text>
+<text x="1480.0" y="889" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">API keys, live_trading flag</text>
+<text x="1480.0" y="902" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="normal" font-style="normal" fill="#6B759A" text-anchor="middle">(git-ignored)</text>
+<line x1="290.0" y1="690" x2="290.0" y2="760" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrowNavy)"/>
+<line x1="830.0" y1="690" x2="830.0" y2="760" stroke="#00A896" stroke-width="1.6" marker-end="url(#arrowAccent)"/>
+<line x1="1370.0" y1="690" x2="1370.0" y2="760" stroke="#1C7293" stroke-width="1.6" marker-end="url(#arrowTeal)"/>
+<path d="M 540 430 L 540 385.0 L 1510 385.0 L 1510 340" fill="none" stroke="#1E2761" stroke-width="1.6" marker-end="url(#arrowNavy)"/>
+<text x="1200" y="332" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="middle">orders · WebSocket · positions</text>
+<line x1="1510" y1="190" x2="1510" y2="240" stroke="#6B759A" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="170" y="215" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="middle">login · view</text>
+<text x="1510" y="215" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="normal" font-style="italic" fill="#6B759A" text-anchor="middle">OAuth · REST · WS</text>
+<rect x="40" y="930" width="1600" height="90" rx="10" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<text x="65" y="960" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#1E2761" text-anchor="start" letter-spacing="1">LEGEND</text>
+<rect x="65" y="981" width="28" height="18" rx="4" fill="#FFFFFF" stroke="#B9C3DC" stroke-width="1.5"/>
+<text x="103" y="996" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Confirmed module (per author architecture write-up)</text>
+<rect x="560" y="981" width="28" height="18" rx="4" fill="#FFFFFF" stroke="#B4790A" stroke-width="1.5" stroke-dasharray="4,3"/>
+<text x="598" y="996" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Partially documented — README description only, internals unverified</text>
+<rect x="1130" y="981" width="28" height="18" rx="4" fill="#1E2761" stroke="#1E2761" stroke-width="0"/>
+<text x="1168" y="996" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#1B2440" text-anchor="start">Dashboard-initiated control flow</text>
+</svg>

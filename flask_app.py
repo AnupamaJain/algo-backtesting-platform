@@ -75,6 +75,41 @@ serializer = lambda obj: isinstance(obj, (date, datetime, Decimal)) and str(obj)
 
 import configparser
 
+
+# ---------------------------------------------------------------------------
+# Broker client factory.
+#
+# Migrated off KiteConnect: these modules now reach whichever broker
+# config/broker.yaml selects (Flattrade, Dhan, or a paper account) through
+# the BrokerAdapter abstraction. The returned object presents the same method
+# surface the code already calls, so nothing below changes.
+#
+#   BROKER_BACKEND=kite   restores the original KiteConnect client
+#   BROKER_NAME=<name>    targets a specific configured broker
+# ---------------------------------------------------------------------------
+def _broker_client(api_key=None, account_id=None):
+    import os as _os
+
+    if _os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+    try:
+        from quant_backtester.src.broker.legacy import build_legacy_client
+
+        return build_legacy_client(broker=_os.environ.get("BROKER_NAME") or "flattrade")
+    except Exception as _exc:  # noqa: BLE001
+        import logging as _logging
+
+        _logging.error(
+            "Adapter-backed broker client unavailable (%s); falling back to "
+            "KiteConnect, which needs a Zerodha access token.", _exc,
+        )
+        from kiteconnect import KiteConnect as _KC
+
+        return _KC(api_key=api_key)
+
+
 # Base directory for config file
 base_dir = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.join(base_dir, "configfile.ini")
@@ -552,7 +587,7 @@ def _startup_auto_sync_if_needed() -> None:
 
         def _run_sync() -> None:
             try:
-                kite = MonitoredKite(KiteConnect(api_key=kite_api_key), account_id="main")
+                kite = _broker_client(kite_api_key, account_id="main")
                 kite.set_access_token(stored_token)
                 if _safe_sync_instruments(kite):
                     logging.info("[startup] background instrument sync completed successfully")
@@ -618,7 +653,7 @@ def get_kite_client():
         MonitoredKite: A proxy around KiteConnect that records every API call
         to the shared API monitor store (visible at /api-monitor).
     """
-    kite = MonitoredKite(KiteConnect(api_key=kite_api_key), account_id="main")
+    kite = _broker_client(kite_api_key, account_id="main")
     if "access_token" in session:
         kite.set_access_token(session["access_token"])
     return kite
@@ -664,7 +699,7 @@ def get_authenticated_kite_client(data: dict) -> KiteConnect:
         RuntimeError: If no authentication is available.
     """
     request_token = data.get("request_token")
-    kite = KiteConnect(api_key=kite_api_key)
+    kite = _broker_client(kite_api_key)
     
     if request_token:
         try:
@@ -1621,7 +1656,7 @@ def establish_session():
         return jsonify({"error": "request_token required"}), 400
 
     try:
-        kite_client = MonitoredKite(KiteConnect(api_key=kite_api_key), account_id="main")
+        kite_client = _broker_client(kite_api_key, account_id="main")
         auth_data = kite_client.generate_session(
             req_token, api_secret=kite_api_secret
         )
@@ -1640,7 +1675,7 @@ def establish_session():
 @app.route("/api/get_login_url")
 def get_login_url():
     try:
-        kite = KiteConnect(api_key=kite_api_key)
+        kite = _broker_client(kite_api_key)
         return jsonify({"login_url": kite.login_url()})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -3693,7 +3728,7 @@ def start_expiry_trade():
         request_token = data.get("request_token")
 
         # Authenticate
-        base_kite = KiteConnect(api_key=kite_api_key)
+        base_kite = _broker_client(kite_api_key)
 
         if not request_token and "access_token" in session:
             base_kite.set_access_token(session["access_token"])
