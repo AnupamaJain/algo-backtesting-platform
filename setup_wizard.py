@@ -72,9 +72,14 @@ def _value_is_real(parser: configparser.ConfigParser, section: str, key: str) ->
 def is_config_complete() -> bool:
     """Check whether configfile.ini has real (non-placeholder) credentials.
 
-    Complete means: [kite_login_details] api_key/api_secret and [gatekeeper]
-    username/password all exist with non-placeholder values. Result is cached
-    on the file's mtime.
+    Complete means: [gatekeeper] username/password (the dashboard's own
+    login, always required) AND at least one broker actually configured --
+    Kite, OR Flattrade, OR Dhan. The platform's default path is the
+    broker-agnostic adapter (BROKER_BACKEND=adapter, the default), which
+    never needs Kite credentials at all; requiring them unconditionally
+    locked every non-Kite install out of its own dashboard behind a setup
+    page it could never complete without opening a Zerodha account.
+    Result is cached on the file's mtime.
 
     Returns:
         True when the config is usable and the wizard should be locked out.
@@ -89,15 +94,19 @@ def is_config_complete() -> bool:
             return bool(_completeness_cache["complete"])
 
     parser = _read_config()
-    complete = parser is not None and all(
-        _value_is_real(parser, section, key)
-        for section, key in (
-            ("kite_login_details", "api_key"),
-            ("kite_login_details", "api_secret"),
-            ("gatekeeper", "username"),
-            ("gatekeeper", "password"),
-        )
+    gatekeeper_ready = parser is not None and all(
+        _value_is_real(parser, "gatekeeper", key) for key in ("username", "password")
     )
+    kite_ready = parser is not None and all(
+        _value_is_real(parser, "kite_login_details", key) for key in ("api_key", "api_secret")
+    )
+    flattrade_ready = parser is not None and all(
+        _value_is_real(parser, "flattrade", key) for key in ("api_key", "api_secret", "client_id")
+    )
+    dhan_ready = parser is not None and (
+        _value_is_real(parser, "dhan", "access_token") or _value_is_real(parser, "dhan", "client_id")
+    )
+    complete = gatekeeper_ready and (kite_ready or flattrade_ready or dhan_ready)
 
     with _completeness_cache_lock:
         _completeness_cache["mtime"] = current_mtime

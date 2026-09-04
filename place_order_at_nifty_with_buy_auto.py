@@ -200,8 +200,13 @@ try:
             over_ride_flag = 1
 except Exception as e:
     logging.error("%s", e)
-    logging.error("Format -- python3  place_order_at_nifty_with_buy.py <SYMBOL_INITIALS> <PE_SYMBOL_GAP>#<PE_SYMBOL_BUY_GAP>:<CE_SYMBOL_GAP>#<CE_SYMBOL_BUY_GAP> <EXCHANGE> <PE GAP To Sell After>:<CE GAP To Sell After> <PE Reset Gap>:<CE Reset Gap> <PE QUANTITY>:<CE QUANTITY> <PE_START_POINT>:<CE_START_POINT> <REQUET_TOKEN>")
-    logging.error("Sample-- python3 place_order_at_nifty_with_buy.py NIFTY23DEC 200#300:200#300 NFO 20:30 30:50 300:250 0:0 aa")
+    # NOTE: the buy (hedge) leg's distance is no longer a second CLI value --
+    # find_nifty_symbol_auto_buy() computes it automatically beyond the sell
+    # strike (see the comment above pe_symbol_gap_buy = pe_symbol_gap). The
+    # "#"-separated format this message used to document was stale: the
+    # parsing code was simplified to plain PE:CE but this string never was.
+    logging.error("Format -- python3  place_order_at_nifty_with_buy.py <SYMBOL_INITIALS> <PE_SYMBOL_GAP>:<CE_SYMBOL_GAP> <EXCHANGE> <PE GAP To Sell After>:<CE GAP To Sell After> <PE Reset Gap>:<CE Reset Gap> <PE QUANTITY>:<CE QUANTITY> <PE_START_POINT>:<CE_START_POINT> <REQUET_TOKEN>")
+    logging.error("Sample-- python3 place_order_at_nifty_with_buy.py NIFTY23DEC 200:200 NFO 20:30 30:50 300:250 0:0 aa")
     quit()
 
 start_number = number
