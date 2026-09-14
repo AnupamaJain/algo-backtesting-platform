@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Learn — how VriddhiX measures a chart{% endblock %}
+{% block description %}How the VCP, market structure, regime and relative strength engines work — and the five ways a research platform lies to you without meaning to.{% endblock %}
+
+{% block content %}
+<section class="wrap narrow" style="padding-block:56px 0">
+  <div class="eyebrow">Learn</div>
+  <h1>How a chart becomes a number</h1>
+  <p class="lede">
+    Every score VriddhiX shows decomposes into named parts, and every part is
+    arithmetic over past bars. This page explains that arithmetic — and, more
+    usefully, the ways a platform like this can be wrong without anybody
+    noticing.
+  </p>
+</section>
+
+<section class="wrap narrow">
+  <div class="toc">
+    <ol>
+      <li><a href="#vcp">Volatility contraction</a></li>
+      <li><a href="#structure">Market structure: BOS and CHoCH</a></li>
+      <li><a href="#fvg">Fair value gaps</a></li>
+      <li><a href="#regime">Market regime</a></li>
+      <li><a href="#rs">Relative strength</a></li>
+      <li><a href="#sector">Sector rotation</a></li>
+      <li><a href="#score">Reading a score</a></li>
+      <li><a href="#lies">Five quiet lies</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </div>
+
+  <article>
+    <h2 id="vcp">Volatility contraction</h2>
+    <p>
+      A base forms when a stock that has already advanced stops advancing and
+      starts oscillating. What makes it interesting is not the sideways move
+      itself but the <em>shape</em> of it: each pullback shallower than the
+      last, on quieter volume. That is supply being absorbed.
+    </p>
+
+    <figure class="stages">
+<pre>price
+  │      ╱╲            ╱╲
+  │     ╱  ╲    ╱╲    ╱  ╲   ╱╲    ╱╲   ← pivot
+  │    ╱    ╲  ╱  ╲  ╱    ╲ ╱  ╲  ╱  ╲______
+  │   ╱      ╲╱    ╲╱      V    ╲╱
+  │  ╱     18%     11%          6%
+  │ ╱   prior       contractions, each shallower
+  └─────────────────────────────────────────────────► time
+        trend            base                 breakout</pre>
+      <figcaption>
+        A textbook sequence: an 18% pullback, then 11%, then 6%. The engine
+        requires each contraction to be meaningfully shallower than the one
+        before, and volume to dry up through the base.
+      </figcaption>
+    </figure>
+
+    <p>
+      The engine scores six things and weights them: the quality of the prior
+      trend (no base without one — a "base" after a downtrend is just a
+      downtrend pausing), how many contractions formed, how cleanly they
+      tightened, whether volume contracted with them, where price sits
+      relative to the pivot, and the stock's relative strength.
+    </p>
+
+    <div class="callout">
+      <strong>The pivot is not a target.</strong> It is the highest point of
+      the most recent contraction — the level at which the stock would be
+      making a new local high. It marks where the question gets answered, not
+      what the answer will be.
+    </div>
+
+    <p>
+      A base moves through states: <span class="num">FORMING</span> →
+      <span class="num">NEAR_PIVOT</span> →
+      <span class="num">BREAKOUT</span> →
+      <span class="num">CONFIRMED</span>, or
+      <span class="num">FAILED</span> at any point. States are never skipped.
+      That constraint sounds pedantic until you realise the breakout row is
+      what all the research is built on — skipping it would mean a confirmed
+      pattern with no record of the moment it broke out.
+    </p>
+
+    <h2 id="structure">Market structure: BOS and CHoCH</h2>
+    <p>
+      Strip the vocabulary away and market structure is a sequence of swing
+      highs and lows. An uptrend makes higher highs and higher lows. When
+      price closes above the most recent swing high, the structure has
+      <em>broken</em>.
+    </p>
+    <p>
+      The same break carries two different meanings depending on what came
+      before it. If the structure was already bullish, a break upward is a
+      <strong>BOS</strong> — a break of structure, continuation. If the
+      structure was bearish, that same break is a <strong>CHoCH</strong> — a
+      change of character, the first evidence the trend may be turning.
+      VriddhiX stores both in one table, because they are the same event shape
+      and differ only in context.
+    </p>
+
+    <div class="callout">
+      <strong>Confirmation lag is the thing most backtests get wrong.</strong>
+      A swing high is only a swing high once enough bars have printed
+      <em>after</em> it without exceeding it. If the engine needs three bars
+      of confirmation, then on the day the swing occurred nobody knew it was
+      one. VriddhiX stores the date a swing became knowable separately from
+      the date it happened, and history is read by the former. Reading by the
+      latter hands a backtest information from the future and produces
+      results that cannot be repeated in life.
+    </div>
+
+    <p>
+      An <strong>order block</strong> is the last opposing candle before the
+      move that broke structure — the bar where the other side gave up. It is
+      treated as a zone, and marked mitigated the first time price trades back
+      into it. Mitigation only moves forward: a block that was mitigated does
+      not become unmitigated because a later scan looked at a shorter window.
+    </p>
+
+    <h2 id="fvg">Fair value gaps</h2>
+    <p>
+      Three consecutive candles. If the third candle's low sits entirely above
+      the first candle's high, price moved so fast that a band of prices never
+      traded — an imbalance. That band is a fair value gap.
+    </p>
+    <p>
+      Gaps are tracked forward. Each one carries a fill percentage that is a
+      <strong>running maximum</strong>: a gap that filled 80% and then saw
+      price retreat stays 80% filled, permanently. Storing the current overlap
+      instead would let a zone quietly un-fill itself, and a zone that can
+      un-fill is a zone you cannot reason about.
+    </p>
+    <p>
+      A gap is <span class="num">INVALIDATED</span> rather than filled when
+      price closes decisively through the far side. The imbalance is not
+      merely worked off at that point; it is gone.
+    </p>
+
+    <h2 id="regime">Market regime</h2>
+    <p>
+      Regime answers "what is the market doing now" from five measured
+      components: trend of the benchmark, breadth (how much of the universe
+      participates), momentum, participation across sectors, and volatility.
+      Each contributes a weighted share of a 0–100 score, which classifies
+      into <span class="num">STRONG_BULL</span> through
+      <span class="num">STRONG_BEAR</span>.
+    </p>
+
+    <div class="callout">
+      <strong>Two refusals matter more than the score.</strong>
+      First, below a coverage threshold the engine returns nothing rather than
+      a confident number computed from a biased sample — a regime derived from
+      60% of the universe is a regime for that 60%. Second, regime changes
+      require hysteresis: a threshold must be crossed by a margin and held for
+      days. Without that the state flips on noise, and anything filtering on
+      regime churns for reasons that have nothing to do with the market.
+    </div>
+
+    <p>
+      When a threshold has been crossed but hysteresis has not yet released
+      the change, that pending state is stored too. Otherwise "stable" and
+      "about to turn" look identical on a later read.
+    </p>
+
+    <h2 id="rs">Relative strength</h2>
+    <p>
+      Relative strength here is a <strong>percentile rank</strong> across the
+      universe, blended over 1-, 3-, 6- and 12-month returns. A score of 95
+      means the stock outperformed 95% of the ranked universe — nothing more.
+    </p>
+    <p>
+      Percentile rather than a z-score, deliberately: Indian equity returns
+      have fat tails, and a z-score assumes a normal distribution it does not
+      have. One stock up 300% would distort every other z-score in the
+      universe; it cannot distort a rank.
+    </p>
+    <p>
+      Each score carries the horizons that actually had data. A stock listed
+      two months ago can be ranked on its 1-month return alone, and the row
+      says so — a rank from one horizon is a weaker claim than one from four,
+      and a reader has to be able to tell them apart.
+    </p>
+
+    <h2 id="sector">Sector rotation</h2>
+    <p>
+      Sectors are aggregated <strong>equal-weight</strong>, not
+      capitalisation-weight. Cap weighting would make a handful of index
+      heavyweights the sector, and the question being asked — is this group
+      broadly strong? — would be answered by two stocks.
+    </p>
+    <p>
+      Each sector lands in a quadrant by strength and momentum:
+      <span class="num">LEADING</span> (strong, improving),
+      <span class="num">WEAKENING</span> (strong, fading),
+      <span class="num">IMPROVING</span> (weak, rising),
+      <span class="num">LAGGING</span> (weak, falling). A sector with too few
+      constituents to rank meaningfully gets no quadrant at all, and its
+      strength reads <span class="num">null</span> — "unranked" is not the
+      same statement as "ranked last".
+    </p>
+
+    <h2 id="score">Reading a score</h2>
+    <p>
+      A setup score is a weighted sum of named components, and every component
+      is shown. When a stock scores 78, you can see that the prior trend
+      contributed 14 points of a possible 15, contraction quality 12 of 20,
+      and so on. A score you cannot decompose is a number you are being asked
+      to take on faith.
+    </p>
+    <p>
+      Grades (<span class="num">A+</span> through <span class="num">C</span>)
+      are buckets over that score. They are research classifications of
+      measured behaviour. A grade is not a recommendation, and a high grade in
+      a hostile regime is a high-quality setup in a hostile regime — the
+      context is shown next to it precisely because it changes what the number
+      means.
+    </p>
+
+    <h2 id="lies">Five quiet lies</h2>
+    <p>
+      These are the failure modes that do not announce themselves. Every one
+      produces plausible output, which is what makes them dangerous.
+    </p>
+
+    <h3>1. Look-ahead</h3>
+    <p>
+      Using information the moment did not have — a swing not yet confirmed, a
+      close not yet printed, a statistic computed over the whole series. It
+      never crashes. It produces a beautiful equity curve that cannot be
+      reproduced with real money. VriddhiX tests for it by truncating history
+      and demanding identical output.
+    </p>
+
+    <h3>2. Survivorship</h3>
+    <p>
+      Backtesting today's index constituents over ten years measures the
+      stocks that survived to be in the index today. The failures were removed
+      from the sample by the same process that made them failures. When
+      point-in-time membership is unavailable, VriddhiX marks the run
+      <span class="num">CURRENT_UNIVERSE</span> and carries that warning into
+      the results — the bias travels with the numbers instead of living in
+      documentation nobody reads.
+    </p>
+
+    <h3>3. Survivor statistics</h3>
+    <p>
+      A hit rate over only the setups that worked. It happens by accident:
+      failures get closed, archived, filtered from the default view, and the
+      remaining rows look like the whole population. VriddhiX keeps failed
+      breakouts as first-class rows with the same shape as successes, and no
+      view drops them by default.
+    </p>
+
+    <h3>4. Silent zeros</h3>
+    <p>
+      A measurement nobody computed, stored as <span class="num">0</span>.
+      Zero percent of stocks above their 100-day average is a dramatic
+      statement about the market; "we did not measure that" is not a statement
+      about the market at all. Rendered on a chart they are the same line.
+      Every unmeasured value here is <span class="num">null</span>, all the
+      way through to the JSON.
+    </p>
+
+    <h3>5. Silent repair</h3>
+    <p>
+      A platform that quietly "fixes" a suspicious price produces a series
+      nobody can reconcile against the exchange. VriddhiX flags a suspected
+      split as suspected and leaves the data alone. Zero-volume bars are kept
+      too — an NSE circuit halt is a real event, and deleting those bars would
+      fabricate a gap that never existed.
+    </p>
+
+    <h2 id="glossary">Glossary</h2>
+    <dl style="margin:0">
+      <div class="term"><dt>base</dt>
+        <dd>A consolidation after an advance, during which pullbacks get shallower.</dd></div>
+      <div class="term"><dt>pivot</dt>
+        <dd>The high of the most recent contraction — where a breakout would be confirmed.</dd></div>
+      <div class="term"><dt>contraction</dt>
+        <dd>One pullback-and-recovery within a base, measured as a percentage depth.</dd></div>
+      <div class="term"><dt>BOS</dt>
+        <dd>Break of structure. A close beyond a swing, continuing the existing trend.</dd></div>
+      <div class="term"><dt>CHoCH</dt>
+        <dd>Change of character. The same break, but against the prior structure.</dd></div>
+      <div class="term"><dt>order block</dt>
+        <dd>The last opposing candle before the impulse that broke structure.</dd></div>
+      <div class="term"><dt>FVG</dt>
+        <dd>Fair value gap: a band of prices skipped by a three-candle move.</dd></div>
+      <div class="term"><dt>mitigation</dt>
+        <dd>How much of a zone price has traded back into. A running maximum.</dd></div>
+      <div class="term"><dt>breadth</dt>
+        <dd>How much of the universe participates — advancers, new highs, share above each average.</dd></div>
+      <div class="term"><dt>regime</dt>
+        <dd>A classification of current market conditions. A description, never a forecast.</dd></div>
+      <div class="term"><dt>hysteresis</dt>
+        <dd>Requiring a threshold to be crossed by a margin and held, so a state does not flicker.</dd></div>
+      <div class="term"><dt>relative strength</dt>
+        <dd>Percentile rank of blended returns against the ranked universe.</dd></div>
+      <div class="term"><dt>MFE / MAE</dt>
+        <dd>The best and worst excursion after entry — how far a trade actually travelled.</dd></div>
+      <div class="term"><dt>point-in-time</dt>
+        <dd>Resolving index membership as it was on a past date, not as it is today.</dd></div>
+    </dl>
+
+    {% if coverage and coverage.bars %}
+    <div class="callout" style="margin-top:36px">
+      <strong>Everything above runs against real data.</strong>
+      This instance currently holds
+      <span class="num">{{ "{:,}".format(coverage.bars) }}</span> daily bars
+      across <span class="num">{{ coverage.symbols }}</span> NSE symbols
+      spanning <span class="num">{{ coverage.years }}</span> years, with
+      <span class="num">{{ "{:,}".format(coverage.scans) }}</span> sessions
+      scanned and <span class="num">{{ "{:,}".format(coverage.patterns) }}</span>
+      patterns recorded. Those figures are read from the database as this page
+      renders, not written into the copy.
+    </div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

@@ -463,3 +463,31 @@ def test_an_ingest_failure_does_not_stop_the_scan(session, populated, cfg, monke
 
     assert any("provider down" in e for e in report.errors)
     assert report.scanned, "the scan did not run after the ingest error"
+
+
+def test_since_cannot_scan_dates_without_enough_history(session, populated, cfg):
+    """`--since` narrows the window; it does not lower the history floor.
+
+    Scanning a date the universe has no history for records a COMPLETED run
+    that found nothing, and afterwards that is indistinguishable from a date
+    the engines genuinely had nothing to say about.
+    """
+    from vriddhix.jobs.nightly import pending_scan_dates, trading_dates
+
+    calendar = trading_dates(session)
+    min_bars = int(cfg.get("data.min_history_bars", 60))
+    floor = calendar[min_bars - 1]
+
+    # Ask from the very first bar: the floor must still hold.
+    pending = pending_scan_dates(
+        session, since=calendar[0], min_history_bars=min_bars
+    )
+    assert pending, "nothing pending at all"
+    assert min(pending) >= floor
+
+
+def test_a_universe_too_young_to_scan_yields_nothing(session, seeded, cfg):
+    from vriddhix.jobs.nightly import pending_scan_dates
+
+    # No bars ingested at all -> no dates, and no crash.
+    assert pending_scan_dates(session, min_history_bars=60) == []

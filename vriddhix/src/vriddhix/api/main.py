@@ -13,13 +13,19 @@ from __future__ import annotations
 
 import logging
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .. import versioning
+from . import auth
 from .errors import ApiError, api_error_handler, validation_error_handler
-from .routers import ai, breakouts, market, ops, product, research, scanners, sectors, stocks
+from .routers import (
+    ai, breakouts, market, ops, pages, product, research, scanners, sectors, stocks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +75,14 @@ def create_app() -> FastAPI:
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
 
+    static_dir = Path(__file__).resolve().parent / "static"
+    if static_dir.is_dir():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
     for router in (
         market.router, sectors.router, stocks.router, scanners.router,
-        breakouts.router, research.router, product.router, ai.router, ops.router,
+        breakouts.router, research.router, product.router, ai.router,
+        ops.router, auth.router, pages.router,
     ):
         app.include_router(router)
 

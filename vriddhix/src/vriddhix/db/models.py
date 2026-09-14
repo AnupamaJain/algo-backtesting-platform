@@ -819,6 +819,15 @@ class User(Base, TimestampMixin):
     tier: Mapped[str] = mapped_column(String(16), nullable=False, default="FREE")
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
+    #: scrypt digest as ``scrypt$n$r$p$salt$hash``, never a plaintext or a
+    #: bare unsalted digest. Nullable because the dev identity and any
+    #: externally-authenticated user have no local password -- and a NULL
+    #: here must never be treated as "any password matches".
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
 
 class Watchlist(Base, TimestampMixin):
     __tablename__ = "watchlists"

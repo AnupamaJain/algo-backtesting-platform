@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}VriddhiX — pattern intelligence for Indian equities{% endblock %}
+
+{% block content %}
+<section class="wrap hero">
+  <div class="eyebrow">NSE · Research instrument</div>
+  <h1>It measures what happened.<br>It does not tell you what will.</h1>
+  <p class="lede">
+    VriddhiX finds chart structure in Indian equities — volatility contractions,
+    breaks of market structure, fair value gaps — places each one in market and
+    sector context, scores it, and then records what actually happened next.
+    Every number is a deterministic calculation over data that existed at the
+    time.
+  </p>
+
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/signup">Create an account</a>
+    <a class="btn btn-ghost" href="/learn">How the engines work</a>
+  </div>
+
+  {% if coverage %}
+  <div class="strip">
+    <div class="cell">
+      <div class="k">Universe</div>
+      <div class="v">{{ coverage.symbols }}</div>
+      <div class="s">NSE symbols</div>
+    </div>
+    <div class="cell">
+      <div class="k">Price history</div>
+      <div class="v">{{ "{:,}".format(coverage.bars) }}</div>
+      <div class="s">daily bars · {{ coverage.years }} years</div>
+    </div>
+    <div class="cell">
+      <div class="k">Sessions scanned</div>
+      <div class="v">{{ "{:,}".format(coverage.scans) }}</div>
+      <div class="s">every engine, every day</div>
+    </div>
+    {% if regime %}
+    <div class="cell">
+      <div class="k">Market regime</div>
+      <div class="v regime-{{ regime.regime }}">{{ regime.regime.replace('_', ' ') }}</div>
+      <div class="s">score {{ "%.0f"|format(regime.regime_score) }} ·
+        confidence {{ "%.0f"|format(regime.confidence or 0) }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% if as_of %}
+    <div class="faint" style="margin-top:10px">
+      Measured on {{ as_of }}{% if coverage.last_bar %}, from bars through
+      {{ coverage.last_bar }}{% endif %}.
+    </div>
+    {% if is_stale %}
+      <div class="stale-note">
+        This reading is older than the freshness threshold. It is shown with
+        its age rather than hidden — stale and labelled beats empty.
+      </div>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+</section>
+
+<section class="wrap">
+  <h2>Four commitments</h2>
+  <p class="muted" style="max-width:62ch">
+    These are not features. They are the constraints the system is built
+    around, and each one costs something — which is how you can tell they are
+    real.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <span class="tag">one implementation</span>
+      <h3>The backtest cannot drift from the scanner</h3>
+      <p>
+        The live scanner, the backtester, the historical X-Ray and the research
+        queries call the same function objects — not the same algorithm written
+        twice. There is no second implementation to drift from. A test walks
+        the syntax tree to enforce it, because a convention is something people
+        forget at 2am.
+      </p>
+    </div>
+
+    <div class="card">
+      <span class="tag">causality</span>
+      <h3>Nothing may see the future</h3>
+      <p>
+        A value dated <em>t</em> depends only on bars dated <em>t</em> or
+        earlier. Verified by truncating history at a date, recomputing, and
+        demanding identical output — on synthetic data, on real NSE history,
+        and across an unadjusted bonus issue. A look-ahead bug never crashes;
+        it produces a backtest that looks excellent and means nothing.
+      </p>
+    </div>
+
+    <div class="card">
+      <span class="tag">honest nulls</span>
+      <h3>The database says what it does not know</h3>
+      <p>
+        An unranked sector's strength is <span class="num">null</span>, not
+        <span class="num">0</span> — "no standing" and "ranked last" are
+        different claims. A win rate over zero resolved trades is
+        <span class="num">null</span>, not <span class="num">0%</span>, which
+        would read as "this has never worked". Absence is never quietly
+        rendered as a bearish number.
+      </p>
+    </div>
+
+    <div class="card">
+      <span class="tag">failures kept</span>
+      <h3>Every breakout that failed is still here</h3>
+      <p>
+        Failed breakouts stay in the ledger with the reason and the day it
+        happened, and no view filters them out by default. A hit rate computed
+        over survivors is the single most flattering lie a research tool can
+        tell, and it is the easiest one to tell by accident.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>What it is, and what it isn't</h2>
+  <div class="versus">
+    <div class="not">
+      <h3>Not this</h3>
+      <ul>
+        <li>No price targets, forecasts, or "expected return" figures.</li>
+        <li>No buy and sell calls. A grade classifies a chart's measured behaviour; it is not a recommendation.</li>
+        <li>No tips, no signals service, no portfolio management.</li>
+        <li>No claim that a pattern will repeat. The ledger records what followed each one — that is a measurement, not a promise.</li>
+      </ul>
+    </div>
+    <div class="is">
+      <h3>This</h3>
+      <ul>
+        <li>Detection you can audit: every score decomposes into named, weighted components read from stored rows.</li>
+        <li>Context on every setup: market regime, sector standing, relative strength, all computed the same day.</li>
+        <li>A research database that accumulates — the same detector replayed across history, with outcomes attached.</li>
+        <li>Backtests that state their own survivorship mode in the results, so a biased universe travels with the numbers.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The pipeline</h2>
+  <p class="muted" style="max-width:64ch">
+    One direction, no shortcuts. Each stage reads only what the stage before it
+    produced, which is what makes a number traceable back to a bar.
+  </p>
+  <figure class="stages">
+<pre>DATA        NSE daily bars, validated — nothing silently dropped or repaired
+   ↓
+FEATURES    EMA · ATR · returns · 52-week extremes · relative volume  (causal)
+   ↓
+DETECTION   VCP contractions · BOS / CHoCH · order blocks · fair value gaps
+   ↓
+CONTEXT     market regime · breadth · relative strength · sector rotation
+   ↓
+SCORING     weighted components, each one stored and shown
+   ↓
+TRACKING    breakout ledger — confirmed, failed, and why
+   ↓
+BACKTEST    the same detector, replayed, with costs and survivorship stated</pre>
+    <figcaption>
+      Data quality is recorded, never repaired. A suspected split is flagged
+      as suspected and left alone: a price series the platform silently
+      "fixed" is one nobody can reconcile afterwards.
+    </figcaption>
+  </figure>
+</section>
+
+<section class="wrap" style="padding-bottom:20px">
+  <h2>Start reading the data</h2>
+  <p class="muted" style="max-width:60ch">
+    An account gives you watchlists, saved screens built from the same
+    condition evaluator the backtester uses, and alerts on stored scan results.
+    The full HTTP surface is documented and browsable.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/signup">Create an account</a>
+    <a class="btn btn-ghost" href="/api/docs">Read the API reference</a>
+  </div>
+</section>
+{% endblock %}

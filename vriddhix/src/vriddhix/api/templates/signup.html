@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% set login_mode = (mode == 'login') %}
+{% block title %}{{ "Sign in" if login_mode else "Create an account" }} — VriddhiX{% endblock %}
+
+{% block content %}
+<section class="wrap auth-shell">
+  <div class="panel">
+    <h1 style="font-size:1.55rem;margin-bottom:6px">
+      {{ "Sign in" if login_mode else "Create an account" }}
+    </h1>
+    <p class="muted" style="font-size:.92rem">
+      {% if login_mode %}
+        Watchlists, saved screens and alerts live on your account.
+      {% else %}
+        Free. Watchlists, saved screens and alerts on stored scan results.
+      {% endif %}
+    </p>
+
+    <div id="msg" class="form-msg" hidden></div>
+
+    <form id="auth-form" novalidate>
+      {% if not login_mode %}
+      <div class="field">
+        <label for="display_name">Name</label>
+        <input id="display_name" name="display_name" type="text"
+               autocomplete="name" placeholder="Optional">
+        <div class="hint">Left blank, we use the part before the @.</div>
+      </div>
+      {% endif %}
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required
+               autocomplete="email" placeholder="you@example.com">
+        <div class="err" id="email-err" hidden></div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required
+               autocomplete="{{ 'current-password' if login_mode else 'new-password' }}"
+               placeholder="At least {{ min_password }} characters">
+        {% if not login_mode %}
+        <div class="meter"><i id="meter-bar"></i></div>
+        <div class="hint" id="pw-hint">
+          At least {{ min_password }} characters. Length beats punctuation —
+          a passphrase of ordinary words is stronger than
+          <span class="num">P@ssw0rd!</span> and easier to remember.
+        </div>
+        {% endif %}
+        <div class="err" id="password-err" hidden></div>
+      </div>
+
+      <button class="btn btn-primary btn-wide" type="submit" id="submit">
+        {{ "Sign in" if login_mode else "Create account" }}
+      </button>
+    </form>
+
+    <p class="faint" style="margin-top:18px;margin-bottom:0">
+      {% if login_mode %}
+        No account? <a href="/signup">Create one</a>.
+      {% else %}
+        Already have one? <a href="/login">Sign in</a>.
+      {% endif %}
+    </p>
+  </div>
+
+  <div>
+    <h2 style="margin-top:0">What an account does not do</h2>
+    <p class="muted">
+      It does not connect to your broker, place orders, or hold funds.
+      VriddhiX reads market data and records what it measured; it has no
+      trading path of any kind.
+    </p>
+
+    <h3>What we store</h3>
+    <dl style="margin:0">
+      <div class="term">
+        <dt>email</dt>
+        <dd>Identifies the account and scopes your watchlists, screens and alerts. Nothing else is derived from it.</dd>
+      </div>
+      <div class="term">
+        <dt>password</dt>
+        <dd>Hashed with scrypt and a per-account random salt. The plaintext is never stored, never logged, and cannot be recovered — only reset.</dd>
+      </div>
+      <div class="term">
+        <dt>your lists</dt>
+        <dd>Watchlists, saved screens and alert definitions. Filtered by the token on every request, never by a parameter a client could change.</dd>
+      </div>
+    </dl>
+
+    <div class="callout" style="margin-top:26px">
+      <strong>A reminder before you read any score.</strong>
+      A grade classifies what a chart has measurably done — prior trend,
+      contraction quality, volume behaviour, relative strength. It is not a
+      prediction and not advice. The ledger shows what followed similar setups
+      historically, failures included, and that is a record of the past rather
+      than a claim about the future.
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var form  = document.getElementById("auth-form");
+  var msg   = document.getElementById("msg");
+  var btn   = document.getElementById("submit");
+  var pw    = document.getElementById("password");
+  var bar   = document.getElementById("meter-bar");
+  var LOGIN = {{ 'true' if login_mode else 'false' }};
+  var MIN   = {{ min_password }};
+
+  function show(kind, text) {
+    msg.className = "form-msg " + kind;
+    msg.textContent = text;
+    msg.hidden = false;
+  }
+  function fieldError(id, text) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text || "";
+    el.hidden = !text;
+  }
+
+  // Strength shown as length-driven, because that is what actually governs
+  // it. Rewarding punctuation would teach the wrong lesson.
+  if (pw && bar) {
+    pw.addEventListener("input", function () {
+      var n = pw.value.length;
+      var pct = Math.min(100, Math.round((n / (MIN * 1.8)) * 100));
+      var color = pct < 45 ? "var(--bear)" : pct < 80 ? "var(--warn)" : "var(--bull)";
+      bar.style.width = pct + "%";
+      bar.style.background = color;
+    });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    fieldError("email-err", "");
+    fieldError("password-err", "");
+    msg.hidden = true;
+
+    var email = document.getElementById("email").value.trim();
+    var password = pw.value;
+    var nameEl = document.getElementById("display_name");
+
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      fieldError("email-err", "Enter a valid email address.");
+      return;
+    }
+    if (!LOGIN && password.length < MIN) {
+      fieldError("password-err", "At least " + MIN + " characters.");
+      return;
+    }
+
+    var body = { email: email, password: password };
+    if (nameEl && nameEl.value.trim()) body.display_name = nameEl.value.trim();
+
+    btn.disabled = true;
+    btn.textContent = LOGIN ? "Signing in…" : "Creating…";
+
+    fetch(LOGIN ? "/api/v1/auth/login" : "/api/v1/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          var err = (res.d && res.d.error) || {};
+          var where = err.detail && err.detail.field;
+          if (where === "email") fieldError("email-err", err.message);
+          else if (where === "password") fieldError("password-err", err.message);
+          else show("error", err.message || "Something went wrong.");
+          return;
+        }
+        if (res.d.token) {
+          try { localStorage.setItem("vriddhix-token", res.d.token); } catch (e) {}
+          show("ok", "Signed in. Redirecting…");
+        } else {
+          // Honest about the local-development case rather than pretending
+          // a session exists.
+          show("ok", "Account ready. No token was issued — this server has no "
+                   + "signing key configured, so it is running in local mode.");
+        }
+        setTimeout(function () { window.location.href = "/learn"; }, 1200);
+      })
+      .catch(function () { show("error", "Could not reach the server."); })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = LOGIN ? "Sign in" : "Create account";
+      });
+  });
+})();
+</script>
+{% endblock %}

@@ -368,3 +368,86 @@ def test_confluence_components_sum_to_the_score():
     assert result.score == pytest.approx(
         sum(c.contribution for c in result.components), abs=1e-9
     )
+
+
+# ---------------------------------------------------------------------------
+# Vectorised loops must agree with the obvious implementation
+# ---------------------------------------------------------------------------
+
+
+def _track_reference(highs, lows, closes, index, created, upper, lower, direction, cfg):
+    """The bar-by-bar original, kept as the oracle for the vectorised one."""
+    from vriddhix.domain.types import Direction, FvgStatus
+
+    span = upper - lower
+    deepest = 0.0
+    mitigated_at = None
+    for j in range(created + 1, len(closes)):
+        buffer = cfg.invalidation_buffer_pct / 100.0
+        if direction is Direction.BULLISH and closes[j] < lower * (1 - buffer):
+            return FvgStatus.INVALIDATED, max(deepest, 0.0), index[j].date()
+        if direction is Direction.BEARISH and closes[j] > upper * (1 + buffer):
+            return FvgStatus.INVALIDATED, max(deepest, 0.0), index[j].date()
+        overlap = max(0.0, min(highs[j], upper) - max(lows[j], lower))
+        if overlap > 0 and span > 0:
+            deepest = max(deepest, overlap / span * 100.0)
+            if deepest >= cfg.mitigation_threshold_pct and mitigated_at is None:
+                mitigated_at = index[j].date()
+    if deepest >= cfg.mitigation_threshold_pct:
+        return FvgStatus.MITIGATED, deepest, mitigated_at
+    if deepest >= 10.0:
+        return FvgStatus.PARTIALLY_FILLED, deepest, None
+    return FvgStatus.OPEN, deepest, None
+
+
+@pytest.mark.parametrize("seed", [1, 7, 13, 42, 99])
+def test_vectorised_gap_tracking_matches_the_bar_by_bar_original(seed):
+    """The fast path is an optimisation, never a change of meaning.
+
+    Mitigation must stay a running maximum and invalidation must still stop
+    the walk at the first decisive close through the far side.
+    """
+    import numpy as np
+
+    from vriddhix.engines.fvg import FvgConfig, _track
+    from vriddhix.domain.types import Direction
+
+    frame = make_ohlcv(220, seed=seed)
+    highs = frame["high"].to_numpy(dtype=float)
+    lows = frame["low"].to_numpy(dtype=float)
+    closes = frame["close"].to_numpy(dtype=float)
+    cfg = FvgConfig()
+
+    checked = 0
+    for created in range(2, len(frame) - 1, 7):
+        for direction in (Direction.BULLISH, Direction.BEARISH):
+            lower = float(min(lows[created], highs[created]) * 0.99)
+            upper = float(max(lows[created], highs[created]) * 1.01)
+            args = (highs, lows, closes, frame.index, created, upper, lower,
+                    direction, cfg)
+            assert _track(*args) == _track_reference(*args)
+            checked += 1
+    assert checked > 20
+
+
+def test_order_block_mitigation_matches_a_direct_scan(price_frame):
+    """Vectorised mitigation must pick the same first touching bar."""
+    from vriddhix.engines.smc import OrderBlock, _update_order_blocks
+    from vriddhix.domain.types import Direction
+
+    df = price_frame
+    origin = df.index[40].date()
+    block = OrderBlock(
+        date=df.index[39].date(), direction=Direction.BULLISH,
+        upper=float(df["high"].iloc[40]), lower=float(df["low"].iloc[40]),
+        origin_break=origin,
+    )
+    (updated,) = _update_order_blocks(df, [block])
+
+    after = df.iloc[41:]
+    touched = after[(after["low"] <= block.upper) & (after["high"] >= block.lower)]
+    if len(touched):
+        assert updated.status == "MITIGATED"
+        assert updated.mitigated_at == touched.index[0].date()
+    else:
+        assert updated.status == "OPEN"

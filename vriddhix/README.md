@@ -15,7 +15,7 @@ at the time.
 
 ```
 config       typed, validated, no trading constant in code
-database     32 tables, 4 Alembic migrations, Postgres/Timescale-ready
+database     32 tables, 5 Alembic migrations, Postgres/Timescale-ready
 domain       shared vocabulary + pattern lifecycle state machine
 providers    CSV cache + yfinance, chained with failover
 quality      7 validation rules, nothing silently dropped or repaired
@@ -28,8 +28,10 @@ engines      VCP · swings · SMC (BOS/CHoCH/order blocks/liquidity) · FVG
 services     scanner · lifecycle · failure engine · X-ray · conditions
              backtest (costs, sizing, walk-forward, Monte Carlo) · alerts
              context + structure persistence
-jobs         the daily pipeline, and backfill across a date range
+jobs         the daily pipeline, and catch-up backfill across a date range
 api          43 read endpoints, every payload carrying provenance
+auth         scrypt password hashing, signed tokens, throttled login
+web          landing, signup and learn pages served from the same process
 ai           explanation layer: server-built payloads, screened output
 ```
 
@@ -47,10 +49,11 @@ python -m vriddhix.cli init         # apply migrations
 python -m vriddhix.cli bootstrap    # seed sectors, stocks, index membership
 python -m vriddhix.cli ingest       # fetch, validate, persist bars + features
 python -m vriddhix.cli scan         # run every engine, persist the results
+python -m vriddhix.cli backfill     # fetch new bars, scan every missing session
 python -m vriddhix.cli status       # what is in the database
 python -m vriddhix.cli serve        # the read API on :8000
 
-pytest                              # 371 tests
+pytest                              # 419 tests
 ```
 
 `scan --since 2026-08-01` replays the pipeline day by day, oldest first. The
@@ -58,7 +61,13 @@ order matters: RS trend and regime hysteresis each read the previous stored
 value, so running dates out of order would measure every day against a future
 baseline.
 
-The API docs are at `/api/docs` once `serve` is running.
+Once `serve` is running: `/` is the landing page, `/learn` explains what each
+engine measures, `/signup` creates an account, and `/api/docs` is the API
+reference.
+
+`deploy/` holds a launchd agent that runs `backfill` on weekday evenings. It
+catches up rather than doing "today": miss a week and the next run scans all
+five missing sessions, oldest first. See `deploy/README.md`.
 
 ## Three commitments the design is built around
 
@@ -102,10 +111,10 @@ src/vriddhix/
   features/     L2 — pure, causal, vectorised
   engines/      L3 — THE source of truth for detection
   services/     L4 — stateful orchestration and persistence
-  jobs/         L5 — the daily pipeline
-  api/          L6 — FastAPI, reads only
+  jobs/         L5 — the daily pipeline and the catch-up backfill
+  api/          L6 — FastAPI (reads), auth, and the public pages
   ai/           L6 — explanation, never computation
-tests/          371 tests
+tests/          419 tests
 ```
 
 Dependencies point downward only: `engines` may never import `db`, `api` or
@@ -150,11 +159,25 @@ vocabulary (`vcp_score`, not `score` in one place and `vcp_score` in another).
 Two names for one value is how a screen and the backtest that is supposed to
 replay it start to disagree.
 
+## Accounts
+
+Passwords are hashed with scrypt and a per-account random salt; the plaintext
+is never stored and cannot be recovered, only reset. A failed login gives one
+message whether or not the account exists, because the difference tells an
+attacker which addresses are worth attacking. Repeated failures are throttled
+per address — scrypt raises the cost of each guess, but only a limit makes
+millions of them impractical. A NULL password hash never authenticates.
+
+Tokens are HS256, signed with `VRIDDHIX_API_JWT_SECRET`. Without that set the
+server refuses to issue one rather than falling back to something unsigned
+that `deps.py` would accept in development.
+
 ## Not built
 
-A frontend. `docs/09` is the contract it would consume, and the API serves it
-today; the Next.js application described in the master specification has not
-been written.
+The dashboard. `/`, `/learn` and `/signup` are served from this process, and
+`docs/09` is the contract a full application would consume, but the scanner
+tables, chart panels and pattern X-Ray views described in the master
+specification are not built — the API serves their data today.
 
 Backtests are enqueued by `POST /api/v1/backtests` and the run row records its
 survivorship mode at creation, but no worker consumes the queue — the engine

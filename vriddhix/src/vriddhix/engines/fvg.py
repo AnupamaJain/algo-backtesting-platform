@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+import numpy as np
 import pandas as pd
 
 from ..domain.types import Direction, FvgStatus, ScoreComponent
@@ -111,28 +112,56 @@ def detect_gaps(
 
 
 def _track(highs, lows, closes, index, created, upper, lower, direction, cfg):
-    """Follow a gap forward from creation and classify its current state."""
+    """Follow a gap forward from creation and classify its current state.
+
+    Vectorised over the bars after creation. Every gap is tracked to the end
+    of the series, so a bar-by-bar loop makes detection quadratic in the
+    length of the history -- on a decade of daily bars that is the single
+    largest cost in a scan. The semantics are unchanged: mitigation is still
+    a RUNNING MAXIMUM (a gap tagged 60% and left does not revert), and
+    invalidation still stops the walk at the first decisive close through the
+    far side.
+    """
     span = upper - lower
-    deepest = 0.0
-    mitigated_at: date | None = None
+    start = created + 1
+    if start >= len(closes):
+        return FvgStatus.OPEN, 0.0, None
 
-    for j in range(created + 1, len(closes)):
-        # Invalidation: price closed decisively through the far side, so the
-        # imbalance is not merely filled, it is gone.
-        buffer = cfg.invalidation_buffer_pct / 100.0
-        if direction is Direction.BULLISH and closes[j] < lower * (1 - buffer):
-            return FvgStatus.INVALIDATED, max(deepest, 0.0), index[j].date()
-        if direction is Direction.BEARISH and closes[j] > upper * (1 + buffer):
-            return FvgStatus.INVALIDATED, max(deepest, 0.0), index[j].date()
+    future_closes = closes[start:]
+    future_highs = highs[start:]
+    future_lows = lows[start:]
 
-        overlap = max(0.0, min(highs[j], upper) - max(lows[j], lower))
-        if overlap > 0 and span > 0:
-            # Running maximum: a gap tagged 60% and left does not revert.
-            deepest = max(deepest, overlap / span * 100.0)
-            if deepest >= cfg.mitigation_threshold_pct and mitigated_at is None:
-                mitigated_at = index[j].date()
+    buffer = cfg.invalidation_buffer_pct / 100.0
+    if direction is Direction.BULLISH:
+        breached = future_closes < lower * (1 - buffer)
+    else:
+        breached = future_closes > upper * (1 + buffer)
 
+    hits = np.flatnonzero(breached)
+    # Only bars BEFORE the invalidating close count toward mitigation: the
+    # loop returned at that bar without measuring its overlap.
+    stop = int(hits[0]) if hits.size else len(future_closes)
+
+    if span > 0 and stop > 0:
+        overlap = np.minimum(future_highs[:stop], upper) - np.maximum(
+            future_lows[:stop], lower
+        )
+        np.maximum(overlap, 0.0, out=overlap)
+        pct = overlap / span * 100.0
+        running = np.maximum.accumulate(pct)
+        deepest = float(running[-1]) if running.size else 0.0
+    else:
+        running = np.empty(0)
+        deepest = 0.0
+
+    if hits.size:
+        return FvgStatus.INVALIDATED, max(deepest, 0.0), index[start + stop].date()
+
+    mitigated_at = None
     if deepest >= cfg.mitigation_threshold_pct:
+        # The first bar at which the running maximum crossed the threshold.
+        first = int(np.argmax(running >= cfg.mitigation_threshold_pct))
+        mitigated_at = index[start + first].date()
         return FvgStatus.MITIGATED, deepest, mitigated_at
     if deepest >= 10.0:
         return FvgStatus.PARTIALLY_FILLED, deepest, None

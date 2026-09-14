@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+import numpy as np
 import pandas as pd
 
 from ..domain.types import Direction, StructureEvent, SwingPoint, SwingType
@@ -104,13 +105,35 @@ def _break_level(row: pd.Series, cfg: SmcConfig, direction: Direction) -> float:
     return float(row["high"] if direction is Direction.BULLISH else row["low"])
 
 
+def _break_level_at(
+    i: int, closes, highs, lows, cfg: SmcConfig, direction: Direction
+) -> float:
+    """``_break_level`` against columns pulled once, for the main loop.
+
+    Identical arithmetic; it exists only so the per-bar walk does not build a
+    pandas Series for every one of several thousand bars.
+    """
+    if cfg.break_on == "close":
+        return float(closes[i])
+    return float(highs[i] if direction is Direction.BULLISH else lows[i])
+
+
 def _find_order_block(
-    df: pd.DataFrame, break_pos: int, direction: Direction, cfg: SmcConfig
+    df: pd.DataFrame, break_pos: int, direction: Direction, cfg: SmcConfig,
+    *, columns: dict | None = None,
 ) -> OrderBlock | None:
-    """The last opposing candle before the impulse that caused the break."""
+    """The last opposing candle before the impulse that caused the break.
+
+    ``columns`` lets a caller pass arrays it already holds. Without it this
+    converted every column of the whole frame on each call, making order
+    block discovery quadratic in the number of breaks.
+    """
     start = max(0, break_pos - cfg.ob_lookback_bars)
-    opens = df["open"].to_numpy(dtype=float)
-    closes = df["close"].to_numpy(dtype=float)
+    if columns is not None:
+        opens, closes = columns["open"], columns["close"]
+    else:
+        opens = df["open"].to_numpy(dtype=float)
+        closes = df["close"].to_numpy(dtype=float)
     highs = df["high"].to_numpy(dtype=float)
     lows = df["low"].to_numpy(dtype=float)
 
@@ -144,8 +167,16 @@ def _find_order_block(
 
 
 def _update_order_blocks(df: pd.DataFrame, blocks: list[OrderBlock]) -> list[OrderBlock]:
-    """Mark blocks mitigated once price trades back into them."""
+    """Mark blocks mitigated once price trades back into them.
+
+    Vectorised over numpy views taken once, rather than slicing the frame per
+    block: every block is tested against the whole remaining series, so the
+    per-block DataFrame slice made this quadratic in the length of history.
+    """
     positions = {d.date(): i for i, d in enumerate(df.index)}
+    lows = df["low"].to_numpy(dtype=float)
+    highs = df["high"].to_numpy(dtype=float)
+    index = df.index
     updated: list[OrderBlock] = []
 
     for block in blocks:
@@ -154,15 +185,18 @@ def _update_order_blocks(df: pd.DataFrame, blocks: list[OrderBlock]) -> list[Ord
             updated.append(block)
             continue
 
-        after = df.iloc[start + 1 :]
-        touched = after[(after["low"] <= block.upper) & (after["high"] >= block.lower)]
-        if len(touched):
+        begin = start + 1
+        touched = np.flatnonzero(
+            (lows[begin:] <= block.upper) & (highs[begin:] >= block.lower)
+        )
+        if touched.size:
             updated.append(
                 OrderBlock(
                     date=block.date, direction=block.direction,
                     upper=block.upper, lower=block.lower,
                     origin_break=block.origin_break,
-                    status="MITIGATED", mitigated_at=touched.index[0].date(),
+                    status="MITIGATED",
+                    mitigated_at=index[begin + int(touched[0])].date(),
                 )
             )
         else:
@@ -279,6 +313,16 @@ def analyse(
     breaks: list[StructureBreak] = []
     order_blocks: list[OrderBlock] = []
 
+    # Pulled once. `df.iloc[i]` builds a Series per bar, and a decade of
+    # daily data across a universe makes that the dominant cost of a scan.
+    col_close = df["close"].to_numpy(dtype=float)
+    col_high = df["high"].to_numpy(dtype=float)
+    col_low = df["low"].to_numpy(dtype=float)
+    col_volume = df["volume"].to_numpy(dtype=float)
+    col_open = df["open"].to_numpy(dtype=float)
+    bar_dates = [d.date() for d in df.index]
+    columns = {"open": col_open, "close": col_close}
+
     cursor = 0
     for i in range(len(df)):
         while cursor < len(pending) and pending[cursor][0] <= i:
@@ -289,11 +333,10 @@ def analyse(
                 active_low = swing
             cursor += 1
 
-        row = df.iloc[i]
-        today = df.index[i].date()
+        today = bar_dates[i]
 
         if active_high is not None and active_high.date < today:
-            level = _break_level(row, cfg, Direction.BULLISH)
+            level = _break_level_at(i, col_close, col_high, col_low, cfg, Direction.BULLISH)
             if level > active_high.price:
                 # Same break, two meanings: continuation if already bullish,
                 # a change of character if the prior structure was bearish.
@@ -306,11 +349,11 @@ def analyse(
                     StructureBreak(
                         date=today, kind=kind, direction=Direction.BULLISH,
                         broken_level=active_high.price, broken_swing_date=active_high.date,
-                        close_price=float(row["close"]), volume=float(row["volume"]),
+                        close_price=float(col_close[i]), volume=float(col_volume[i]),
                         prior_structure=structure,
                     )
                 )
-                block = _find_order_block(df, i, Direction.BULLISH, cfg)
+                block = _find_order_block(df, i, Direction.BULLISH, cfg, columns=columns)
                 if block is not None:
                     order_blocks.append(block)
                 structure = "BULLISH"
@@ -318,7 +361,7 @@ def analyse(
                 continue
 
         if active_low is not None and active_low.date < today:
-            level = _break_level(row, cfg, Direction.BEARISH)
+            level = _break_level_at(i, col_close, col_high, col_low, cfg, Direction.BEARISH)
             if level < active_low.price:
                 kind = (
                     StructureEvent.CHOCH
@@ -329,11 +372,11 @@ def analyse(
                     StructureBreak(
                         date=today, kind=kind, direction=Direction.BEARISH,
                         broken_level=active_low.price, broken_swing_date=active_low.date,
-                        close_price=float(row["close"]), volume=float(row["volume"]),
+                        close_price=float(col_close[i]), volume=float(col_volume[i]),
                         prior_structure=structure,
                     )
                 )
-                block = _find_order_block(df, i, Direction.BEARISH, cfg)
+                block = _find_order_block(df, i, Direction.BEARISH, cfg, columns=columns)
                 if block is not None:
                     order_blocks.append(block)
                 structure = "BEARISH"

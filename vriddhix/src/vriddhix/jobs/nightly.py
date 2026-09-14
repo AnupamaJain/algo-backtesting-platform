@@ -25,7 +25,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import get_config
@@ -90,18 +90,21 @@ def pending_scan_dates(
     reason that no engine had enough data, and that empty run would then look
     like a real answer to every reader afterwards.
     """
-    earliest = session.scalar(select(func.min(OhlcvDaily.date)))
-    if earliest is None:
+    # The floor is computed from the WHOLE calendar, never from the slice
+    # `since` selects. Deriving it from the slice would let `--since` scan
+    # dates before the universe has enough history, and those runs record a
+    # COMPLETED row that found nothing -- indistinguishable afterwards from a
+    # date the engines genuinely had nothing to say about.
+    calendar = trading_dates(session)
+    if len(calendar) <= min_history_bars:
         return []
 
-    dates = trading_dates(session, since=since)
-    done = scanned_dates(session)
-    if len(dates) > min_history_bars:
-        floor = dates[min_history_bars - 1] if since is None else dates[0]
-    else:
-        floor = dates[-1] if dates else earliest
+    floor = calendar[min_history_bars - 1]
+    if since is not None:
+        floor = max(floor, since)
 
-    return [d for d in dates if d not in done and d >= floor]
+    done = scanned_dates(session)
+    return [d for d in calendar if d >= floor and d not in done]
 
 
 def run_backfill(
@@ -120,42 +123,13 @@ def run_backfill(
     started = datetime.now()
 
     if ingest:
-        try:
-            symbols = [s for (s,) in session.execute(select(Stock.symbol)).all()]
-            if symbols:
-                years = int(cfg.get("data.lookback_years", 10))
-                start = date.today() - timedelta(days=int(years * 365.25))
-                result = ingest_universe(
-                    session, symbols, build_provider(cfg), cfg,
-                    start=start, as_of=date.today(),
-                )
-                report.ingested_symbols = len(result.succeeded)
-                report.ingested_bars = result.bars_written
-                for failure in result.failed:
-                    # Recorded, not fatal: one dead symbol must not stop the
-                    # other 499 from being scanned.
-                    report.errors.append(f"ingest {failure.symbol}: {failure.error}")
-        except Exception as exc:  # noqa: BLE001
-            report.errors.append(f"ingest failed: {type(exc).__name__}: {exc}")
-            logger.exception("nightly ingest failed")
+        _ingest_into(session, cfg, report)
 
     pending = pending_scan_dates(
         session, since=since,
         min_history_bars=int(cfg.get("data.min_history_bars", 60)),
     )
-    if max_catchup_days and len(pending) > max_catchup_days:
-        # Oldest first is still the rule -- the cap drops the far past, not
-        # the recent days, because the recent ones are what anybody is
-        # actually looking at tonight.
-        report.skipped_beyond_cap = pending[:-max_catchup_days]
-        pending = pending[-max_catchup_days:]
-        logger.warning(
-            "%d dates pending, capped to %d. Run `vriddhix scan --since %s` "
-            "to replay the rest.",
-            len(report.skipped_beyond_cap) + len(pending),
-            max_catchup_days,
-            report.skipped_beyond_cap[0],
-        )
+    pending, report.skipped_beyond_cap = _apply_cap(pending, max_catchup_days)
 
     for as_of in pending:
         scan_report = run_daily_scan(
@@ -173,10 +147,115 @@ def run_backfill(
     return report
 
 
-def run_once(**kwargs) -> BackfillReport:
-    """Open a session, run the backfill, commit."""
+def run_once(
+    cfg=None,
+    *,
+    since: date | None = None,
+    ingest: bool = True,
+    max_catchup_days: int = DEFAULT_MAX_CATCHUP_DAYS,
+    index_code: str | None = None,
+    with_structure: bool = True,
+    progress_every: int = 25,
+) -> BackfillReport:
+    """Run the backfill, committing each session's work as it completes.
+
+    **One transaction per scan date, not one for the whole run.** A decade of
+    history is thousands of dates and hours of work; holding that in a single
+    transaction means a failure at hour six discards hour one, and the
+    session's identity map grows without bound for the whole time. Each date
+    is already idempotent, so a per-date commit is the natural unit of
+    durability -- an interrupted backfill resumes from where it stopped
+    rather than from the beginning.
+    """
+    cfg = cfg or get_config()
+    report = BackfillReport(started_at=datetime.now())
+    started = datetime.now()
+
+    if ingest:
+        with session_scope() as session:
+            _ingest_into(session, cfg, report)
+
     with session_scope() as session:
-        return run_backfill(session, **kwargs)
+        pending = pending_scan_dates(
+            session, since=since,
+            min_history_bars=int(cfg.get("data.min_history_bars", 60)),
+        )
+    pending, report.skipped_beyond_cap = _apply_cap(pending, max_catchup_days)
+
+    total = len(pending)
+    for position, as_of in enumerate(pending, start=1):
+        try:
+            with session_scope() as session:
+                scan_report = run_daily_scan(
+                    session, cfg, as_of,
+                    index_code=index_code, with_structure=with_structure,
+                )
+            if scan_report.ok:
+                report.scanned.append(as_of)
+            else:
+                report.failed.append(as_of)
+                report.errors.extend(scan_report.errors)
+        except Exception as exc:  # noqa: BLE001
+            # One bad date must not end the run: the remaining dates are
+            # independent, and stopping would leave a hole that no later
+            # run distinguishes from a date that was never due.
+            report.failed.append(as_of)
+            report.errors.append(f"{as_of}: {type(exc).__name__}: {exc}")
+            logger.exception("scan for %s raised", as_of)
+
+        if progress_every and position % progress_every == 0:
+            elapsed = (datetime.now() - started).total_seconds()
+            rate = elapsed / position
+            logger.info(
+                "backfill %d/%d (%s) · %.1fs/session · ~%.0f min remaining",
+                position, total, as_of, rate, rate * (total - position) / 60,
+            )
+
+    report.duration_seconds = (datetime.now() - started).total_seconds()
+    return report
+
+
+def _apply_cap(
+    pending: list[date], max_catchup_days: int
+) -> tuple[list[date], list[date]]:
+    """Bound one run's work, dropping the OLDEST pending dates.
+
+    The recent sessions are what anybody is looking at tonight, so the cap
+    trims the far past; each run then scans today first and works backwards,
+    and the archive fills in on its own.
+    """
+    if not max_catchup_days or len(pending) <= max_catchup_days:
+        return pending, []
+    skipped = pending[:-max_catchup_days]
+    logger.warning(
+        "%d dates pending, capped to %d. Run `vriddhix backfill --since %s "
+        "--max-catchup 0` to replay the rest.",
+        len(pending), max_catchup_days, skipped[0],
+    )
+    return pending[-max_catchup_days:], skipped
+
+
+def _ingest_into(session: Session, cfg, report: BackfillReport) -> None:
+    """Fetch bars for every known symbol, recording failures without raising."""
+    try:
+        symbols = [s for (s,) in session.execute(select(Stock.symbol)).all()]
+        if not symbols:
+            return
+        years = int(cfg.get("data.lookback_years", 10))
+        start = date.today() - timedelta(days=int(years * 365.25))
+        result = ingest_universe(
+            session, symbols, build_provider(cfg), cfg,
+            start=start, as_of=date.today(),
+        )
+        report.ingested_symbols = len(result.succeeded)
+        report.ingested_bars = result.bars_written
+        for failure in result.failed:
+            # Recorded, not fatal: one dead symbol must not stop the other
+            # 499 from being scanned.
+            report.errors.append(f"ingest {failure.symbol}: {failure.error}")
+    except Exception as exc:  # noqa: BLE001
+        report.errors.append(f"ingest failed: {type(exc).__name__}: {exc}")
+        logger.exception("nightly ingest failed")
 
 
 def describe(report: BackfillReport) -> str:

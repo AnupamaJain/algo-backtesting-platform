@@ -84,18 +84,22 @@ vriddhix/
 │   │   ├── backtest.py                      replays signals into trades
 │   │   └── alerts.py
 │   │
-│   ├── jobs/                          [P8]  L5 — the daily pipeline
+│   ├── jobs/                          [P8]  L5 — scheduled work
 │   │   ├── __init__.py
-│   │   └── daily_scan.py                    one run: scan → persist → alert
+│   │   ├── daily_scan.py                    one run: scan → persist → alert
+│   │   └── nightly.py                       catch-up backfill + scheduler
 │   │
 │   ├── api/                           [P6+] L6 — FastAPI. Reads only.
 │   │   ├── main.py                          app assembly
 │   │   ├── deps.py                          session · provenance · auth · paging
+│   │   ├── auth.py                          scrypt hashing · signup · login
 │   │   ├── errors.py                        the typed error envelope
 │   │   ├── serialise.py                     row → JSON, in ONE place
+│   │   ├── templates/                       landing · signup · learn
+│   │   ├── static/                          one stylesheet
 │   │   └── routers/                         market · sectors · stocks · scanners
 │   │                                        breakouts · research · product
-│   │                                        ai · ops
+│   │                                        ai · ops · pages
 │   │
 │   └── ai/                            [P9]  explanation layer (no computation)
 │       └── explain.py
@@ -118,9 +122,10 @@ vriddhix/
 │   ├── test_services.py               [P6+] scanner · lifecycle · backtest · AI
 │   ├── test_pipeline.py               [P8]  persistence · failure engine · job
 │   ├── test_api.py                    [P6+] provenance · refusal · nulls · scoping
+│   ├── test_web.py                    [P10] password handling · pages
 │   └── test_engine_purity.py          [P2+] AST check: engines import nothing impure
 │
-└── frontend/                          [P6+] Next.js app — NOT BUILT
+└── deploy/                            [P8]  launchd agent + scheduling notes
     ├── app/
     ├── components/
     └── lib/
