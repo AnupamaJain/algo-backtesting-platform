@@ -200,6 +200,15 @@ class ChainedProvider(OHLCVProvider):
                 )
                 continue
 
+            if frame.empty:
+                # An empty answer is not an answer. A stale CSV cache asked
+                # for bars after its last row returns zero rows rather than
+                # raising, and accepting that would mean the live provider
+                # behind it is never tried -- the chain would silently stop
+                # backfilling the moment the cache fell behind.
+                errors.append(f"{provider.name}: no bars in range")
+                continue
+
             if self.last_source != provider.name:
                 logger.info("bars for %s served by %s", symbol, provider.name)
             self.last_source = provider.name

@@ -183,3 +183,35 @@ def test_build_provider_rejects_unknown_names(cfg, monkeypatch, tmp_path):
     )
     with pytest.raises(ValueError, match="unknown data provider"):
         build_provider(load_config(path))
+
+
+def test_an_empty_answer_falls_through_to_the_next_provider(tmp_path):
+    """A stale cache must not shadow the live provider behind it.
+
+    Asked for bars after its last row, a CSV cache returns zero rows rather
+    than raising. If the chain accepted that, the platform would stop
+    backfilling the moment the cache fell behind -- silently, and with no
+    error to notice.
+    """
+    from vriddhix.data.providers import ChainedProvider
+
+    stale = FakeProvider("stale", make_ohlcv(5, start=date(2020, 1, 1)))
+    live = FakeProvider("live", make_ohlcv(5, start=date(2026, 9, 3)))
+
+    chain = ChainedProvider([stale, live])
+    frame = chain.fetch("RELIANCE", start=date(2026, 9, 3))
+
+    assert not frame.empty
+    assert chain.last_source == "live"
+
+
+def test_every_provider_returning_nothing_is_an_error_naming_each(tmp_path):
+    from vriddhix.data.providers import ChainedProvider, ProviderError
+
+    a = FakeProvider("a", make_ohlcv(5, start=date(2020, 1, 1)))
+    b = FakeProvider("b", make_ohlcv(5, start=date(2020, 1, 1)))
+
+    with pytest.raises(ProviderError) as exc:
+        ChainedProvider([a, b]).fetch("RELIANCE", start=date(2026, 9, 3))
+    assert "a: no bars in range" in str(exc.value)
+    assert "b: no bars in range" in str(exc.value)

@@ -355,3 +355,111 @@ def test_the_survivorship_warning_reaches_the_scan_row(session, populated, cfg):
     if report.survivorship_warning:
         # It must be ON the row, not only in a log line nobody reads.
         assert run.notes == report.survivorship_warning
+
+
+# ---------------------------------------------------------------------------
+# The nightly backfill
+# ---------------------------------------------------------------------------
+
+
+def test_pending_dates_exclude_already_scanned_ones(session, populated, cfg):
+    from vriddhix.jobs.daily_scan import run_daily_scan
+    from vriddhix.jobs.nightly import pending_scan_dates
+
+    before = pending_scan_dates(session)
+    assert before, "nothing pending on a freshly ingested database"
+
+    run_daily_scan(session, cfg, before[-1], symbols=["RELIANCE", "TCS", "INFY"])
+    after = pending_scan_dates(session)
+    assert before[-1] not in after
+
+
+def test_a_failed_scan_leaves_its_date_pending(session, populated, cfg):
+    """A FAILED run is not evidence the date was processed.
+
+    If it counted as done, one transient provider error would leave a
+    permanent hole that no later run ever fills.
+    """
+    from vriddhix.db.models import ScanRun
+    from vriddhix.jobs.nightly import pending_scan_dates
+
+    target = pending_scan_dates(session)[-1]
+    session.add(
+        ScanRun(scan_date=target, status="FAILED", engine_version="VCP_ENGINE_V1.0")
+    )
+    session.flush()
+    assert target in pending_scan_dates(session)
+
+
+def test_pending_dates_are_ordered_oldest_first(session, populated):
+    """RS trend and regime hysteresis read the previous stored value, so any
+    other order measures each day against a future baseline."""
+    from vriddhix.jobs.nightly import pending_scan_dates
+
+    pending = pending_scan_dates(session)
+    assert pending == sorted(pending)
+
+
+def test_the_catchup_cap_keeps_the_most_recent_sessions(session, populated, cfg):
+    """When the cap bites it must drop the far past, not the recent days --
+    those are what anybody is actually looking at tonight."""
+    from vriddhix.jobs.nightly import pending_scan_dates, run_backfill
+
+    pending = pending_scan_dates(session)
+    if len(pending) <= 3:
+        pytest.skip("not enough pending sessions to exercise the cap")
+
+    report = run_backfill(session, cfg, ingest=False, max_catchup_days=2)
+    assert len(report.scanned) <= 2
+    assert report.skipped_beyond_cap
+    # Everything skipped is older than everything scanned.
+    assert max(report.skipped_beyond_cap) < min(report.scanned)
+
+
+def test_a_capped_run_resumes_where_the_last_one_stopped(session, populated, cfg):
+    """The cap bounds one night's work, it does not abandon the rest."""
+    from vriddhix.jobs.nightly import run_backfill
+
+    first = run_backfill(session, cfg, ingest=False, max_catchup_days=2)
+    second = run_backfill(session, cfg, ingest=False, max_catchup_days=2)
+
+    assert first.scanned and second.scanned
+    # No date is scanned twice, and the second run picks up older sessions
+    # that the first run's cap had pushed aside.
+    assert not set(first.scanned) & set(second.scanned)
+
+
+def test_backfill_over_a_finished_window_changes_nothing(session, populated, cfg):
+    from vriddhix.db.models import MarketRegimeRow, RelativeStrength
+    from vriddhix.jobs.nightly import pending_scan_dates, run_backfill
+
+    window_start = pending_scan_dates(session)[-2]
+    run_backfill(session, cfg, ingest=False, since=window_start, max_catchup_days=0)
+    counts = (
+        session.query(RelativeStrength).count(),
+        session.query(MarketRegimeRow).count(),
+    )
+
+    # Everything in the window is done, so a second pass has nothing to do.
+    second = run_backfill(
+        session, cfg, ingest=False, since=window_start, max_catchup_days=0
+    )
+    assert second.scanned == []
+    assert counts == (
+        session.query(RelativeStrength).count(),
+        session.query(MarketRegimeRow).count(),
+    )
+
+
+def test_an_ingest_failure_does_not_stop_the_scan(session, populated, cfg, monkeypatch):
+    """One dead symbol must not stop the other 499 from being scanned."""
+    from vriddhix.jobs import nightly
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("provider down")
+
+    monkeypatch.setattr(nightly, "build_provider", boom)
+    report = nightly.run_backfill(session, cfg, ingest=True, max_catchup_days=2)
+
+    assert any("provider down" in e for e in report.errors)
+    assert report.scanned, "the scan did not run after the ingest error"

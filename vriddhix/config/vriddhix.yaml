@@ -19,7 +19,15 @@ market:
 
 data:
   # Ordered. First provider that answers wins; the rest are fallbacks.
-  providers: [csv_cache, yfinance]
+  #
+  # The live source leads and the on-disk cache backs it up. The cache is a
+  # point-in-time snapshot nobody refreshes, so putting it first makes every
+  # nightly run re-import whatever it froze -- the run "succeeds", the newest
+  # bars survive only because the overwrite is range-scoped, and the body of
+  # history quietly reverts to the older, sparser copy. The cache earns its
+  # place as the answer when the network is down, not as the answer by
+  # default.
+  providers: [yfinance, csv_cache]
   cache_dir: ../quant_backtester/data_india
   lookback_years: 10
   price_field: adj_close

@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -205,15 +205,25 @@ def cmd_ingest(args) -> int:
     cfg = get_config()
     provider = build_provider(cfg)
 
+    # Without an explicit start, honour the configured lookback. Leaving it
+    # None lets yfinance apply its own default of one month, which silently
+    # produces a frame too short to compute a 200-day EMA from -- a quiet
+    # wrong answer rather than a loud failure.
+    start = args.start
+    if start is None:
+        years = int(cfg.get("data.lookback_years", 10))
+        start = date.today() - timedelta(days=int(years * 365.25))
+
     with session_scope() as session:
         symbols = args.symbols or [s for (s,) in session.execute(select(Stock.symbol)).all()]
         if not symbols:
             print("no symbols; run `bootstrap` first", file=sys.stderr)
             return 1
 
+        print(f"fetching {len(symbols)} symbols from {start} …")
         report = ingest_universe(
             session, symbols, provider, cfg,
-            start=args.start, end=args.end, as_of=args.as_of or date.today(),
+            start=start, end=args.end, as_of=args.as_of or date.today(),
         )
 
         print(f"\n{report.summary()}")
@@ -308,6 +318,34 @@ def cmd_scan(args) -> int:
         return 0 if report.ok else 1
 
 
+def cmd_backfill(args) -> int:
+    """Fetch new bars, then scan every session still missing a scan."""
+    from .jobs.nightly import describe, run_once, serve_scheduler
+
+    if args.schedule:
+        serve_scheduler(
+            hour=args.hour, minute=args.minute,
+            since=args.since, ingest=not args.no_ingest,
+            max_catchup_days=args.max_catchup,
+            index_code=args.index, with_structure=not args.no_structure,
+        )
+        return 0
+
+    report = run_once(
+        since=args.since, ingest=not args.no_ingest,
+        max_catchup_days=args.max_catchup,
+        index_code=args.index, with_structure=not args.no_structure,
+    )
+    print(describe(report))
+    if report.skipped_beyond_cap:
+        oldest = report.skipped_beyond_cap[0]
+        print(f"  {len(report.skipped_beyond_cap)} older sessions were not scanned.")
+        print(f"  To replay them: vriddhix backfill --since {oldest} --max-catchup 0")
+    for error in report.errors:
+        print(f"  ERROR: {error}")
+    return 0 if report.ok else 1
+
+
 def cmd_serve(args) -> int:
     """Run the read API."""
     try:
@@ -349,6 +387,23 @@ def main(argv: list[str] | None = None) -> int:
     scan.add_argument("--no-structure", action="store_true",
                       help="skip SMC/FVG analysis")
     scan.set_defaults(func=cmd_scan)
+
+    backfill = sub.add_parser(
+        "backfill", help="fetch new bars and scan every missing session"
+    )
+    backfill.add_argument("--since", type=date.fromisoformat,
+                          help="only consider sessions from this date")
+    backfill.add_argument("--no-ingest", action="store_true",
+                          help="scan only; do not fetch bars")
+    backfill.add_argument("--no-structure", action="store_true")
+    backfill.add_argument("--index", default=None)
+    backfill.add_argument("--max-catchup", type=int, default=15,
+                          help="cap sessions per run; 0 means no cap")
+    backfill.add_argument("--schedule", action="store_true",
+                          help="stay resident and run on a weekday cron")
+    backfill.add_argument("--hour", type=int, default=19)
+    backfill.add_argument("--minute", type=int, default=0)
+    backfill.set_defaults(func=cmd_backfill)
 
     serve = sub.add_parser("serve", help="run the read API")
     serve.add_argument("--host", default="127.0.0.1")

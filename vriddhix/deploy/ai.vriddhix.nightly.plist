@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>ai.vriddhix.nightly</string>
+
+  <!-- One invocation of the catch-up backfill. The job decides what is
+       missing; launchd only decides when to ask. -->
+  <key>ProgramArguments</key><array>
+    <string>/Users/admin/learningacademy/algo-backtesting-platform/algo-backtesting-platform/venv/bin/python3</string>
+    <string>-m</string>
+    <string>vriddhix.cli</string>
+    <string>backfill</string>
+  </array>
+
+  <key>WorkingDirectory</key><string>/Users/admin/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhix</string>
+  <key>EnvironmentVariables</key><dict>
+    <key>PYTHONPATH</key><string>/Users/admin/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhix/src</string>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <!-- 19:00 IST: after the 15:30 NSE close, with settling time. The machine
+       runs on IST, so this is market time without conversion. -->
+  <key>StartCalendarInterval</key><array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
+
+  <key>StandardOutPath</key><string>/Users/admin/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhix/state/logs/nightly.log</string>
+  <key>StandardErrorPath</key><string>/Users/admin/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhix/state/logs/nightly.log</string>
+
+  <!-- false: loading the agent must not kick off a scan immediately. If the
+       Mac was asleep at 19:00, launchd runs it on wake and the job catches
+       up every session it missed. -->
+  <key>RunAtLoad</key><false/>
+</dict></plist>
