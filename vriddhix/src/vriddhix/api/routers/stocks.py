@@ -362,15 +362,25 @@ def stock_xray(symbol: str, session: SessionDep, prov: ProvenanceDep) -> dict:
     for pattern in patterns:
         breakout = breakouts.get(pattern.id)
         outcome = breakout.outcome if breakout else None
-        if outcome is not None and (outcome.failed or outcome.exit_date is not None):
+        # Resolution is the BREAKOUT'S STATUS, the same definition
+        # failure_statistics uses. Reading it from `outcome.exit_date`
+        # instead counted every confirmed breakout as unresolved, because a
+        # confirmed breakout has not exited -- and the panel then disagreed
+        # with the ledger about the same rows.
+        if breakout is not None and breakout.status in ("CONFIRMED", "FAILED"):
             resolved += 1
-            if outcome.return_pct is not None and float(outcome.return_pct) > 0:
+            if (
+                outcome is not None
+                and outcome.return_pct is not None
+                and float(outcome.return_pct) > 0
+            ):
                 wins += 1
         entries.append(
             {
                 **pattern_payload(pattern, stock.symbol),
                 "breakout_date": iso(breakout.breakout_date) if breakout else None,
                 "breakout_price": num(breakout.breakout_price) if breakout else None,
+                "breakout_status": breakout.status if breakout else None,
                 "outcome": None if outcome is None else {
                     "failed": bool(outcome.failed),
                     "failure_reason": outcome.failure_reason,

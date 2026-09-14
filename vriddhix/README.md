@@ -54,7 +54,7 @@ python -m vriddhix.cli backtests    # run whatever backtests are queued
 python -m vriddhix.cli status       # what is in the database
 python -m vriddhix.cli serve        # the read API on :8000
 
-pytest                              # 427 tests
+pytest                              # 433 tests
 ```
 
 `scan --since 2026-08-01` replays the pipeline day by day, oldest first. The
@@ -115,7 +115,7 @@ src/vriddhix/
   jobs/         L5 — daily pipeline, catch-up backfill, backtest worker
   api/          L6 — FastAPI (reads), auth, and the public pages
   ai/           L6 — explanation, never computation
-tests/          427 tests
+tests/          433 tests
 ```
 
 Dependencies point downward only: `engines` may never import `db`, `api` or

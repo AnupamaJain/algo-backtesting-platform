@@ -494,3 +494,70 @@ def test_versions_endpoint_lists_every_engine_version(client):
     body = client.get("/api/v1/versions").json()
     for key in ("VCP_ENGINE_VERSION", "RS_ENGINE_VERSION", "REGIME_ENGINE_VERSION"):
         assert key in body
+
+
+@pytest.fixture
+def resolved_breakout(session, scanned):
+    """A CONFIRMED breakout attached to a pattern.
+
+    Built rather than hoped for: a test that skips when the fixture happens
+    to produce no breakouts asserts nothing on most runs.
+    """
+    from vriddhix.db.models import Breakout, Pattern, Stock
+
+    pattern = session.query(Pattern).first()
+    assert pattern is not None, "the scan produced no patterns"
+    stock = session.get(Stock, pattern.stock_id)
+
+    breakout = Breakout(
+        pattern_id=pattern.id,
+        stock_id=stock.id,
+        breakout_date=scanned["as_of"],
+        breakout_price=100.0,
+        pivot_price=99.0,
+        status="CONFIRMED",
+        engine_version="VCP_ENGINE_V1.0",
+    )
+    session.add(breakout)
+    session.flush()
+    return {"breakout": breakout, "symbol": stock.symbol}
+
+
+def test_a_confirmed_breakout_counts_as_resolved(client, resolved_breakout):
+    """A confirmed breakout has not exited, so reading resolution from
+    `outcome.exit_date` counted it as unresolved."""
+    summary = client.get(
+        f"/api/v1/stocks/{resolved_breakout['symbol']}/xray"
+    ).json()["summary"]
+    assert summary["resolved"] >= 1
+
+
+def test_the_xray_and_the_ledger_agree_about_what_is_resolved(
+    client, resolved_breakout, session
+):
+    """One definition of 'resolved', not one per panel."""
+    from vriddhix.db.models import Stock
+    from vriddhix.services.failure import failure_statistics
+
+    stats = failure_statistics(session)
+    assert stats["resolved"] >= 1
+
+    total = 0
+    for stock in session.query(Stock).all():
+        total += client.get(
+            f"/api/v1/stocks/{stock.symbol}/xray"
+        ).json()["summary"]["resolved"]
+
+    assert total == stats["resolved"]
+
+
+def test_a_pending_breakout_is_not_counted_as_resolved(client, resolved_breakout, session):
+    """Still running is not an outcome."""
+    resolved_breakout["breakout"].status = "PENDING"
+    session.flush()
+    summary = client.get(
+        f"/api/v1/stocks/{resolved_breakout['symbol']}/xray"
+    ).json()["summary"]
+    assert summary["resolved"] == 0
+    # None, not 0.0: a win rate over nothing is undefined.
+    assert summary["win_rate"] is None
