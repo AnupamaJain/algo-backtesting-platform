@@ -1,0 +1,24 @@
+# Nifty 500 universe definition.
+#
+# `members` is the CURRENT constituent list. It is NOT membership history --
+# loading it alone produces rows sourced 'current_only', and any resolution
+# built from them is flagged CURRENT_UNIVERSE so the survivorship bias travels
+# with the numbers (see docs/04-data-model.md §8).
+#
+# Real history goes in `history:` as explicit intervals. Where it exists, the
+# universe service prefers it and reports POINT_IN_TIME.
+
+index:
+  code: NIFTY500
+  name: Nifty 500
+  is_benchmark: true
+
+# Bootstrapped from whatever the local cache holds; replace with the published
+# constituent list for a real deployment.
+source: cache_discovery
+
+history: []
+  # - symbol: YESBANK
+  #   effective_from: 2018-04-01
+  #   effective_to: 2020-03-19      # removed on this date
+  #   source: declared

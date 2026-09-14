@@ -1,0 +1,370 @@
+"""Phase 1 command line.
+
+    python -m vriddhix.cli init                  # apply migrations
+    python -m vriddhix.cli bootstrap             # seed reference data
+    python -m vriddhix.cli ingest [SYMBOL ...]   # fetch, validate, persist
+    python -m vriddhix.cli status                # what is in the database
+
+Deliberately thin. Everything it does is a call into the library, so that the
+daily pipeline in Phase 5 orchestrates the same functions rather than shelling
+out to this.
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import sys
+from datetime import date
+from pathlib import Path
+
+from sqlalchemy import func, select
+
+from .config import PROJECT_ROOT, get_config
+from .data.ingest import ingest_universe
+from .data.providers import build_provider
+from .db.base import session_scope
+from .db.models import (
+    DataQualityEvent,
+    Industry,
+    MarketIndex,
+    OhlcvDaily,
+    Sector,
+    Stock,
+    TechnicalFeature,
+    UniverseMember,
+)
+from .universe.service import UniverseService
+
+logger = logging.getLogger("vriddhix")
+
+#: Minimal NSE sector map for the symbols in the local cache. Real deployments
+#: load this from an exchange master; it is inlined here only so that Phase 1
+#: is runnable without an external dependency.
+SECTOR_MAP: dict[str, tuple[str, str]] = {
+    "RELIANCE": ("ENERGY", "REFINING"),
+    "ONGC": ("ENERGY", "OIL_EXPLORATION"),
+    "BPCL": ("ENERGY", "REFINING"),
+    "TCS": ("IT", "SOFTWARE"),
+    "INFY": ("IT", "SOFTWARE"),
+    "WIPRO": ("IT", "SOFTWARE"),
+    "HCLTECH": ("IT", "SOFTWARE"),
+    "TECHM": ("IT", "SOFTWARE"),
+    "HDFCBANK": ("FINANCIALS", "BANKS"),
+    "ICICIBANK": ("FINANCIALS", "BANKS"),
+    "SBIN": ("FINANCIALS", "BANKS"),
+    "KOTAKBANK": ("FINANCIALS", "BANKS"),
+    "AXISBANK": ("FINANCIALS", "BANKS"),
+    "BANKBARODA": ("FINANCIALS", "BANKS"),
+    "INDUSINDBK": ("FINANCIALS", "BANKS"),
+    "BAJFINANCE": ("FINANCIALS", "NBFC"),
+    "HINDUNILVR": ("FMCG", "HOUSEHOLD"),
+    "ITC": ("FMCG", "TOBACCO"),
+    "NESTLEIND": ("FMCG", "PACKAGED_FOODS"),
+    "BRITANNIA": ("FMCG", "PACKAGED_FOODS"),
+    "MARUTI": ("AUTO", "PASSENGER_VEHICLES"),
+    "M&M": ("AUTO", "PASSENGER_VEHICLES"),
+    "BAJAJ-AUTO": ("AUTO", "TWO_WHEELERS"),
+    "HEROMOTOCO": ("AUTO", "TWO_WHEELERS"),
+    "EICHERMOT": ("AUTO", "TWO_WHEELERS"),
+    "SUNPHARMA": ("PHARMA", "PHARMACEUTICALS"),
+    "CIPLA": ("PHARMA", "PHARMACEUTICALS"),
+    "DRREDDY": ("PHARMA", "PHARMACEUTICALS"),
+    "DIVISLAB": ("PHARMA", "PHARMACEUTICALS"),
+    "TITAN": ("CONSUMER_DURABLES", "JEWELLERY"),
+    "ASIANPAINT": ("CHEMICALS", "PAINTS"),
+    "ULTRACEMCO": ("MATERIALS", "CEMENT"),
+    "GRASIM": ("MATERIALS", "CEMENT"),
+    "SHREECEM": ("MATERIALS", "CEMENT"),
+    "JSWSTEEL": ("METALS", "STEEL"),
+    "TATASTEEL": ("METALS", "STEEL"),
+    "HINDALCO": ("METALS", "ALUMINIUM"),
+    "COALINDIA": ("METALS", "MINING"),
+    "LT": ("CAPGOODS", "CONSTRUCTION"),
+    "BHARTIARTL": ("TELECOM", "TELECOM_SERVICES"),
+    "NTPC": ("UTILITIES", "POWER_GENERATION"),
+    "POWERGRID": ("UTILITIES", "POWER_TRANSMISSION"),
+    "ADANIENT": ("CONGLOMERATE", "DIVERSIFIED"),
+    "ADANIPORTS": ("INFRASTRUCTURE", "PORTS"),
+}
+
+SECTOR_NAMES = {
+    "ENERGY": "Energy", "IT": "Information Technology", "FINANCIALS": "Financials",
+    "FMCG": "Fast Moving Consumer Goods", "AUTO": "Automobiles", "PHARMA": "Pharmaceuticals",
+    "CONSUMER_DURABLES": "Consumer Durables", "CHEMICALS": "Chemicals",
+    "MATERIALS": "Materials", "METALS": "Metals & Mining", "CAPGOODS": "Capital Goods",
+    "TELECOM": "Telecommunications", "UTILITIES": "Utilities",
+    "CONGLOMERATE": "Conglomerates", "INFRASTRUCTURE": "Infrastructure",
+    "ETF": "Exchange Traded Funds",
+}
+
+
+def discover_cached_symbols(cache_dir: Path) -> list[str]:
+    """Symbols available in the local cache, normalised to plain NSE symbols."""
+    if not cache_dir.is_dir():
+        return []
+    return sorted(
+        {p.stem.removesuffix("-EQ") for p in cache_dir.glob("*.csv") if not p.stem.endswith(".meta")}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+
+def cmd_init(_args) -> int:
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+
+    cfg = AlembicConfig(str(PROJECT_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(PROJECT_ROOT / "migrations"))
+    command.upgrade(cfg, "head")
+    print(f"schema applied -> {get_config().database_url}")
+    return 0
+
+
+def cmd_bootstrap(args) -> int:
+    """Seed sectors, industries, stocks and index membership."""
+    cfg = get_config()
+    symbols = discover_cached_symbols(cfg.cache_dir)
+    if not symbols:
+        print(f"no cached symbols found in {cfg.cache_dir}", file=sys.stderr)
+        return 1
+
+    index_code = cfg.get("universe.default_index")
+
+    with session_scope() as session:
+        sectors: dict[str, Sector] = {}
+        industries: dict[tuple[str, str], Industry] = {}
+
+        for symbol in symbols:
+            sector_code, industry_code = SECTOR_MAP.get(symbol, ("ETF", "INDEX_FUND"))
+
+            if sector_code not in sectors:
+                existing = session.scalar(select(Sector).where(Sector.code == sector_code))
+                if existing is None:
+                    existing = Sector(code=sector_code,
+                                      name=SECTOR_NAMES.get(sector_code, sector_code.title()))
+                    session.add(existing)
+                    session.flush()
+                sectors[sector_code] = existing
+
+            key = (sector_code, industry_code)
+            if key not in industries:
+                existing = session.scalar(
+                    select(Industry).where(
+                        Industry.sector_id == sectors[sector_code].id,
+                        Industry.code == industry_code,
+                    )
+                )
+                if existing is None:
+                    existing = Industry(
+                        sector_id=sectors[sector_code].id,
+                        code=industry_code,
+                        name=industry_code.replace("_", " ").title(),
+                    )
+                    session.add(existing)
+                    session.flush()
+                industries[key] = existing
+
+            if session.scalar(select(Stock).where(Stock.symbol == symbol)) is None:
+                session.add(Stock(symbol=symbol, name=symbol.replace("-", " ").title(),
+                                  exchange="NSE", industry_id=industries[key].id))
+        session.flush()
+
+        index = session.scalar(select(MarketIndex).where(MarketIndex.code == index_code))
+        if index is None:
+            index = MarketIndex(code=index_code, name=index_code, is_benchmark=True)
+            session.add(index)
+            session.flush()
+
+        service = UniverseService(session)
+        added = 0
+        for symbol in symbols:
+            stock = session.scalar(select(Stock).where(Stock.symbol == symbol))
+            exists = session.scalar(
+                select(UniverseMember).where(
+                    UniverseMember.index_id == index.id,
+                    UniverseMember.stock_id == stock.id,
+                )
+            )
+            if exists is None:
+                # 'current_only': this is today's list backfilled, not real
+                # membership history. Resolution will flag it accordingly
+                # rather than pretending the dates are meaningful.
+                service.add_member(index_code, symbol, args.effective_from, source="current_only")
+                added += 1
+
+        print(f"bootstrapped {len(symbols)} symbols, {len(sectors)} sectors, "
+              f"{added} new index memberships")
+    return 0
+
+
+def cmd_ingest(args) -> int:
+    cfg = get_config()
+    provider = build_provider(cfg)
+
+    with session_scope() as session:
+        symbols = args.symbols or [s for (s,) in session.execute(select(Stock.symbol)).all()]
+        if not symbols:
+            print("no symbols; run `bootstrap` first", file=sys.stderr)
+            return 1
+
+        report = ingest_universe(
+            session, symbols, provider, cfg,
+            start=args.start, end=args.end, as_of=args.as_of or date.today(),
+        )
+
+        print(f"\n{report.summary()}")
+        if report.failed:
+            print("\nfailed:")
+            for result in report.failed:
+                print(f"  {result.symbol:<14} {result.error}")
+    return 0 if not report.failed else 2
+
+
+def cmd_status(_args) -> int:
+    with session_scope() as session:
+        counts = {
+            "sectors": session.scalar(select(func.count()).select_from(Sector)),
+            "industries": session.scalar(select(func.count()).select_from(Industry)),
+            "stocks": session.scalar(select(func.count()).select_from(Stock)),
+            "bars": session.scalar(select(func.count()).select_from(OhlcvDaily)),
+            "features": session.scalar(select(func.count()).select_from(TechnicalFeature)),
+            "quality events": session.scalar(select(func.count()).select_from(DataQualityEvent)),
+        }
+        print(f"database: {get_config().database_url}\n")
+        for label, value in counts.items():
+            print(f"  {label:<16} {value:>9,}")
+
+        span = session.execute(
+            select(func.min(OhlcvDaily.date), func.max(OhlcvDaily.date))
+        ).first()
+        if span and span[0]:
+            print(f"\n  coverage       {span[0]} .. {span[1]}")
+
+        rows = session.execute(
+            select(DataQualityEvent.category, DataQualityEvent.severity, func.count())
+            .group_by(DataQualityEvent.category, DataQualityEvent.severity)
+            .order_by(func.count().desc())
+        ).all()
+        if rows:
+            print("\n  data quality")
+            for category, severity, count in rows:
+                print(f"    {severity:<6} {category:<20} {count:>6,}")
+    return 0
+
+
+def cmd_scan(args) -> int:
+    """Run the daily pipeline for one date, or backfill a range."""
+    from sqlalchemy import func, select
+
+    from .db.models import OhlcvDaily
+    from .jobs.daily_scan import backfill, run_daily_scan, summarise
+
+    cfg = get_config()
+    with session_scope() as session:
+        as_of = args.as_of or session.scalar(select(func.max(OhlcvDaily.date)))
+        if as_of is None:
+            print("No price history. Run `vriddhix ingest` first.")
+            return 1
+
+        if args.since:
+            # Oldest first: RS trend and regime hysteresis both read the
+            # previous stored value, so replaying out of order would compute
+            # each day against a future baseline.
+            dates = [
+                d for (d,) in session.execute(
+                    select(OhlcvDaily.date)
+                    .where(OhlcvDaily.date >= args.since, OhlcvDaily.date <= as_of)
+                    .distinct()
+                    .order_by(OhlcvDaily.date)
+                ).all()
+            ]
+            reports = backfill(
+                session, cfg, dates,
+                index_code=args.index, with_structure=not args.no_structure,
+            )
+            for report in reports:
+                print(summarise(report))
+            return 0 if all(r.ok for r in reports) else 1
+
+        report = run_daily_scan(
+            session, cfg, as_of,
+            index_code=args.index, with_structure=not args.no_structure,
+        )
+        print(summarise(report))
+        if report.context:
+            print(
+                f"  context: {report.context.rs_rows} RS, "
+                f"{report.context.sector_rows} sectors, "
+                f"{report.context.regime_rows} regime"
+            )
+        if report.survivorship_warning:
+            print(f"  WARNING: {report.survivorship_warning}")
+        for error in report.errors:
+            print(f"  ERROR: {error}")
+        return 0 if report.ok else 1
+
+
+def cmd_serve(args) -> int:
+    """Run the read API."""
+    try:
+        import uvicorn
+    except ImportError:
+        print("uvicorn is not installed. pip install 'uvicorn[standard]'")
+        return 1
+
+    uvicorn.run(
+        "vriddhix.api.main:app", host=args.host, port=args.port, reload=args.reload
+    )
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="vriddhix", description=__doc__)
+    parser.add_argument("-v", "--verbose", action="store_true")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("init", help="apply migrations").set_defaults(func=cmd_init)
+
+    bootstrap = sub.add_parser("bootstrap", help="seed reference data")
+    bootstrap.add_argument("--effective-from", type=date.fromisoformat, default=date(2015, 1, 1))
+    bootstrap.set_defaults(func=cmd_bootstrap)
+
+    ingest = sub.add_parser("ingest", help="fetch, validate and persist bars")
+    ingest.add_argument("symbols", nargs="*")
+    ingest.add_argument("--start", type=date.fromisoformat)
+    ingest.add_argument("--end", type=date.fromisoformat)
+    ingest.add_argument("--as-of", type=date.fromisoformat)
+    ingest.set_defaults(func=cmd_ingest)
+
+    scan = sub.add_parser("scan", help="run the daily pipeline")
+    scan.add_argument("--as-of", type=date.fromisoformat,
+                      help="scan date (default: the latest bar)")
+    scan.add_argument("--since", type=date.fromisoformat,
+                      help="backfill every trading day from this date")
+    scan.add_argument("--index", default=None)
+    scan.add_argument("--no-structure", action="store_true",
+                      help="skip SMC/FVG analysis")
+    scan.set_defaults(func=cmd_scan)
+
+    serve = sub.add_parser("serve", help="run the read API")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--reload", action="store_true")
+    serve.set_defaults(func=cmd_serve)
+
+    sub.add_parser("status", help="what is in the database").set_defaults(func=cmd_status)
+
+    args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)-7s %(name)s: %(message)s",
+    )
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

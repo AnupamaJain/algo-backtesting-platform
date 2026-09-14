@@ -1,0 +1,173 @@
+# VriddhiX master configuration.
+#
+# No trading constant belongs in source code. Every threshold a researcher
+# might reasonably want to change lives here, and every engine reads it from a
+# typed config object rather than a module-level literal.
+#
+# Sections for engines not yet implemented (vcp, smc, fvg, rs, sector, regime,
+# scoring) are present and validated from Phase 1 so that the values are
+# reviewable now and the loader fails loudly later if a required key is
+# dropped during a refactor.
+
+market:
+  primary_exchange: NSE
+  default_index: NIFTY500
+  timezone: Asia/Kolkata
+  # Bars per period, not calendar days: NSE holidays make calendar offsets
+  # uneven and would silently change every lookback around Diwali.
+  trading_days_per_year: 252
+
+data:
+  # Ordered. First provider that answers wins; the rest are fallbacks.
+  providers: [csv_cache, yfinance]
+  cache_dir: ../quant_backtester/data_india
+  lookback_years: 10
+  price_field: adj_close
+  max_forward_fill_days: 3
+  # Below this, a symbol is not scored at all rather than scored from a stub.
+  min_history_bars: 60
+
+quality:
+  # A same-day move beyond this with no recorded corporate action is more
+  # likely an unadjusted split than a real move.
+  suspected_split_pct: 25
+  # Zero volume is a WARN, not an ERROR: NSE circuit halts produce genuine
+  # zero-volume bars and deleting them would fabricate a gap in the series.
+  zero_volume_severity: WARN
+  stale_after_days: 5
+  max_missing_bar_streak: 5
+
+features:
+  ema_periods: [20, 50, 100, 200]
+  atr_period: 14
+  volume_avg_periods: [20, 50]
+  return_periods: {ret_1m: 21, ret_3m: 63, ret_6m: 126, ret_12m: 252}
+  high_low_lookback: 252
+
+universe:
+  default_index: NIFTY500
+  # When membership history is missing, resolve to today's list but mark the
+  # result CURRENT_UNIVERSE so the bias travels with the numbers.
+  allow_current_universe_fallback: true
+
+vcp:
+  prior_trend_lookback_days: 250
+  min_prior_trend_pct: 30
+  min_prior_trend_days: 40
+  ideal_prior_trend_pct: 100
+
+  min_base_days: 30
+  max_base_days: 250
+  min_base_depth_pct: 5
+  max_base_depth_pct: 35
+  ideal_base_depth_pct: 18
+  base_pivot_strength: 5
+  base_high_lookback: 30
+  max_base_cv: 0.12
+
+  contraction_swing_strength: 3
+  min_contractions: 2
+  max_contractions: 6
+  min_contraction_depth_pct: 2
+  # Real bases are untidy. 18 -> 11 -> 12 -> 6 is a VCP; a zero-tolerance
+  # monotonicity test would reject it.
+  contraction_tolerance: 0.15
+  ideal_compression: 0.6
+  max_final_contraction_pct: 8
+
+  ideal_dryup_ratio: 0.6
+  ideal_base_vol_ratio: 0.75
+
+  pivot_buffer_pct: 0.1
+  pivot_max_distance_from_base_high_pct: 8
+  max_pivot_distance_pct: 10
+  near_pivot_pct: 3
+
+  breakout_volume_multiplier: 1.5
+  failure_buffer_pct: 2
+  confirm_within_days: 3
+
+smc:
+  swing_left_bars: 3
+  swing_right_bars: 3
+  min_swing_move_pct: 0.0
+  break_on: close            # close | high_low
+  ob_lookback_bars: 10
+  ob_use_body: false
+  equal_level_tolerance_pct: 0.1
+  sweep_bos_window: 5
+
+fvg:
+  min_gap_pct: 0.1
+  mitigation_threshold_pct: 50
+  invalidation_buffer_pct: 0.5
+  timeframes: [1d]
+
+mtf:
+  context: 1d
+  structure: 4h
+  refinement: 1h
+  entry: 15m
+  require_context_alignment: true
+
+rs:
+  benchmark_index: NIFTY500
+  horizons: {ret_1m: 21, ret_3m: 63, ret_6m: 126, ret_12m: 252}
+  # Front-weighted: a 12-month return is mostly last year's news, which is not
+  # what "currently strong" should mean.
+  horizon_weights: {ret_1m: 0.40, ret_3m: 0.30, ret_6m: 0.20, ret_12m: 0.10}
+  trend_lookback_days: 21
+  trend_improving_threshold: 5
+  min_history_days: 21
+
+sector:
+  # Equal weight, not cap weight: cap weighting turns every sector into a
+  # proxy for its two largest names, which defeats the participation question.
+  aggregation: equal_weight
+  min_constituents: 5
+  quadrant_rs_midpoint: 50
+
+regime:
+  benchmark_index: NIFTY500
+  weights:
+    trend: 0.30
+    breadth: 0.25
+    momentum: 0.20
+    participation: 0.15
+    volatility: 0.10
+  thresholds: {strong_bull: 75, bull: 60, neutral: 40, bear: 25}
+  hysteresis_band: 3
+  hysteresis_days: 2
+  ideal_ema50_slope: 0.03
+  low_vol: 0.10
+  high_vol: 0.30
+  # Refusal condition: a regime computed from 60% of the universe is a regime
+  # for a biased sample. Return nothing rather than a confident wrong number.
+  min_universe_coverage_pct: 80
+
+scoring:
+  vcp:
+    prior_trend: 0.15
+    base_quality: 0.15
+    contraction_quality: 0.20
+    volume_dryup: 0.15
+    relative_strength: 0.15
+    sector_strength: 0.10
+    pivot_readiness: 0.10
+  confluence:
+    bos_aligned: 0.20
+    choch_recent: 0.10
+    fvg_present: 0.15
+    order_block: 0.15
+    liquidity_sweep: 0.10
+    vwap_alignment: 0.05
+    ema_alignment: 0.05
+    volume: 0.05
+    rs_supportive: 0.10
+    regime_supportive: 0.05
+  grades: {A_PLUS: 85, A: 75, B_PLUS: 65, B: 55}
+
+api:
+  stale_after_hours: 20
+  default_page_size: 50
+  max_page_size: 500
