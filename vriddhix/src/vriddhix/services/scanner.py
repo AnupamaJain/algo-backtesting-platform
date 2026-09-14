@@ -199,6 +199,49 @@ def load_features(session: Session, symbol: str, *, as_of: date | None = None) -
     return frame.rename_axis("date")
 
 
+def prior_regime_state(
+    session: Session, as_of: date, *, lookback: int = 5
+) -> tuple[object | None, list]:
+    """The stored regime immediately before ``as_of``, and what preceded it.
+
+    Hysteresis is the whole reason the regime engine does not flicker, and it
+    only works if the engine is told what the state already was. Reading that
+    here rather than inside the engine keeps L3 free of persistence: the
+    engine stays a pure function of its arguments.
+
+    Returns ``(current_regime, recent_candidates)`` where the candidates are
+    the raw classifications of the preceding sessions, oldest first.
+    """
+    from ..db.models import MarketRegimeRow
+    from ..domain.types import MarketRegime
+
+    rows = list(session.scalars(
+        select(MarketRegimeRow)
+        .where(MarketRegimeRow.date < as_of)
+        .order_by(MarketRegimeRow.date.desc())
+        .limit(lookback)
+    ).all())
+    if not rows:
+        return None, []
+
+    def as_enum(value):
+        try:
+            return MarketRegime(value)
+        except ValueError:
+            return None
+
+    current = as_enum(rows[0].regime)
+    # The candidate is what the day WOULD have been called on its own score,
+    # not the state hysteresis settled on -- otherwise a held state would
+    # vouch for itself and the requirement could never be met.
+    candidates = []
+    for row in reversed(rows):
+        candidate = as_enum(row.pending_regime) or as_enum(row.regime)
+        if candidate is not None:
+            candidates.append(candidate)
+    return current, candidates
+
+
 def sector_map(session: Session) -> dict[str, str]:
     from ..db.models import Industry, Sector
 
@@ -320,11 +363,14 @@ def scan(
     )
     benchmark = _benchmark_series(per_symbol, sectors)
     result.benchmark = benchmark
+    current_regime, recent_candidates = prior_regime_state(session, as_of)
     result.regime = regime_engine.compute_regime(
         breadth, benchmark, as_of, regime_cfg,
         universe_size=len(symbols),
         sector_scores={c: s.rs_score for c, s in sector_results.items()},
         universe_returns=constituents["ret_1m"],
+        current_regime=current_regime,
+        recent_candidates=recent_candidates,
     )
     regime_name = result.regime.regime.value if result.regime else None
 

@@ -590,3 +590,84 @@ def test_a_failed_run_is_not_silently_requeued(session, queued_run, cfg):
 
     # Nothing queued now, so a second pass claims nothing.
     assert run_pending(session, cfg).claimed == 0
+
+
+# ---------------------------------------------------------------------------
+# Hysteresis must be wired, not merely implemented
+# ---------------------------------------------------------------------------
+
+
+def test_the_scanner_feeds_stored_state_back_into_the_regime_engine(
+    session, populated, cfg
+):
+    """The engine cannot apply hysteresis it is never told about.
+
+    ``apply_hysteresis`` passed its own unit tests while the pipeline never
+    supplied ``current_regime``, so the anti-flicker logic was dead code in
+    the only place it mattered. This asserts the wiring, not the arithmetic.
+    """
+    from unittest.mock import patch
+
+    from vriddhix.db.models import MarketRegimeRow
+    from vriddhix.services.scanner import scan
+
+    as_of = populated["RELIANCE"].index[-1].date()
+    previous = populated["RELIANCE"].index[-2].date()
+
+    session.add(
+        MarketRegimeRow(
+            date=previous, regime="BEAR", regime_score=30.0,
+            confidence=50.0, engine_version="REGIME_ENGINE_V1.0",
+        )
+    )
+    session.flush()
+
+    with patch(
+        "vriddhix.engines.regime.compute_regime",
+        wraps=__import__(
+            "vriddhix.engines.regime", fromlist=["compute_regime"]
+        ).compute_regime,
+    ) as spy:
+        scan(session, cfg, as_of, symbols=["RELIANCE", "TCS", "INFY"])
+
+    assert spy.called, "compute_regime was never called"
+    kwargs = spy.call_args.kwargs
+    assert kwargs.get("current_regime") is not None, \
+        "the stored regime was not passed back to the engine"
+    assert kwargs.get("recent_candidates"), \
+        "preceding sessions were not passed as hysteresis candidates"
+
+
+def test_prior_regime_state_reads_the_most_recent_row_first(session, seeded):
+    from datetime import date as date_type
+
+    from vriddhix.db.models import MarketRegimeRow
+    from vriddhix.domain.types import MarketRegime
+    from vriddhix.services.scanner import prior_regime_state
+
+    for day, regime in enumerate(("NEUTRAL", "BEAR", "STRONG_BEAR"), start=1):
+        session.add(
+            MarketRegimeRow(
+                date=date_type(2026, 3, day), regime=regime, regime_score=30.0,
+                engine_version="REGIME_ENGINE_V1.0",
+            )
+        )
+    session.flush()
+
+    current, candidates = prior_regime_state(session, date_type(2026, 3, 4))
+    assert current is MarketRegime.STRONG_BEAR
+    # Oldest first, so the engine can check the most recent N held.
+    assert candidates[-1] is MarketRegime.STRONG_BEAR
+    assert candidates[0] is MarketRegime.NEUTRAL
+
+
+def test_no_prior_history_means_no_hysteresis_constraint(session, seeded):
+    """The first scan of a fresh database must not be blocked from having a
+    regime at all."""
+    from datetime import date as date_type
+
+    from vriddhix.services.scanner import prior_regime_state
+
+    current, candidates = prior_regime_state(session, date_type(2026, 3, 4))
+    assert current is None
+    assert candidates == []
