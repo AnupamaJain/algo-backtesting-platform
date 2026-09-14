@@ -28,7 +28,7 @@ engines      VCP · swings · SMC (BOS/CHoCH/order blocks/liquidity) · FVG
 services     scanner · lifecycle · failure engine · X-ray · conditions
              backtest (costs, sizing, walk-forward, Monte Carlo) · alerts
              context + structure persistence
-jobs         the daily pipeline, and catch-up backfill across a date range
+jobs         the daily pipeline, catch-up backfill, and the backtest worker
 api          43 read endpoints, every payload carrying provenance
 auth         scrypt password hashing, signed tokens, throttled login
 web          landing, signup and learn pages served from the same process
@@ -50,10 +50,11 @@ python -m vriddhix.cli bootstrap    # seed sectors, stocks, index membership
 python -m vriddhix.cli ingest       # fetch, validate, persist bars + features
 python -m vriddhix.cli scan         # run every engine, persist the results
 python -m vriddhix.cli backfill     # fetch new bars, scan every missing session
+python -m vriddhix.cli backtests    # run whatever backtests are queued
 python -m vriddhix.cli status       # what is in the database
 python -m vriddhix.cli serve        # the read API on :8000
 
-pytest                              # 419 tests
+pytest                              # 427 tests
 ```
 
 `scan --since 2026-08-01` replays the pipeline day by day, oldest first. The
@@ -111,10 +112,10 @@ src/vriddhix/
   features/     L2 — pure, causal, vectorised
   engines/      L3 — THE source of truth for detection
   services/     L4 — stateful orchestration and persistence
-  jobs/         L5 — the daily pipeline and the catch-up backfill
+  jobs/         L5 — daily pipeline, catch-up backfill, backtest worker
   api/          L6 — FastAPI (reads), auth, and the public pages
   ai/           L6 — explanation, never computation
-tests/          419 tests
+tests/          427 tests
 ```
 
 Dependencies point downward only: `engines` may never import `db`, `api` or
@@ -143,6 +144,22 @@ PostgreSQL is not installed on the current development machine, so local runs
 and tests use SQLite via `VRIDDHIX_DATABASE_URL`. The schema stays in the
 portable subset and the hypertable conversion is a no-op off PostgreSQL, so
 this is a URL change rather than a migration rewrite.
+
+## Backtests
+
+A backtest replays **stored patterns**, not a fresh run of the detector. The
+daily scan already recorded what each engine saw on each date under the engine
+version that produced it; re-detecting inside the backtester would be the
+second implementation the architecture forbids, and it would quietly apply
+today's engine to yesterday's question. Context is read as it was on that date
+too — joining today's relative strength onto a 2019 signal is a look-ahead no
+test of the engines would catch, because the engines never see it.
+
+Entry rules run through the same condition evaluator as the live screener, so
+a strategy cannot mean one thing on the dashboard and another in its own
+backtest. Fills are at the next open, never the signal close. Costs are the
+Indian statutory set — STT, stamp duty, exchange, SEBI, GST — and every rate
+is configurable because they change.
 
 ## The API in one paragraph
 
@@ -179,7 +196,7 @@ The dashboard. `/`, `/learn` and `/signup` are served from this process, and
 tables, chart panels and pattern X-Ray views described in the master
 specification are not built — the API serves their data today.
 
-Backtests are enqueued by `POST /api/v1/backtests` and the run row records its
-survivorship mode at creation, but no worker consumes the queue — the engine
-in `services/backtest.py` is unit-tested and driven directly, not from the
-API. Wiring a worker to it is the next piece.
+No Celery, no Redis. The daily pipeline runs under launchd and the backtest
+worker is a CLI command; both are single-process and synchronous, which is
+honest for one machine and one universe. Distributing them is a deployment
+change, not a rewrite.

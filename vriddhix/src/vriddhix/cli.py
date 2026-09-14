@@ -346,6 +346,17 @@ def cmd_backfill(args) -> int:
     return 0 if report.ok else 1
 
 
+def cmd_backtests(args) -> int:
+    """Run queued backtests."""
+    from .jobs.backtest_worker import describe, run_once
+
+    report = run_once(limit=args.limit)
+    print(describe(report))
+    for error in report.errors:
+        print(f"  ERROR: {error}")
+    return 0 if report.ok else 1
+
+
 def cmd_serve(args) -> int:
     """Run the read API."""
     try:
@@ -404,6 +415,10 @@ def main(argv: list[str] | None = None) -> int:
     backfill.add_argument("--hour", type=int, default=19)
     backfill.add_argument("--minute", type=int, default=0)
     backfill.set_defaults(func=cmd_backfill)
+
+    backtests = sub.add_parser("backtests", help="run queued backtests")
+    backtests.add_argument("--limit", type=int, default=5)
+    backtests.set_defaults(func=cmd_backtests)
 
     serve = sub.add_parser("serve", help="run the read API")
     serve.add_argument("--host", default="127.0.0.1")

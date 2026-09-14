@@ -11,6 +11,7 @@ These tests defend the properties that make stored rows trustworthy:
 
 from __future__ import annotations
 
+import json
 from datetime import date
 
 import pytest
@@ -491,3 +492,101 @@ def test_a_universe_too_young_to_scan_yields_nothing(session, seeded, cfg):
 
     # No bars ingested at all -> no dates, and no crash.
     assert pending_scan_dates(session, min_history_bars=60) == []
+
+
+# ---------------------------------------------------------------------------
+# The backtest worker
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def queued_run(session, populated, cfg):
+    """A scanned window plus a backtest queued over it."""
+    from vriddhix.db.models import BacktestRun
+    from vriddhix.jobs.nightly import run_backfill
+
+    run_backfill(session, cfg, ingest=False, max_catchup_days=6)
+
+    dates = sorted(d for d in populated["RELIANCE"].index)
+    run = BacktestRun(
+        name="VCP",
+        start_date=dates[0].date(),
+        end_date=dates[-1].date(),
+        initial_capital=1_000_000,
+        config=json.dumps({"entry": {"field": "vcp_score", "cmp": "gte", "value": 0}}),
+        engine_version="VCP_ENGINE_V1.0",
+        rule_version="SCORING_V1.0",
+        survivorship_mode="CURRENT_UNIVERSE",
+        status="QUEUED",
+    )
+    session.add(run)
+    session.flush()
+    return run
+
+
+def test_the_worker_claims_a_queued_run_before_doing_any_work(session, queued_run):
+    """Marked RUNNING first so a crash leaves a visible row, and a second
+    worker cannot take the same job."""
+    from vriddhix.jobs.backtest_worker import claim_next
+
+    claimed = claim_next(session)
+    assert claimed.id == queued_run.id
+    assert claimed.status == "RUNNING"
+    # Nothing left to claim.
+    assert claim_next(session) is None
+
+
+def test_a_queued_backtest_runs_to_completion(session, queued_run, cfg):
+    from vriddhix.db.models import BacktestRun
+    from vriddhix.jobs.backtest_worker import run_pending
+
+    report = run_pending(session, cfg)
+    assert report.claimed == 1
+    assert report.failed == 0, report.errors
+
+    run = session.get(BacktestRun, queued_run.id)
+    assert run.status == "COMPLETED"
+    assert run.finished_at is not None
+
+
+def test_signals_come_from_stored_patterns(session, queued_run):
+    """Not from a re-run of the detector: a backtest must measure what the
+    scanner actually showed, under the engine version that produced it."""
+    from vriddhix.jobs.backtest_worker import signal_rows
+
+    signals = signal_rows(session, queued_run.start_date, queued_run.end_date)
+    assert signals, "no stored patterns in the window"
+    for rows in signals.values():
+        for row in rows:
+            assert row["pattern_id"] is not None
+            assert "vcp_score" in row
+
+
+def test_a_broken_entry_rule_fails_the_run_loudly(session, queued_run, cfg):
+    """Silently matching nothing would report a flawless zero-trade strategy."""
+    from vriddhix.db.models import BacktestRun
+    from vriddhix.jobs.backtest_worker import run_pending
+
+    queued_run.config = json.dumps(
+        {"entry": {"field": "not_a_field", "cmp": "gte", "value": 1}}
+    )
+    session.flush()
+
+    report = run_pending(session, cfg)
+    assert report.failed == 1
+    assert any("not_a_field" in e for e in report.errors)
+    assert session.get(BacktestRun, queued_run.id).status == "FAILED"
+
+
+def test_a_failed_run_is_not_silently_requeued(session, queued_run, cfg):
+    """A run retried forever hides the bug that breaks it."""
+    from vriddhix.jobs.backtest_worker import run_pending
+
+    queued_run.config = json.dumps(
+        {"entry": {"field": "nope", "cmp": "gte", "value": 1}}
+    )
+    session.flush()
+    run_pending(session, cfg)
+
+    # Nothing queued now, so a second pass claims nothing.
+    assert run_pending(session, cfg).claimed == 0
