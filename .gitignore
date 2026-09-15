@@ -69,3 +69,9 @@ quant_backtester/data_india/
 # Dhan: the scrip master is a 198k-row download, the token is a credential.
 **/state/dhan_scrip_master.csv
 **/state/dhan_token.json
+
+# Broker instrument dumps and token files. Dependencies/token_*.txt holds a
+# LIVE access token; the instrument masters are 25MB regenerable downloads.
+Dependencies/
+Dependencies\\*
+*.bak.[0-9]*

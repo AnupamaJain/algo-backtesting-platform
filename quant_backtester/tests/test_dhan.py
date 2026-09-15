@@ -30,7 +30,7 @@ from quant_backtester.src.broker.models import (
 )
 
 
-def _jwt(exp: datetime, client_id: str = "1102901358") -> str:
+def _jwt(exp: datetime, client_id: str = "1000000001") -> str:
     """A structurally real JWT with a chosen expiry. Not signed — nothing here
     verifies signatures, and the platform must never rely on that."""
     import base64
@@ -73,11 +73,11 @@ def test_a_valid_token_authenticates(tmp_path, monkeypatch):
     monkeypatch.delenv("DHAN_ACCESS_TOKEN", raising=False)
     path = tmp_path / "dhan_token.json"
     token = _jwt(datetime.now() + timedelta(days=20))
-    path.write_text(json.dumps({"token": token, "client_id": "1102901358"}))
+    path.write_text(json.dumps({"token": token, "client_id": "1000000001"}))
 
     session = DhanAuth("dhan", {"token_file": str(path)}).authenticate()
     assert session.access_token == token
-    assert session.user_id == "1102901358"
+    assert session.user_id == "1000000001"
     assert session.is_valid()
 
 
@@ -138,7 +138,7 @@ class FakeClient:
     def __init__(self, **responses):
         self.responses = responses
         self.sent = []
-        self.client_id = "1102901358"
+        self.client_id = "1000000001"
 
     def quote(self, payload):
         self.sent.append(("quote", payload))
@@ -350,12 +350,12 @@ def test_the_dhan_section_is_read(tmp_path, monkeypatch):
 
     _write_ini(tmp_path, monkeypatch, """
 [dhan]
-client_id = 1102901358
+client_id = 1000000001
 access_token = header.payload.sig
 """)
     token, client = _from_credentials_file()
     assert token == "header.payload.sig"
-    assert client == "1102901358"
+    assert client == "1000000001"
 
 
 def test_legacy_prefixed_keys_in_another_section_still_work(tmp_path, monkeypatch):
@@ -365,12 +365,12 @@ def test_legacy_prefixed_keys_in_another_section_still_work(tmp_path, monkeypatc
     _write_ini(tmp_path, monkeypatch, """
 [flattrade]
 api_key = abc
-dhan_client_id = 1102901358
+dhan_client_id = 1000000001
 dhan_access_token = header.payload.sig
 """)
     token, client = _from_credentials_file()
     assert token == "header.payload.sig"
-    assert client == "1102901358"
+    assert client == "1000000001"
 
 
 def test_the_dhan_section_wins_over_a_legacy_copy(tmp_path, monkeypatch):
@@ -395,12 +395,12 @@ def test_quoted_values_in_the_dhan_section_are_unwrapped(tmp_path, monkeypatch):
 
     _write_ini(tmp_path, monkeypatch, """
 [dhan]
-client_id = "1102901358"
+client_id = "1000000001"
 access_token = "header.payload.sig"
 """)
     token, client = _from_credentials_file()
     assert token == "header.payload.sig"
-    assert client == "1102901358"
+    assert client == "1000000001"
 
 
 def test_a_missing_config_is_not_an_error(tmp_path, monkeypatch):
