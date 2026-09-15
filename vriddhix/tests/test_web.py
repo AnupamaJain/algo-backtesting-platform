@@ -382,3 +382,79 @@ def test_a_successful_login_clears_the_throttle(client):
 
     assert _recent_failures("clears@example.com") == 0
     reset_failures()
+
+
+# ---------------------------------------------------------------------------
+# API identity and spec health
+# ---------------------------------------------------------------------------
+
+
+def test_no_endpoint_is_documented_under_two_tags(client):
+    """A second tag makes Swagger render the same endpoint twice.
+
+    /api/v1/market/indices carried both its router's tag and its own, so it
+    appeared under `market` and again under `reference`.
+    """
+    spec = client.get("/api/openapi.json").json()
+    doubled = [
+        f"{method.upper()} {path}"
+        for path, ops in spec["paths"].items()
+        for method, op in ops.items()
+        if len(op.get("tags", [])) > 1
+    ]
+    assert doubled == []
+
+
+def test_operation_ids_are_unique(client):
+    """Duplicates silently break every generated client."""
+    import collections
+
+    spec = client.get("/api/openapi.json").json()
+    ids = collections.Counter(
+        op["operationId"]
+        for ops in spec["paths"].values()
+        for op in ops.values()
+        if "operationId" in op
+    )
+    assert [k for k, v in ids.items() if v > 1] == []
+
+
+def test_every_tag_in_use_is_described(client):
+    """An undescribed tag is a bare heading in the reference."""
+    spec = client.get("/api/openapi.json").json()
+    used = {t for ops in spec["paths"].values() for op in ops.values()
+            for t in op.get("tags", [])}
+    described = {t["name"] for t in spec.get("tags", [])}
+    assert used - described == set()
+
+
+def test_the_spec_carries_identity_and_licence(client):
+    spec = client.get("/api/openapi.json").json()["info"]
+    assert spec["title"] == "Sakshi"
+    assert spec["version"]
+    assert spec.get("summary")
+    assert spec.get("license", {}).get("name") == "MIT"
+
+
+def test_the_docs_page_carries_the_mark(client):
+    body = client.get("/api/docs").text
+    assert "/static/logo.svg" in body
+    assert "Sakshi" in body
+
+
+def test_the_logo_is_served_and_self_coloured(client):
+    """It is used in <img> and as a favicon, where currentColor never
+    resolves -- a currentColor-only mark renders black and disappears on a
+    dark tab strip."""
+    import re
+
+    r = client.get("/static/logo.svg")
+    assert r.status_code == 200
+    assert "svg" in r.headers["content-type"]
+
+    # Comments explain WHY currentColor is avoided, so strip them before
+    # asserting on the markup itself.
+    markup = re.sub(r"<!--.*?-->", "", r.text, flags=re.S)
+    assert "currentColor" not in markup
+    assert re.search(r'(fill|stop-color|stroke)="#[0-9a-fA-F]{3,6}"', markup), \
+        "no explicit colour in the mark"

@@ -6,7 +6,7 @@
 <title>{% block title %}VriddhiX{% endblock %}</title>
 <meta name="description" content="{% block description %}Pattern intelligence and quantitative research for Indian equities. A research instrument, not a prediction machine.{% endblock %}">
 <link rel="stylesheet" href="/static/app.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📐</text></svg>">
+<link rel="icon" type="image/svg+xml" href="/static/logo.svg">
 <script>
   // Applied before first paint: a flash of the wrong theme is the first
   // thing a reader notices and the last thing they forgive.
@@ -20,7 +20,10 @@
 
 <header class="top">
   <div class="wrap topbar">
-    <a class="brand" href="/">VriddhiX <span class="mark">NSE</span></a>
+    <a class="brand" href="/">
+      <img src="/static/logo.svg" alt="" width="24" height="24" class="brand-mark">
+      VriddhiX <span class="mark">NSE</span>
+    </a>
     <nav class="links">
       <a href="/learn" class="secondary {% if page == 'learn' %}active{% endif %}">Learn</a>
       <a href="/api/docs" class="secondary">API</a>

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"
+     aria-label="Sakshi — the witness">
+  <title>Sakshi — the witness</title>
+  <!--
+    One candle, and the level someone wrote down on it.
+
+    The product's claim in a single shape: it reads a bar and records where
+    price actually was, with the end-serifs of a measurement rather than the
+    arrow of a forecast. It points nowhere.
+
+    The level sits below centre, at the close, so it reads as an annotation
+    rather than a line struck through the body. Colour is baked in because
+    this file is used in <img> and as a favicon, where currentColor does not
+    reach and the mark would render black and vanish on a dark tab strip.
+  -->
+  <defs>
+    <linearGradient id="sk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#e0ad74"/>
+      <stop offset="100%" stop-color="#b3702f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- wick -->
+  <path d="M32 7v50" stroke="#b3702f" stroke-opacity=".4"
+        stroke-width="3" stroke-linecap="round"/>
+
+  <!-- body -->
+  <rect x="23" y="15" width="18" height="30" rx="5" fill="url(#sk)"/>
+
+  <!-- the recorded level: a measurement across the bar, at the close -->
+  <path d="M10 45h44" stroke="#6b3f18" stroke-width="3"
+        stroke-linecap="round" stroke-opacity=".92"/>
+  <path d="M10 40.5v9M54 40.5v9" stroke="#6b3f18" stroke-width="3"
+        stroke-linecap="round" stroke-opacity=".62"/>
+</svg>

@@ -599,3 +599,5 @@ tr.scr-in { animation: scr-slide .32s ease both; }
   padding: 30px 24px; font-size: .9rem; color: var(--muted);
   text-align: center; line-height: 1.6;
 }
+
+.brand-mark { flex: 0 0 auto; align-self: center; }

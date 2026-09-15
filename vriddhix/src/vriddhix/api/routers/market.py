@@ -148,7 +148,7 @@ def breadth_series(
     }
 
 
-@router.get("/indices", tags=["reference"])
+@router.get("/indices")
 def indices(session: SessionDep) -> dict:
     rows = session.scalars(select(MarketIndex).order_by(MarketIndex.code)).all()
     return {
