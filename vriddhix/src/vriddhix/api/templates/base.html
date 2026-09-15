@@ -22,8 +22,8 @@
   <div class="wrap topbar">
     <a class="brand" href="/">VriddhiX <span class="mark">NSE</span></a>
     <nav class="links">
-      <a href="/learn" {% if page == 'learn' %}class="active"{% endif %}>Learn</a>
-      <a href="/api/docs">API</a>
+      <a href="/learn" class="secondary {% if page == 'learn' %}active{% endif %}">Learn</a>
+      <a href="/api/docs" class="secondary">API</a>
       <a href="/login" {% if page == 'login' %}class="active"{% endif %}>Sign in</a>
       <a class="btn btn-primary" href="/signup">Create account</a>
     </nav>

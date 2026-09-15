@@ -260,7 +260,12 @@ def test_every_page_carries_the_not_advice_disclaimer(client, path):
 
 
 def test_the_landing_page_reports_real_coverage(client, session):
-    """Figures are read from the database, never written into the copy."""
+    """Figures are read from the database, never written into the copy.
+
+    A marketing page quoting a number that has drifted from the data beneath
+    it is the smallest possible version of the dishonesty this whole system
+    is built to avoid.
+    """
     from datetime import date
 
     from vriddhix.db.models import OhlcvDaily, Stock
@@ -268,14 +273,46 @@ def test_the_landing_page_reports_real_coverage(client, session):
     stock = Stock(symbol="RELI", name="Reliance", exchange="NSE")
     session.add(stock)
     session.flush()
-    session.add(
-        OhlcvDaily(stock_id=stock.id, date=date(2024, 1, 1), open=1, high=2,
-                   low=1, close=2, volume=10, provider="test")
-    )
+    for day in range(1, 8):
+        session.add(
+            OhlcvDaily(stock_id=stock.id, date=date(2024, 1, day), open=1, high=2,
+                       low=1, close=2, volume=10, provider="test")
+        )
     session.flush()
 
     body = client.get("/").text
-    assert "1</div>" in body or "Universe" in body
+    # Seven bars in, seven bars reported.
+    assert ">7</b> bars" in body or ">7</b>\n" in body or "7</b> bars" in body
+
+
+def test_the_landing_chart_is_drawn_from_stored_regimes(client, session):
+    """The hero chart is engine output, not artwork."""
+    from datetime import date
+
+    from vriddhix.db.models import MarketRegimeRow
+
+    for day, score in enumerate([20.0, 45.0, 80.0], start=1):
+        session.add(
+            MarketRegimeRow(
+                date=date(2025, 6, day),
+                regime="NEUTRAL", regime_score=score,
+                engine_version="REGIME_ENGINE_V1.0",
+            )
+        )
+    session.flush()
+
+    body = client.get("/").text
+    assert "ribbon-line" in body, "the regime chart did not render"
+    assert "2025-06-01" in body and "2025-06-03" in body
+
+
+def test_the_header_marks_links_that_may_collapse_on_a_phone(client):
+    """The nav used to run past a 390px viewport and take the page into a
+    horizontal scroll."""
+    body = client.get("/").text
+    assert 'class="secondary' in body
+    # The account CTA is the one link that must survive the collapse.
+    assert 'href="/signup"' in body
 
 
 def test_the_static_stylesheet_is_served(client):

@@ -2,184 +2,266 @@
 {% block title %}VriddhiX — pattern intelligence for Indian equities{% endblock %}
 
 {% block content %}
-<section class="wrap hero">
-  <div class="eyebrow">NSE · Research instrument</div>
-  <h1>It measures what happened.<br>It does not tell you what will.</h1>
-  <p class="lede">
-    VriddhiX finds chart structure in Indian equities — volatility contractions,
-    breaks of market structure, fair value gaps — places each one in market and
-    sector context, scores it, and then records what actually happened next.
-    Every number is a deterministic calculation over data that existed at the
-    time.
-  </p>
 
-  <div class="cta-row">
-    <a class="btn btn-primary" href="/signup">Create an account</a>
-    <a class="btn btn-ghost" href="/learn">How the engines work</a>
-  </div>
-
-  {% if coverage %}
-  <div class="strip">
-    <div class="cell">
-      <div class="k">Universe</div>
-      <div class="v">{{ coverage.symbols }}</div>
-      <div class="s">NSE symbols</div>
-    </div>
-    <div class="cell">
-      <div class="k">Price history</div>
-      <div class="v">{{ "{:,}".format(coverage.bars) }}</div>
-      <div class="s">daily bars · {{ coverage.years }} years</div>
-    </div>
-    <div class="cell">
-      <div class="k">Sessions scanned</div>
-      <div class="v">{{ "{:,}".format(coverage.scans) }}</div>
-      <div class="s">every engine, every day</div>
-    </div>
-    {% if regime %}
-    <div class="cell">
-      <div class="k">Market regime</div>
-      <div class="v regime-{{ regime.regime }}">{{ regime.regime.replace('_', ' ') }}</div>
-      <div class="s">score {{ "%.0f"|format(regime.regime_score) }} ·
-        confidence {{ "%.0f"|format(regime.confidence or 0) }}</div>
-    </div>
-    {% endif %}
-  </div>
-  {% if as_of %}
-    <div class="faint" style="margin-top:10px">
-      Measured on {{ as_of }}{% if coverage.last_bar %}, from bars through
-      {{ coverage.last_bar }}{% endif %}.
-    </div>
-    {% if is_stale %}
-      <div class="stale-note">
-        This reading is older than the freshness threshold. It is shown with
-        its age rather than hidden — stale and labelled beats empty.
+<!-- ══════════════ hero ══════════════ -->
+<section class="hero-wrap">
+  <div class="wrap hero">
+    <div class="hero-copy">
+      <div class="eyebrow">NSE equities · research instrument</div>
+      <h1>Ten years of the market,<br><em>measured the same way.</em></h1>
+      <p class="lede">
+        VriddhiX finds chart structure in Indian equities, scores it against
+        market and sector context, and records what happened next — including
+        every time it was wrong.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary btn-lg" href="/signup">Create a free account</a>
+        <a class="btn btn-ghost btn-lg" href="/learn">See how it measures</a>
       </div>
+      {% if coverage and coverage.bars %}
+      <div class="proof">
+        <span><b class="num">{{ "{:,}".format(coverage.bars) }}</b> bars</span>
+        <span><b class="num">{{ "{:,}".format(coverage.scans) }}</b> sessions scanned</span>
+        <span><b class="num">{{ "{:,}".format(coverage.patterns) }}</b> patterns recorded</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if ribbon and ribbon.line %}
+    <figure class="ribbon-card">
+      <figcaption class="ribbon-head">
+        <span class="ribbon-title">Market regime, every session since {{ ribbon.first.year }}</span>
+        <span class="faint num">{{ "{:,}".format(ribbon.sessions) }} sessions · {{ ribbon.changes }} changes</span>
+      </figcaption>
+
+      <svg class="ribbon" viewBox="0 0 {{ ribbon.width }} {{ ribbon.height }}"
+           preserveAspectRatio="none" role="img"
+           aria-label="Market regime score from {{ ribbon.first }} to {{ ribbon.last }}">
+        {% for z in ribbon.zones %}
+        <rect x="0" y="{{ "%.2f"|format(z.y) }}" width="{{ ribbon.width }}"
+              height="{{ "%.2f"|format(z.h) }}" fill="{{ z.fill }}"
+              opacity="0.17"><title>{{ z.label }}</title></rect>
+        {% endfor %}
+        <polyline points="{{ ribbon.area }}" class="ribbon-area"/>
+        <polyline points="{{ ribbon.line }}" class="ribbon-line"/>
+      </svg>
+
+      <div class="ribbon-axis num">
+        <span>{{ ribbon.first }}</span><span>{{ ribbon.last }}</span>
+      </div>
+
+      <div class="mix">
+        {% for m in ribbon.mix %}
+        <div class="mix-row">
+          <span class="swatch" style="background:{{ m.fill }}"></span>
+          <span class="mix-label">{{ m.regime.replace('_',' ')|title }}</span>
+          <span class="mix-bar"><i style="width:{{ "%.1f"|format(m.pct) }}%;background:{{ m.fill }}"></i></span>
+          <span class="mix-pct num">{{ "%.0f"|format(m.pct) }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="ribbon-note">
+        Not an illustration — the engine's own output. The shaded zones are
+        the thresholds that define each regime, so where the line sits
+        <em>is</em> the classification.
+      </p>
+    </figure>
     {% endif %}
-  {% endif %}
-  {% endif %}
+  </div>
 </section>
 
+<!-- ══════════════ today ══════════════ -->
+{% if regime %}
 <section class="wrap">
-  <h2>Four commitments</h2>
-  <p class="muted" style="max-width:62ch">
-    These are not features. They are the constraints the system is built
-    around, and each one costs something — which is how you can tell they are
-    real.
-  </p>
+  <div class="today">
+    <div class="today-main" style="--accent-regime: {{ regime_colour }}">
+      <div class="k">Right now</div>
+      <div class="regime-big" style="color:{{ regime_colour }}">
+        {{ regime.regime.replace('_',' ')|title }}
+      </div>
+      <div class="regime-meta num">
+        score {{ "%.0f"|format(regime.regime_score) }} · confidence {{ "%.0f"|format(regime.confidence or 0) }}
+      </div>
+      <div class="faint" style="margin-top:6px">measured {{ as_of }}</div>
+      {% if regime.pending_regime %}
+      <div class="pending">
+        A threshold was crossed toward <b>{{ regime.pending_regime.replace('_',' ')|title }}</b>,
+        held back until it is sustained.
+      </div>
+      {% endif %}
+      {% if is_stale %}
+      <div class="stale-note">Older than the freshness threshold — shown with its age rather than hidden.</div>
+      {% endif %}
+    </div>
 
+    {% if breadth %}
+    <div class="today-side">
+      <div class="k">Participation</div>
+      <div class="gauge-row">
+        {% for label, value in [
+             ('above 20d', breadth.pct_above_ema_20),
+             ('above 50d', breadth.pct_above_ema_50),
+             ('above 200d', breadth.pct_above_ema_200)] %}
+          {% if value is not none %}
+          <div class="gauge">
+            <div class="gauge-bar"><i style="height:{{ "%.0f"|format(value) }}%"></i></div>
+            <div class="gauge-v num">{{ "%.0f"|format(value) }}%</div>
+            <div class="gauge-k">{{ label }}</div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if spark and spark.line %}
+      <div class="spark-wrap">
+        <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="{{ spark.area }}" class="spark-area"/>
+          <polyline points="{{ spark.line }}" class="spark-line"/>
+        </svg>
+        <div class="faint">share above the 50-day average, last {{ 180 }} sessions</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════ what it sees ══════════════ -->
+{% if setups %}
+<section class="wrap">
+  <div class="sec-head">
+    <h2>What the scanner sees today</h2>
+    <a class="quiet-link" href="/api/docs">every field via the API →</a>
+  </div>
+  <div class="table-card">
+    <table class="setups">
+      <thead>
+        <tr><th>Symbol</th><th>Sector</th><th>Stage</th>
+            <th class="r">Score</th><th class="r">RS</th><th class="r">Contractions</th></tr>
+      </thead>
+      <tbody>
+        {% for s in setups %}
+        <tr>
+          <td><b>{{ s.symbol }}</b></td>
+          <td class="muted">{{ s.sector.replace('_',' ')|title if s.sector else '—' }}</td>
+          <td><span class="stage stage-{{ s.stage }}">{{ s.stage.replace('_',' ')|title }}</span></td>
+          <td class="r">
+            <span class="score-cell">
+              <span class="score-bar"><i style="width:{{ "%.0f"|format(s.score) }}%"></i></span>
+              <span class="num">{{ "%.0f"|format(s.score) }}</span>
+            </span>
+          </td>
+          <td class="r num">{{ "%.0f"|format(s.rs) if s.rs is not none else '—' }}</td>
+          <td class="r num">{{ s.contractions or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="faint" style="margin-top:10px">
+    A score classifies what a chart has measurably done. It is not a
+    recommendation, and it is not a prediction.
+  </p>
+</section>
+{% endif %}
+
+<!-- ══════════════ the ledger ══════════════ -->
+{% if ledger %}
+<section class="wrap">
+  <div class="ledger-card">
+    <div class="ledger-copy">
+      <h2 style="margin-top:0">Every breakout is followed to an outcome</h2>
+      <p class="muted">
+        Most platforms show you what worked. This one keeps the failures as
+        first-class rows, with the reason and the day it happened, and no view
+        filters them out by default. A hit rate computed over survivors is the
+        single most flattering lie a research tool can tell.
+      </p>
+      <a class="quiet-link" href="/learn#lies">the five quiet lies →</a>
+    </div>
+    <div class="ledger-viz">
+      <div class="donut-row">
+        <div class="stat-big">
+          <div class="stat-n num">{{ "{:,}".format(ledger.resolved) }}</div>
+          <div class="stat-k">breakouts resolved</div>
+        </div>
+      </div>
+      <div class="split">
+        <i class="split-ok"  style="width:{{ "%.1f"|format(ledger.confirmed_pct) }}%"></i>
+        <i class="split-bad" style="width:{{ "%.1f"|format(ledger.failed_pct) }}%"></i>
+      </div>
+      <div class="split-legend">
+        <span><b class="num">{{ "%.0f"|format(ledger.confirmed_pct) }}%</b> held above the pivot
+          <span class="faint num">({{ ledger.confirmed }})</span></span>
+        <span class="r"><b class="num">{{ "%.0f"|format(ledger.failed_pct) }}%</b> failed
+          <span class="faint num">({{ ledger.failed }})</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════ pipeline ══════════════ -->
+<section class="wrap">
+  <div class="sec-head"><h2>One direction, no shortcuts</h2></div>
+  <p class="muted" style="max-width:60ch;margin-top:-4px">
+    Each stage reads only what the stage before it produced, which is what
+    makes any number traceable back to a bar.
+  </p>
+  <ol class="pipeline">
+    <li><span class="step num">01</span><b>Data</b><span>NSE daily bars, validated. Nothing silently dropped or repaired.</span></li>
+    <li><span class="step num">02</span><b>Features</b><span>EMA, ATR, returns, 52-week extremes, relative volume — strictly causal.</span></li>
+    <li><span class="step num">03</span><b>Detection</b><span>VCP contractions, BOS and CHoCH, order blocks, fair value gaps.</span></li>
+    <li><span class="step num">04</span><b>Context</b><span>Market regime, breadth, relative strength, sector rotation.</span></li>
+    <li><span class="step num">05</span><b>Scoring</b><span>Weighted components — every one stored, every one shown.</span></li>
+    <li><span class="step num">06</span><b>Tracking</b><span>The breakout ledger: confirmed, failed, and why.</span></li>
+    <li><span class="step num">07</span><b>Backtest</b><span>The same detector replayed, with costs and survivorship stated.</span></li>
+  </ol>
+</section>
+
+<!-- ══════════════ commitments ══════════════ -->
+<section class="wrap">
+  <div class="sec-head"><h2>Four commitments</h2></div>
+  <p class="muted" style="max-width:60ch;margin-top:-4px">
+    Constraints, not features. Each one costs something — which is how you can
+    tell they are real.
+  </p>
   <div class="grid">
     <div class="card">
       <span class="tag">one implementation</span>
       <h3>The backtest cannot drift from the scanner</h3>
-      <p>
-        The live scanner, the backtester, the historical X-Ray and the research
-        queries call the same function objects — not the same algorithm written
-        twice. There is no second implementation to drift from. A test walks
-        the syntax tree to enforce it, because a convention is something people
-        forget at 2am.
-      </p>
+      <p>Live scanner, backtester and X-Ray call the same function objects. There is no second implementation to drift from, and a test walks the syntax tree to keep it that way.</p>
     </div>
-
     <div class="card">
       <span class="tag">causality</span>
       <h3>Nothing may see the future</h3>
-      <p>
-        A value dated <em>t</em> depends only on bars dated <em>t</em> or
-        earlier. Verified by truncating history at a date, recomputing, and
-        demanding identical output — on synthetic data, on real NSE history,
-        and across an unadjusted bonus issue. A look-ahead bug never crashes;
-        it produces a backtest that looks excellent and means nothing.
-      </p>
+      <p>Verified by truncating history, recomputing, and demanding identical output. A look-ahead bug never crashes — it produces a backtest that looks excellent and means nothing.</p>
     </div>
-
     <div class="card">
       <span class="tag">honest nulls</span>
-      <h3>The database says what it does not know</h3>
-      <p>
-        An unranked sector's strength is <span class="num">null</span>, not
-        <span class="num">0</span> — "no standing" and "ranked last" are
-        different claims. A win rate over zero resolved trades is
-        <span class="num">null</span>, not <span class="num">0%</span>, which
-        would read as "this has never worked". Absence is never quietly
-        rendered as a bearish number.
-      </p>
+      <h3>It says what it does not know</h3>
+      <p>An unranked sector reads <span class="num">null</span>, not <span class="num">0</span>. Absence is never quietly rendered as a bearish number.</p>
     </div>
-
     <div class="card">
       <span class="tag">failures kept</span>
-      <h3>Every breakout that failed is still here</h3>
-      <p>
-        Failed breakouts stay in the ledger with the reason and the day it
-        happened, and no view filters them out by default. A hit rate computed
-        over survivors is the single most flattering lie a research tool can
-        tell, and it is the easiest one to tell by accident.
-      </p>
+      <h3>Nothing that failed is deleted</h3>
+      <p>Failed breakouts stay in the ledger with their reason, and no view drops them by default.</p>
     </div>
   </div>
 </section>
 
+<!-- ══════════════ close ══════════════ -->
 <section class="wrap">
-  <h2>What it is, and what it isn't</h2>
-  <div class="versus">
-    <div class="not">
-      <h3>Not this</h3>
-      <ul>
-        <li>No price targets, forecasts, or "expected return" figures.</li>
-        <li>No buy and sell calls. A grade classifies a chart's measured behaviour; it is not a recommendation.</li>
-        <li>No tips, no signals service, no portfolio management.</li>
-        <li>No claim that a pattern will repeat. The ledger records what followed each one — that is a measurement, not a promise.</li>
-      </ul>
+  <div class="close">
+    <h2 style="margin:0 0 8px">Read the data yourself</h2>
+    <p class="muted" style="max-width:54ch;margin:0 auto 22px">
+      Watchlists, saved screens built on the same evaluator the backtester
+      uses, and alerts over stored scan results. Free.
+    </p>
+    <div class="cta-row" style="justify-content:center">
+      <a class="btn btn-primary btn-lg" href="/signup">Create an account</a>
+      <a class="btn btn-ghost btn-lg" href="/api/docs">Browse the API</a>
     </div>
-    <div class="is">
-      <h3>This</h3>
-      <ul>
-        <li>Detection you can audit: every score decomposes into named, weighted components read from stored rows.</li>
-        <li>Context on every setup: market regime, sector standing, relative strength, all computed the same day.</li>
-        <li>A research database that accumulates — the same detector replayed across history, with outcomes attached.</li>
-        <li>Backtests that state their own survivorship mode in the results, so a biased universe travels with the numbers.</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<section class="wrap">
-  <h2>The pipeline</h2>
-  <p class="muted" style="max-width:64ch">
-    One direction, no shortcuts. Each stage reads only what the stage before it
-    produced, which is what makes a number traceable back to a bar.
-  </p>
-  <figure class="stages">
-<pre>DATA        NSE daily bars, validated — nothing silently dropped or repaired
-   ↓
-FEATURES    EMA · ATR · returns · 52-week extremes · relative volume  (causal)
-   ↓
-DETECTION   VCP contractions · BOS / CHoCH · order blocks · fair value gaps
-   ↓
-CONTEXT     market regime · breadth · relative strength · sector rotation
-   ↓
-SCORING     weighted components, each one stored and shown
-   ↓
-TRACKING    breakout ledger — confirmed, failed, and why
-   ↓
-BACKTEST    the same detector, replayed, with costs and survivorship stated</pre>
-    <figcaption>
-      Data quality is recorded, never repaired. A suspected split is flagged
-      as suspected and left alone: a price series the platform silently
-      "fixed" is one nobody can reconcile afterwards.
-    </figcaption>
-  </figure>
-</section>
-
-<section class="wrap" style="padding-bottom:20px">
-  <h2>Start reading the data</h2>
-  <p class="muted" style="max-width:60ch">
-    An account gives you watchlists, saved screens built from the same
-    condition evaluator the backtester uses, and alerts on stored scan results.
-    The full HTTP surface is documented and browsable.
-  </p>
-  <div class="cta-row">
-    <a class="btn btn-primary" href="/signup">Create an account</a>
-    <a class="btn btn-ghost" href="/api/docs">Read the API reference</a>
   </div>
 </section>
 {% endblock %}
