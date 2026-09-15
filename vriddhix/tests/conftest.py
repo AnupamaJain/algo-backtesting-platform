@@ -81,6 +81,17 @@ def cfg():
     return load_config()
 
 
+@pytest.fixture
+def index_code(cfg) -> str:
+    """The configured default universe.
+
+    Tests read it rather than pinning a literal: which index is the default
+    is a deployment choice, and hardcoding it means every scan test breaks
+    the day someone changes it.
+    """
+    return cfg.get("universe.default_index")
+
+
 # ---------------------------------------------------------------------------
 # Synthetic price data
 # ---------------------------------------------------------------------------
@@ -174,7 +185,12 @@ def seeded(session):
     session.add_all(stocks.values())
     session.flush()
 
-    nifty500 = MarketIndex(code="NIFTY500", name="Nifty 500", is_benchmark=True)
+    # Named from the config rather than hardcoded -- see the index_code
+    # fixture for why.
+    from vriddhix.config import load_config
+
+    code = load_config().get("universe.default_index")
+    nifty500 = MarketIndex(code=code, name=code, is_benchmark=True)
     session.add(nifty500)
     session.flush()
 

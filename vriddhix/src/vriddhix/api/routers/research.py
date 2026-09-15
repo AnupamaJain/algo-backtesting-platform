@@ -154,6 +154,7 @@ def create_backtest(
     """Enqueue a backtest. Returns 202 with a run id to poll."""
     from datetime import date as date_type
 
+    from ...config import get_config
     from ...universe.service import UniverseService
 
     name = (payload.get("name") or "").strip()
@@ -169,7 +170,10 @@ def create_backtest(
     if start >= end:
         raise errors.invalid_params("start_date must be before end_date.")
 
-    index_code = payload.get("index", "NIFTY500")
+    # From config, not a literal: the default universe is a deployment
+    # choice, and a hardcoded index name silently fails to resolve the day
+    # someone changes it.
+    index_code = payload.get("index") or get_config().get("universe.default_index")
     resolution = UniverseService(session).members_as_of(index_code, start)
 
     row = BacktestRun(

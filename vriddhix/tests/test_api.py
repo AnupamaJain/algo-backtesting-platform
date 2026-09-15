@@ -561,3 +561,26 @@ def test_a_pending_breakout_is_not_counted_as_resolved(client, resolved_breakout
     assert summary["resolved"] == 0
     # None, not 0.0: a win rate over nothing is undefined.
     assert summary["win_rate"] is None
+
+
+def test_the_screener_demo_uses_real_stored_setups(client, scanned):
+    """A marketing demo built on invented rows would be the one place on the
+    site where the numbers are not the engine's -- and a visitor could not
+    tell."""
+    import json
+    import re
+
+    body = client.get("/").text
+    match = re.search(r'id="screener-data">(.*?)</script>', body, re.S)
+    if match is None:
+        pytest.skip("no setups stored in this fixture")
+
+    rows = json.loads(match.group(1))
+    assert rows, "the demo rendered with no rows"
+    for row in rows:
+        assert row["symbol"]
+        assert 0 <= row["score"] <= 100
+        assert row["stage"] in {
+            "FORMING", "NEAR_PIVOT", "BREAKOUT", "CONFIRMED", "EXTENDED",
+            "FAILED", "COMPLETED",
+        }

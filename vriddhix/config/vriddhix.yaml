@@ -11,7 +11,7 @@
 
 market:
   primary_exchange: NSE
-  default_index: NIFTY500
+  default_index: NIFTY_FNO
   timezone: Asia/Kolkata
   # Bars per period, not calendar days: NSE holidays make calendar offsets
   # uneven and would silently change every lookback around Diwali.
@@ -53,7 +53,7 @@ features:
   high_low_lookback: 252
 
 universe:
-  default_index: NIFTY500
+  default_index: NIFTY_FNO
   # When membership history is missing, resolve to today's list but mark the
   # result CURRENT_UNIVERSE so the bias travels with the numbers.
   allow_current_universe_fallback: true

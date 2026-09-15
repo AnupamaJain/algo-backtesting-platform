@@ -56,8 +56,8 @@ def test_symbol_is_unique(session, seeded):
         session.flush()
 
 
-def test_index_code_is_unique(session, seeded):
-    session.add(MarketIndex(code="NIFTY500", name="Duplicate"))
+def test_index_code_is_unique(session, seeded, index_code):
+    session.add(MarketIndex(code=index_code, name="Duplicate"))
     with pytest.raises(IntegrityError):
         session.flush()
 

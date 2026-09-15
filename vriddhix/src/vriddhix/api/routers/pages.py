@@ -16,6 +16,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from datetime import timedelta
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -80,84 +82,58 @@ REGIME_COLOURS = {
 }
 
 
-def _regime_ribbon(session, points: int = 320) -> dict:
-    """Ten years of regime score, drawn as a chart over its own thresholds.
+def _regime_ribbon(session, buckets: int = 56) -> dict:
+    """Ten years of market state as wide, solid blocks.
 
-    Bands-per-session were tried and abandoned. The regime genuinely changes
-    every ten sessions or so, so any vertical-stripe encoding renders as
-    static: technically every value, visually nothing. A score line over
-    shaded threshold zones says the same thing and can actually be read --
-    where the line sits IS the regime, because the zones are the thresholds
-    that define it.
+    Coarse on purpose. One band per session compresses 2,415 values into
+    under a third of a pixel each and renders as static -- technically every
+    value, visually nothing. At roughly two months per block the shape of a
+    decade is legible at a glance, and the exact history stays available
+    through the API for anyone who wants it.
     """
     rows = session.execute(
-        select(MarketRegimeRow.date, MarketRegimeRow.regime_score)
+        select(MarketRegimeRow.date, MarketRegimeRow.regime)
         .order_by(MarketRegimeRow.date)
     ).all()
     if len(rows) < 2:
         return {}
 
     total = len(rows)
-    step = max(1, total // points)
-    sampled = [
-        (rows[i][0], float(rows[i][1]))
-        for i in range(0, total, step)
-        if rows[i][1] is not None
-    ]
-    if len(sampled) < 2:
-        return {}
+    size = max(1, total // buckets)
+    groups = [rows[i:i + size] for i in range(0, total, size)]
 
-    width, height = 100.0, 40.0
-    coords = [
-        (i / (len(sampled) - 1) * width, height - score / 100.0 * height)
-        for i, (_, score) in enumerate(sampled)
-    ]
-    line = " ".join(f"{x:.2f},{y:.2f}" for x, y in coords)
+    bands = []
+    for i, group in enumerate(groups):
+        counts: dict[str, int] = {}
+        for _d, regime in group:
+            counts[regime] = counts.get(regime, 0) + 1
+        dominant = max(counts, key=counts.get)
+        bands.append({
+            "x": i / len(groups) * 100.0,
+            "w": 100.0 / len(groups),
+            "fill": REGIME_COLOURS.get(dominant, "#9a948c"),
+            "regime": dominant.replace("_", " ").title(),
+            "from": group[0][0],
+            "to": group[-1][0],
+        })
 
-    # Zones are the classifier's own thresholds, so the chart and the engine
-    # cannot drift apart visually.
-    cfg_zones = [
-        ("STRONG_BULL", 75.0, 100.0),
-        ("BULL",        60.0,  75.0),
-        ("NEUTRAL",     40.0,  60.0),
-        ("BEAR",        25.0,  40.0),
-        ("STRONG_BEAR",  0.0,  25.0),
-    ]
-    zones = [
-        {
-            "y": height - hi / 100.0 * height,
-            "h": (hi - lo) / 100.0 * height,
-            "fill": REGIME_COLOURS[name],
-            "label": name.replace("_", " ").title(),
-        }
-        for name, lo, hi in cfg_zones
-    ]
-
-    counts: dict[str, int] = {}
-    regimes = session.execute(
-        select(MarketRegimeRow.regime).order_by(MarketRegimeRow.date)
-    ).all()
-    for (regime,) in regimes:
-        counts[regime] = counts.get(regime, 0) + 1
-    changes = sum(
-        1 for i in range(1, len(regimes)) if regimes[i][0] != regimes[i - 1][0]
-    )
+    counts_all: dict[str, int] = {}
+    for _d, regime in rows:
+        counts_all[regime] = counts_all.get(regime, 0) + 1
+    changes = sum(1 for i in range(1, total) if rows[i][1] != rows[i - 1][1])
 
     return {
-        "line": line,
-        "area": f"0,{height:.2f} {line} {width:.2f},{height:.2f}",
-        "zones": zones,
-        "height": height,
-        "width": width,
+        "bands": bands,
         "first": rows[0][0],
         "last": rows[-1][0],
         "sessions": total,
         "changes": changes,
         "mix": [
-            {"regime": r, "pct": counts.get(r, 0) / total * 100.0,
-             "fill": REGIME_COLOURS[r], "sessions": counts.get(r, 0)}
+            {"regime": r.replace("_", " ").title(),
+             "pct": counts_all.get(r, 0) / total * 100.0,
+             "fill": REGIME_COLOURS[r], "sessions": counts_all.get(r, 0)}
             for r in ("STRONG_BULL", "BULL", "NEUTRAL", "BEAR", "STRONG_BEAR")
-            if counts.get(r)
+            if counts_all.get(r)
         ],
     }
 
@@ -224,6 +200,58 @@ def _top_setups(session, as_of, limit: int = 5) -> list[dict]:
     ]
 
 
+def _screener_rows(session, as_of, *, days: int = 365, limit: int = 120) -> list[dict]:
+    """Real setups for the screener demo on the landing page.
+
+    The most recent base found in each symbol over the trailing year, not a
+    fabricated sample. A marketing demo built on invented rows would be the
+    one place on this site where the numbers are not the engine's -- and a
+    visitor has no way to tell the difference, which is exactly why it must
+    not be done.
+    """
+    if as_of is None:
+        return []
+    since = as_of - timedelta(days=days)
+
+    rows = session.execute(
+        select(Pattern, Stock.symbol, Sector.code, RelativeStrength.rs_score)
+        .join(Stock, Stock.id == Pattern.stock_id)
+        .outerjoin(Industry, Industry.id == Stock.industry_id)
+        .outerjoin(Sector, Sector.id == Industry.sector_id)
+        .outerjoin(
+            RelativeStrength,
+            (RelativeStrength.stock_id == Stock.id)
+            & (RelativeStrength.date == Pattern.base_end),
+        )
+        .where(
+            Pattern.base_end >= since,
+            Pattern.base_end <= as_of,
+            Pattern.score.isnot(None),
+        )
+        .order_by(Pattern.base_end.desc())
+    ).all()
+
+    seen: set[str] = set()
+    out: list[dict] = []
+    for pattern, symbol, sector, rs in rows:
+        if symbol in seen:
+            continue
+        seen.add(symbol)
+        out.append({
+            "symbol": symbol,
+            "sector": (sector or "UNCLASSIFIED").replace("_", " ").title(),
+            "stage": pattern.status,
+            "score": round(float(pattern.score), 1),
+            "rs": round(float(rs), 1) if rs is not None else None,
+            "contractions": pattern.contraction_count or 0,
+            "depth": round(float(pattern.base_depth_pct), 1) if pattern.base_depth_pct else None,
+            "on": pattern.base_end.isoformat(),
+        })
+        if len(out) >= limit:
+            break
+    return sorted(out, key=lambda r: r["score"], reverse=True)
+
+
 def _ledger(session) -> dict:
     """Confirmed against failed. Shown because hiding it would be the lie."""
     rows = session.execute(
@@ -259,6 +287,8 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "ribbon": _regime_ribbon(session),
             "spark": _breadth_spark(session),
             "setups": _top_setups(session, prov.as_of),
+            "screener": _screener_rows(session, prov.as_of),
+            "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),
             "as_of": prov.as_of,
             "is_stale": prov.is_stale,

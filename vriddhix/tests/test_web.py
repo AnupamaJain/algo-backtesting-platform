@@ -302,7 +302,9 @@ def test_the_landing_chart_is_drawn_from_stored_regimes(client, session):
     session.flush()
 
     body = client.get("/").text
-    assert "ribbon-line" in body, "the regime chart did not render"
+    assert 'class="ribbon"' in body, "the regime chart did not render"
+    # One <rect> per bucket, each carrying the regime it covers.
+    assert "<rect" in body
     assert "2025-06-01" in body and "2025-06-03" in body
 
 

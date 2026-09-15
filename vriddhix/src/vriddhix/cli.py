@@ -124,22 +124,57 @@ def cmd_init(_args) -> int:
     return 0
 
 
+def load_universe_file(path: Path) -> tuple[str, str, list[dict]]:
+    """Read a universe definition: index identity plus classified members.
+
+    Returns ``(index_code, index_name, members)``. A file like this is the
+    difference between a real constituent list and whatever happened to be
+    cached on disk -- and it carries the sector for each name, so nothing
+    falls back to a placeholder classification.
+    """
+    import yaml
+
+    data = yaml.safe_load(path.read_text())
+    index = data.get("index") or {}
+    members = data.get("members") or []
+    return index.get("code", "UNIVERSE"), index.get("name", "Universe"), members
+
+
 def cmd_bootstrap(args) -> int:
     """Seed sectors, industries, stocks and index membership."""
     cfg = get_config()
-    symbols = discover_cached_symbols(cfg.cache_dir)
-    if not symbols:
-        print(f"no cached symbols found in {cfg.cache_dir}", file=sys.stderr)
-        return 1
 
-    index_code = cfg.get("universe.default_index")
+    classified: dict[str, tuple[str, str]] = {}
+    display_names: dict[str, str] = {}
+    index_name = None
+
+    if args.universe:
+        path = Path(args.universe)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / "config" / "universes" / path.name
+        if not path.exists():
+            print(f"no universe file at {path}", file=sys.stderr)
+            return 1
+        index_code, index_name, members = load_universe_file(path)
+        symbols = [m["symbol"] for m in members]
+        classified = {m["symbol"]: (m["sector"], m["industry"]) for m in members}
+        display_names = {m["symbol"]: m.get("name") or m["symbol"] for m in members}
+        print(f"loaded {len(symbols)} members from {path.name} ({index_code})")
+    else:
+        symbols = discover_cached_symbols(cfg.cache_dir)
+        if not symbols:
+            print(f"no cached symbols found in {cfg.cache_dir}", file=sys.stderr)
+            return 1
+        index_code = cfg.get("universe.default_index")
 
     with session_scope() as session:
         sectors: dict[str, Sector] = {}
         industries: dict[tuple[str, str], Industry] = {}
 
         for symbol in symbols:
-            sector_code, industry_code = SECTOR_MAP.get(symbol, ("ETF", "INDEX_FUND"))
+            sector_code, industry_code = classified.get(
+                symbol, SECTOR_MAP.get(symbol, ("ETF", "INDEX_FUND"))
+            )
 
             if sector_code not in sectors:
                 existing = session.scalar(select(Sector).where(Sector.code == sector_code))
@@ -168,14 +203,26 @@ def cmd_bootstrap(args) -> int:
                     session.flush()
                 industries[key] = existing
 
-            if session.scalar(select(Stock).where(Stock.symbol == symbol)) is None:
-                session.add(Stock(symbol=symbol, name=symbol.replace("-", " ").title(),
-                                  exchange="NSE", industry_id=industries[key].id))
+            existing_stock = session.scalar(select(Stock).where(Stock.symbol == symbol))
+            if existing_stock is None:
+                session.add(Stock(
+                    symbol=symbol,
+                    name=display_names.get(symbol) or symbol.replace("-", " ").title(),
+                    exchange="NSE", industry_id=industries[key].id,
+                ))
+            elif symbol in classified:
+                # A reclassification corrects the row rather than leaving a
+                # stale sector behind: sector rotation reads this, and a
+                # bank filed under ETF would quietly distort the aggregate.
+                existing_stock.industry_id = industries[key].id
+                if display_names.get(symbol):
+                    existing_stock.name = display_names[symbol]
         session.flush()
 
         index = session.scalar(select(MarketIndex).where(MarketIndex.code == index_code))
         if index is None:
-            index = MarketIndex(code=index_code, name=index_code, is_benchmark=True)
+            index = MarketIndex(code=index_code,
+                                name=index_name or index_code, is_benchmark=True)
             session.add(index)
             session.flush()
 
@@ -379,6 +426,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("init", help="apply migrations").set_defaults(func=cmd_init)
 
     bootstrap = sub.add_parser("bootstrap", help="seed reference data")
+    bootstrap.add_argument("--universe", default=None,
+                           help="universe YAML in config/universes/ (e.g. nse_fno.yaml)")
     bootstrap.add_argument("--effective-from", type=date.fromisoformat, default=date(2015, 1, 1))
     bootstrap.set_defaults(func=cmd_bootstrap)
 

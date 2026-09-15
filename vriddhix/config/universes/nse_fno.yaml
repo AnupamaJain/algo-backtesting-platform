@@ -1,0 +1,254 @@
+# NSE F&O-eligible equities.
+#
+# Derived from the exchange instrument master: every cash-market EQ-series
+# symbol that also has a listed future or option. That is the standard
+# definition of the liquid Indian equity market -- roughly every name with
+# enough depth for a derivative to exist against it.
+#
+# `members` is the CURRENT constituent list. It is NOT membership history --
+# loading it alone produces rows sourced 'current_only', and any resolution
+# built from them is flagged CURRENT_UNIVERSE so the survivorship bias travels
+# with the numbers (see docs/04-data-model.md section 8).
+#
+# Real history goes in `history:` as explicit intervals. Where it exists, the
+# universe service prefers it and reports POINT_IN_TIME.
+
+index:
+  code: NIFTY_FNO
+  name: NSE F&O Equities
+  is_benchmark: true
+
+source: instrument_master
+generated_from: "NSE instrument master, 2026-09-14"
+
+history: []
+
+members:
+  # ---- AUTO ----
+  - {symbol: BHARATFORG, sector: AUTO, industry: AUTO_COMPONENTS, name: "Bharat Forge Ltd"}
+  - {symbol: BOSCHLTD, sector: AUTO, industry: AUTO_COMPONENTS, name: "Bosch Limited"}
+  - {symbol: MOTHERSON, sector: AUTO, industry: AUTO_COMPONENTS, name: "Samvrdhna Mthrsn Intl Ltd"}
+  - {symbol: SONACOMS, sector: AUTO, industry: AUTO_COMPONENTS, name: "Sona Blw Precision Frgs L"}
+  - {symbol: TIINDIA, sector: AUTO, industry: AUTO_COMPONENTS, name: "Tube Invest Of India Ltd"}
+  - {symbol: UNOMINDA, sector: AUTO, industry: AUTO_COMPONENTS, name: "Uno Minda Limited"}
+  - {symbol: ASHOKLEY, sector: AUTO, industry: COMMERCIAL_VEHICLES, name: "Ashok Leyland Ltd"}
+  - {symbol: FORCEMOT, sector: AUTO, industry: COMMERCIAL_VEHICLES, name: "Force Motors Limited"}
+  - {symbol: HYUNDAI, sector: AUTO, industry: PASSENGER_VEHICLES, name: "Hyundai Motor India Ltd"}
+  - {symbol: M&M, sector: AUTO, industry: PASSENGER_VEHICLES, name: "Mahindra & Mahindra Ltd"}
+  - {symbol: MARUTI, sector: AUTO, industry: PASSENGER_VEHICLES, name: "Maruti Suzuki India Ltd."}
+  - {symbol: TMPV, sector: AUTO, industry: PASSENGER_VEHICLES, name: "Tata Motors Pass Veh Ltd"}
+  - {symbol: ATHERENERG, sector: AUTO, industry: TWO_WHEELERS, name: "Ather Energy Limited"}
+  - {symbol: BAJAJ-AUTO, sector: AUTO, industry: TWO_WHEELERS, name: "Bajaj Auto Limited"}
+  - {symbol: EICHERMOT, sector: AUTO, industry: TWO_WHEELERS, name: "Eicher Motors Ltd"}
+  - {symbol: HEROMOTOCO, sector: AUTO, industry: TWO_WHEELERS, name: "Hero Motocorp Limited"}
+  - {symbol: TVSMOTOR, sector: AUTO, industry: TWO_WHEELERS, name: "Tvs Motor Company  Ltd"}
+  # ---- CAPGOODS ----
+  - {symbol: LT, sector: CAPGOODS, industry: CONSTRUCTION, name: "Larsen & Toubro Ltd."}
+  - {symbol: NBCC, sector: CAPGOODS, industry: CONSTRUCTION, name: "Nbcc (India) Limited"}
+  - {symbol: RVNL, sector: CAPGOODS, industry: CONSTRUCTION, name: "Rail Vikas Nigam Limited"}
+  - {symbol: BDL, sector: CAPGOODS, industry: DEFENCE, name: "Bharat Dynamics Limited"}
+  - {symbol: BEL, sector: CAPGOODS, industry: DEFENCE, name: "Bharat Electronics Ltd"}
+  - {symbol: COCHINSHIP, sector: CAPGOODS, industry: DEFENCE, name: "Cochin Shipyard Limited"}
+  - {symbol: HAL, sector: CAPGOODS, industry: DEFENCE, name: "Hindustan Aeronautics Ltd"}
+  - {symbol: MAZDOCK, sector: CAPGOODS, industry: DEFENCE, name: "Mazagon Dock Shipbuil Ltd"}
+  - {symbol: ABB, sector: CAPGOODS, industry: ELECTRICALS, name: "Abb India Limited"}
+  - {symbol: CGPOWER, sector: CAPGOODS, industry: ELECTRICALS, name: "Cg Power And Ind Sol Ltd"}
+  - {symbol: GVT&D, sector: CAPGOODS, industry: ELECTRICALS, name: "Ge Vernova T&D India Ltd"}
+  - {symbol: POWERINDIA, sector: CAPGOODS, industry: ELECTRICALS, name: "Hitachi Energy India Ltd"}
+  - {symbol: SIEMENS, sector: CAPGOODS, industry: ELECTRICALS, name: "Siemens Ltd"}
+  - {symbol: BHEL, sector: CAPGOODS, industry: INDUSTRIAL, name: "Bhel"}
+  - {symbol: CUMMINSIND, sector: CAPGOODS, industry: INDUSTRIAL, name: "Cummins India Ltd"}
+  - {symbol: KAYNES, sector: CAPGOODS, industry: INDUSTRIAL, name: "Kaynes Technology Ind Ltd"}
+  - {symbol: INOXWIND, sector: CAPGOODS, industry: RENEWABLES, name: "Inox Wind Limited"}
+  - {symbol: PREMIERENE, sector: CAPGOODS, industry: RENEWABLES, name: "Premier Energies Limited"}
+  - {symbol: SUZLON, sector: CAPGOODS, industry: RENEWABLES, name: "Suzlon Energy Limited"}
+  - {symbol: WAAREEENER, sector: CAPGOODS, industry: RENEWABLES, name: "Waaree Energies Limited"}
+  # ---- CHEMICALS ----
+  - {symbol: ASIANPAINT, sector: CHEMICALS, industry: PAINTS, name: "Asian Paints Limited"}
+  - {symbol: PIDILITIND, sector: CHEMICALS, industry: SPECIALITY, name: "Pidilite Industries Ltd"}
+  - {symbol: PIIND, sector: CHEMICALS, industry: SPECIALITY, name: "Pi Industries Ltd"}
+  - {symbol: SOLARINDS, sector: CHEMICALS, industry: SPECIALITY, name: "Solar Industries (I) Ltd"}
+  - {symbol: SRF, sector: CHEMICALS, industry: SPECIALITY, name: "Srf Ltd"}
+  - {symbol: UPL, sector: CHEMICALS, industry: SPECIALITY, name: "Upl Limited"}
+  # ---- CONGLOMERATE ----
+  - {symbol: ADANIENT, sector: CONGLOMERATE, industry: DIVERSIFIED, name: "Adani Enterprises Limited"}
+  # ---- CONSUMER_DURABLES ----
+  - {symbol: PAGEIND, sector: CONSUMER_DURABLES, industry: APPAREL, name: "Page Industries Ltd"}
+  - {symbol: AMBER, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Amber Enterprises (I) Ltd"}
+  - {symbol: BLUESTARCO, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Blue Star Limited"}
+  - {symbol: CROMPTON, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Crompt Grea Con Elec Ltd"}
+  - {symbol: DIXON, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Dixon Techno (India) Ltd"}
+  - {symbol: HAVELLS, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Havells India Limited"}
+  - {symbol: PGEL, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Pg Electroplast Ltd"}
+  - {symbol: VOLTAS, sector: CONSUMER_DURABLES, industry: APPLIANCES, name: "Voltas Ltd"}
+  - {symbol: KEI, sector: CONSUMER_DURABLES, industry: CABLES, name: "Kei Industries Ltd."}
+  - {symbol: POLYCAB, sector: CONSUMER_DURABLES, industry: CABLES, name: "Polycab India Limited"}
+  - {symbol: KALYANKJIL, sector: CONSUMER_DURABLES, industry: JEWELLERY, name: "Kalyan Jewellers Ind Ltd"}
+  - {symbol: TITAN, sector: CONSUMER_DURABLES, industry: JEWELLERY, name: "Titan Company Limited"}
+  # ---- CONSUMER_SERVICES ----
+  - {symbol: INDHOTEL, sector: CONSUMER_SERVICES, industry: HOTELS, name: "The Indian Hotels Co. Ltd"}
+  - {symbol: ETERNAL, sector: CONSUMER_SERVICES, industry: INTERNET, name: "Eternal Limited"}
+  - {symbol: NAUKRI, sector: CONSUMER_SERVICES, industry: INTERNET, name: "Info Edge (I) Ltd"}
+  - {symbol: NYKAA, sector: CONSUMER_SERVICES, industry: INTERNET, name: "Fsn E Commerce Ventures"}
+  - {symbol: PAYTM, sector: CONSUMER_SERVICES, industry: INTERNET, name: "One 97 Communications Ltd"}
+  - {symbol: SWIGGY, sector: CONSUMER_SERVICES, industry: INTERNET, name: "Swiggy Limited"}
+  - {symbol: JUBLFOOD, sector: CONSUMER_SERVICES, industry: QSR, name: "Jubilant Foodworks Ltd"}
+  - {symbol: DMART, sector: CONSUMER_SERVICES, industry: RETAIL, name: "Avenue Supermarts Limited"}
+  - {symbol: TRENT, sector: CONSUMER_SERVICES, industry: RETAIL, name: "Trent Ltd"}
+  - {symbol: VMM, sector: CONSUMER_SERVICES, industry: RETAIL, name: "Vishal Mega Mart Limited"}
+  # ---- ENERGY ----
+  - {symbol: GAIL, sector: ENERGY, industry: OIL_GAS, name: "Gail (India) Ltd"}
+  - {symbol: OIL, sector: ENERGY, industry: OIL_GAS, name: "Oil India Ltd"}
+  - {symbol: ONGC, sector: ENERGY, industry: OIL_GAS, name: "Oil And Natural Gas Corp."}
+  - {symbol: PETRONET, sector: ENERGY, industry: OIL_GAS, name: "Petronet Lng Limited"}
+  - {symbol: BPCL, sector: ENERGY, industry: REFINERIES, name: "Bharat Petroleum Corp  Lt"}
+  - {symbol: HINDPETRO, sector: ENERGY, industry: REFINERIES, name: "Hindustan Petroleum Corp"}
+  - {symbol: IOC, sector: ENERGY, industry: REFINERIES, name: "Indian Oil Corp Ltd"}
+  - {symbol: RELIANCE, sector: ENERGY, industry: REFINERIES, name: "Reliance Industries Ltd"}
+  # ---- FINANCIALS ----
+  - {symbol: AUBANK, sector: FINANCIALS, industry: BANKS, name: "Au Small Finance Bank Ltd"}
+  - {symbol: AXISBANK, sector: FINANCIALS, industry: BANKS, name: "Axis Bank Limited"}
+  - {symbol: BANDHANBNK, sector: FINANCIALS, industry: BANKS, name: "Bandhan Bank Limited"}
+  - {symbol: BANKBARODA, sector: FINANCIALS, industry: BANKS, name: "Bank Of Baroda"}
+  - {symbol: BANKINDIA, sector: FINANCIALS, industry: BANKS, name: "Bank Of India"}
+  - {symbol: CANBK, sector: FINANCIALS, industry: BANKS, name: "Canara Bank"}
+  - {symbol: FEDERALBNK, sector: FINANCIALS, industry: BANKS, name: "Federal Bank Ltd"}
+  - {symbol: HDFCBANK, sector: FINANCIALS, industry: BANKS, name: "Hdfc Bank Ltd"}
+  - {symbol: ICICIBANK, sector: FINANCIALS, industry: BANKS, name: "Icici Bank Ltd."}
+  - {symbol: IDFCFIRSTB, sector: FINANCIALS, industry: BANKS, name: "Idfc First Bank Limited"}
+  - {symbol: INDIANB, sector: FINANCIALS, industry: BANKS, name: "Indian Bank"}
+  - {symbol: INDUSINDBK, sector: FINANCIALS, industry: BANKS, name: "Indusind Bank Limited"}
+  - {symbol: KOTAKBANK, sector: FINANCIALS, industry: BANKS, name: "Kotak Mahindra Bank Ltd"}
+  - {symbol: MAHABANK, sector: FINANCIALS, industry: BANKS, name: "Bank Of Maharashtra"}
+  - {symbol: PNB, sector: FINANCIALS, industry: BANKS, name: "Punjab National Bank"}
+  - {symbol: RBLBANK, sector: FINANCIALS, industry: BANKS, name: "Rbl Bank Limited"}
+  - {symbol: SBIN, sector: FINANCIALS, industry: BANKS, name: "State Bank Of India"}
+  - {symbol: UNIONBANK, sector: FINANCIALS, industry: BANKS, name: "Union Bank Of India"}
+  - {symbol: YESBANK, sector: FINANCIALS, industry: BANKS, name: "Yes Bank Limited"}
+  - {symbol: ANGELONE, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Angel One Limited"}
+  - {symbol: BSE, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Bse Limited"}
+  - {symbol: CAMS, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Computer Age Mngt Ser Ltd"}
+  - {symbol: CDSL, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Central Depo Ser (I) Ltd"}
+  - {symbol: HDFCAMC, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Hdfc Amc Limited"}
+  - {symbol: IEX, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Indian Energy Exc Ltd"}
+  - {symbol: KFINTECH, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Kfin Technologies Limited"}
+  - {symbol: MCX, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Multi Commodity Exchange"}
+  - {symbol: MOTILALOFS, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Motilal Oswal Fin Ltd"}
+  - {symbol: NAM-INDIA, sector: FINANCIALS, industry: CAPITAL_MARKETS, name: "Nippon L I A M Ltd"}
+  - {symbol: HDFCLIFE, sector: FINANCIALS, industry: INSURANCE, name: "Hdfc Life Ins Co Ltd"}
+  - {symbol: ICICIGI, sector: FINANCIALS, industry: INSURANCE, name: "Icici Lombard Gic Limited"}
+  - {symbol: ICICIPRULI, sector: FINANCIALS, industry: INSURANCE, name: "Icici Pru Life Ins Co Ltd"}
+  - {symbol: LICI, sector: FINANCIALS, industry: INSURANCE, name: "Life Insura Corp Of India"}
+  - {symbol: MFSL, sector: FINANCIALS, industry: INSURANCE, name: "Max Financial Serv Ltd"}
+  - {symbol: POLICYBZR, sector: FINANCIALS, industry: INSURANCE, name: "Pb Fintech Limited"}
+  - {symbol: SBILIFE, sector: FINANCIALS, industry: INSURANCE, name: "Sbi Life Insurance Co Ltd"}
+  - {symbol: ABCAPITAL, sector: FINANCIALS, industry: NBFC, name: "Aditya Birla Capital Ltd."}
+  - {symbol: BAJAJFINSV, sector: FINANCIALS, industry: NBFC, name: "Bajaj Finserv Ltd."}
+  - {symbol: BAJAJHLDNG, sector: FINANCIALS, industry: NBFC, name: "Bajaj Holdings & Invs Ltd"}
+  - {symbol: BAJFINANCE, sector: FINANCIALS, industry: NBFC, name: "Bajaj Finance Limited"}
+  - {symbol: CHOLAFIN, sector: FINANCIALS, industry: NBFC, name: "Cholamandalam In & Fin Co"}
+  - {symbol: IREDA, sector: FINANCIALS, industry: NBFC, name: "Indian Renewable Energy"}
+  - {symbol: IRFC, sector: FINANCIALS, industry: NBFC, name: "Indian Railway Fin Corp L"}
+  - {symbol: JIOFIN, sector: FINANCIALS, industry: NBFC, name: "Jio Fin Services Ltd"}
+  - {symbol: LICHSGFIN, sector: FINANCIALS, industry: NBFC, name: "Lic Housing Finance Ltd"}
+  - {symbol: LTF, sector: FINANCIALS, industry: NBFC, name: "L&T Finance Limited"}
+  - {symbol: MANAPPURAM, sector: FINANCIALS, industry: NBFC, name: "Manappuram Finance Ltd"}
+  - {symbol: MUTHOOTFIN, sector: FINANCIALS, industry: NBFC, name: "Muthoot Finance Limited"}
+  - {symbol: PFC, sector: FINANCIALS, industry: NBFC, name: "Power Fin Corp Ltd."}
+  - {symbol: PNBHOUSING, sector: FINANCIALS, industry: NBFC, name: "Pnb Housing Fin Ltd."}
+  - {symbol: RECLTD, sector: FINANCIALS, industry: NBFC, name: "Rec Limited"}
+  - {symbol: SBICARD, sector: FINANCIALS, industry: NBFC, name: "Sbi Cards & Pay Ser Ltd"}
+  - {symbol: SHRIRAMFIN, sector: FINANCIALS, industry: NBFC, name: "Shriram Finance Limited"}
+  # ---- FMCG ----
+  - {symbol: RADICO, sector: FMCG, industry: BEVERAGES, name: "Radico Khaitan Ltd"}
+  - {symbol: UNITDSPR, sector: FMCG, industry: BEVERAGES, name: "United Spirits Limited"}
+  - {symbol: VBL, sector: FMCG, industry: BEVERAGES, name: "Varun Beverages Limited"}
+  - {symbol: COLPAL, sector: FMCG, industry: HOUSEHOLD, name: "Colgate Palmolive Ltd."}
+  - {symbol: DABUR, sector: FMCG, industry: HOUSEHOLD, name: "Dabur India Ltd"}
+  - {symbol: GODREJCP, sector: FMCG, industry: HOUSEHOLD, name: "Godrej Consumer Products"}
+  - {symbol: HINDUNILVR, sector: FMCG, industry: HOUSEHOLD, name: "Hindustan Unilever Ltd."}
+  - {symbol: MARICO, sector: FMCG, industry: HOUSEHOLD, name: "Marico Limited"}
+  - {symbol: PATANJALI, sector: FMCG, industry: HOUSEHOLD, name: "Patanjali Foods Limited"}
+  - {symbol: BRITANNIA, sector: FMCG, industry: PACKAGED_FOODS, name: "Britannia Industries Ltd"}
+  - {symbol: NESTLEIND, sector: FMCG, industry: PACKAGED_FOODS, name: "Nestle India Limited"}
+  - {symbol: TATACONSUM, sector: FMCG, industry: PACKAGED_FOODS, name: "Tata Consumer Product Ltd"}
+  - {symbol: GODFRYPHLP, sector: FMCG, industry: TOBACCO, name: "Godfrey Phillips India Lt"}
+  - {symbol: ITC, sector: FMCG, industry: TOBACCO, name: "Itc Ltd"}
+  # ---- HEALTHCARE ----
+  - {symbol: APOLLOHOSP, sector: HEALTHCARE, industry: HOSPITALS, name: "Apollo Hospitals Enter. L"}
+  - {symbol: FORTIS, sector: HEALTHCARE, industry: HOSPITALS, name: "Fortis Healthcare Ltd"}
+  - {symbol: MAXHEALTH, sector: HEALTHCARE, industry: HOSPITALS, name: "Max Healthcare Ins Ltd"}
+  # ---- INFRASTRUCTURE ----
+  - {symbol: GMRAIRPORT, sector: INFRASTRUCTURE, industry: AIRPORTS, name: "Gmr Airports Limited"}
+  - {symbol: ADANIPORTS, sector: INFRASTRUCTURE, industry: PORTS, name: "Adani Port & Sez Ltd"}
+  # ---- IT ----
+  - {symbol: COFORGE, sector: IT, industry: IT_SERVICES, name: "Coforge Limited"}
+  - {symbol: HCLTECH, sector: IT, industry: IT_SERVICES, name: "Hcl Technologies Ltd"}
+  - {symbol: INFY, sector: IT, industry: IT_SERVICES, name: "Infosys Limited"}
+  - {symbol: KPITTECH, sector: IT, industry: IT_SERVICES, name: "Kpit Technologies Limited"}
+  - {symbol: LTM, sector: IT, industry: IT_SERVICES, name: "Ltm Limited"}
+  - {symbol: MPHASIS, sector: IT, industry: IT_SERVICES, name: "Mphasis Limited"}
+  - {symbol: OFSS, sector: IT, industry: IT_SERVICES, name: "Oracle Fin Serv Soft Ltd."}
+  - {symbol: PERSISTENT, sector: IT, industry: IT_SERVICES, name: "Persistent Systems Ltd"}
+  - {symbol: SAGILITY, sector: IT, industry: IT_SERVICES, name: "Sagility Limited"}
+  - {symbol: TATAELXSI, sector: IT, industry: IT_SERVICES, name: "Tata Elxsi Limited"}
+  - {symbol: TCS, sector: IT, industry: IT_SERVICES, name: "Tata Consultancy Serv Lt"}
+  - {symbol: TECHM, sector: IT, industry: IT_SERVICES, name: "Tech Mahindra Limited"}
+  - {symbol: WIPRO, sector: IT, industry: IT_SERVICES, name: "Wipro Ltd"}
+  # ---- MATERIALS ----
+  - {symbol: APLAPOLLO, sector: MATERIALS, industry: BUILDING_PRODUCTS, name: "Apl Apollo Tubes Ltd"}
+  - {symbol: ASTRAL, sector: MATERIALS, industry: BUILDING_PRODUCTS, name: "Astral Limited"}
+  - {symbol: SUPREMEIND, sector: MATERIALS, industry: BUILDING_PRODUCTS, name: "Supreme Industries Ltd"}
+  - {symbol: AMBUJACEM, sector: MATERIALS, industry: CEMENT, name: "Ambuja Cements Ltd"}
+  - {symbol: GRASIM, sector: MATERIALS, industry: CEMENT, name: "Grasim Industries Ltd"}
+  - {symbol: SHREECEM, sector: MATERIALS, industry: CEMENT, name: "Shree Cement Limited"}
+  - {symbol: ULTRACEMCO, sector: MATERIALS, industry: CEMENT, name: "Ultratech Cement Limited"}
+  # ---- METALS ----
+  - {symbol: COALINDIA, sector: METALS, industry: MINING, name: "Coal India Ltd"}
+  - {symbol: NMDC, sector: METALS, industry: MINING, name: "Nmdc Ltd."}
+  - {symbol: HINDALCO, sector: METALS, industry: NON_FERROUS, name: "Hindalco  Industries  Ltd"}
+  - {symbol: HINDZINC, sector: METALS, industry: NON_FERROUS, name: "Hindustan Zinc Limited"}
+  - {symbol: NATIONALUM, sector: METALS, industry: NON_FERROUS, name: "National Aluminium Co Ltd"}
+  - {symbol: VEDL, sector: METALS, industry: NON_FERROUS, name: "Vedanta Limited"}
+  - {symbol: JINDALSTEL, sector: METALS, industry: STEEL, name: "Jindal Steel Limited"}
+  - {symbol: JSWSTEEL, sector: METALS, industry: STEEL, name: "Jsw Steel Limited"}
+  - {symbol: SAIL, sector: METALS, industry: STEEL, name: "Steel Authority Of India"}
+  - {symbol: TATASTEEL, sector: METALS, industry: STEEL, name: "Tata Steel Limited"}
+  # ---- PHARMA ----
+  - {symbol: ALKEM, sector: PHARMA, industry: PHARMACEUTICALS, name: "Alkem Laboratories Ltd."}
+  - {symbol: AUROPHARMA, sector: PHARMA, industry: PHARMACEUTICALS, name: "Aurobindo Pharma Ltd"}
+  - {symbol: BIOCON, sector: PHARMA, industry: PHARMACEUTICALS, name: "Biocon Limited."}
+  - {symbol: CIPLA, sector: PHARMA, industry: PHARMACEUTICALS, name: "Cipla Ltd"}
+  - {symbol: DIVISLAB, sector: PHARMA, industry: PHARMACEUTICALS, name: "Divi S Laboratories Ltd"}
+  - {symbol: DRREDDY, sector: PHARMA, industry: PHARMACEUTICALS, name: "Dr. Reddy S Laboratories"}
+  - {symbol: GLENMARK, sector: PHARMA, industry: PHARMACEUTICALS, name: "Glenmark Pharmaceuticals"}
+  - {symbol: LAURUSLABS, sector: PHARMA, industry: PHARMACEUTICALS, name: "Laurus Labs Limited"}
+  - {symbol: LUPIN, sector: PHARMA, industry: PHARMACEUTICALS, name: "Lupin Limited"}
+  - {symbol: MANKIND, sector: PHARMA, industry: PHARMACEUTICALS, name: "Mankind Pharma Limited"}
+  - {symbol: SUNPHARMA, sector: PHARMA, industry: PHARMACEUTICALS, name: "Sun Pharmaceutical Ind L"}
+  - {symbol: TORNTPHARM, sector: PHARMA, industry: PHARMACEUTICALS, name: "Torrent Pharmaceuticals L"}
+  - {symbol: ZYDUSLIFE, sector: PHARMA, industry: PHARMACEUTICALS, name: "Zydus Lifesciences Ltd"}
+  # ---- REALTY ----
+  - {symbol: DLF, sector: REALTY, industry: REAL_ESTATE, name: "Dlf Limited"}
+  - {symbol: GODREJPROP, sector: REALTY, industry: REAL_ESTATE, name: "Godrej Properties Ltd"}
+  - {symbol: LODHA, sector: REALTY, industry: REAL_ESTATE, name: "Lodha Developers Limited"}
+  - {symbol: OBEROIRLTY, sector: REALTY, industry: REAL_ESTATE, name: "Oberoi Realty Limited"}
+  - {symbol: PHOENIXLTD, sector: REALTY, industry: REAL_ESTATE, name: "The Phoenix Mills Ltd"}
+  - {symbol: PRESTIGE, sector: REALTY, industry: REAL_ESTATE, name: "Prestige Estate Ltd"}
+  # ---- TELECOM ----
+  - {symbol: BHARTIARTL, sector: TELECOM, industry: TELECOM_SERVICES, name: "Bharti Airtel Limited"}
+  - {symbol: IDEA, sector: TELECOM, industry: TELECOM_SERVICES, name: "Vodafone Idea Limited"}
+  - {symbol: INDUSTOWER, sector: TELECOM, industry: TOWERS, name: "Indus Towers Limited"}
+  # ---- TRANSPORT ----
+  - {symbol: INDIGO, sector: TRANSPORT, industry: AIRLINES, name: "Interglobe Aviation Ltd"}
+  - {symbol: CONCOR, sector: TRANSPORT, industry: LOGISTICS, name: "Container Corp Of Ind Ltd"}
+  - {symbol: DELHIVERY, sector: TRANSPORT, industry: LOGISTICS, name: "Delhivery Limited"}
+  # ---- UTILITIES ----
+  - {symbol: ADANIGREEN, sector: UTILITIES, industry: POWER_GENERATION, name: "Adani Green Energy Ltd"}
+  - {symbol: ADANIPOWER, sector: UTILITIES, industry: POWER_GENERATION, name: "Adani Power Ltd"}
+  - {symbol: JSWENERGY, sector: UTILITIES, industry: POWER_GENERATION, name: "Jsw Energy Limited"}
+  - {symbol: NHPC, sector: UTILITIES, industry: POWER_GENERATION, name: "Nhpc Ltd"}
+  - {symbol: NTPC, sector: UTILITIES, industry: POWER_GENERATION, name: "Ntpc Ltd"}
+  - {symbol: TATAPOWER, sector: UTILITIES, industry: POWER_GENERATION, name: "Tata Power Co Ltd"}
+  - {symbol: ADANIENSOL, sector: UTILITIES, industry: POWER_TRANSMISSION, name: "Adani Energy Solution Ltd"}
+  - {symbol: POWERGRID, sector: UTILITIES, industry: POWER_TRANSMISSION, name: "Power Grid Corp. Ltd."}

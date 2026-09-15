@@ -27,23 +27,20 @@
       {% endif %}
     </div>
 
-    {% if ribbon and ribbon.line %}
+    {% if ribbon and ribbon.bands %}
     <figure class="ribbon-card">
       <figcaption class="ribbon-head">
         <span class="ribbon-title">Market regime, every session since {{ ribbon.first.year }}</span>
         <span class="faint num">{{ "{:,}".format(ribbon.sessions) }} sessions · {{ ribbon.changes }} changes</span>
       </figcaption>
 
-      <svg class="ribbon" viewBox="0 0 {{ ribbon.width }} {{ ribbon.height }}"
-           preserveAspectRatio="none" role="img"
-           aria-label="Market regime score from {{ ribbon.first }} to {{ ribbon.last }}">
-        {% for z in ribbon.zones %}
-        <rect x="0" y="{{ "%.2f"|format(z.y) }}" width="{{ ribbon.width }}"
-              height="{{ "%.2f"|format(z.h) }}" fill="{{ z.fill }}"
-              opacity="0.17"><title>{{ z.label }}</title></rect>
+      <svg class="ribbon" viewBox="0 0 100 20" preserveAspectRatio="none"
+           role="img" aria-label="Market regime from {{ ribbon.first }} to {{ ribbon.last }}">
+        {% for b in ribbon.bands %}
+        <rect x="{{ "%.4f"|format(b.x) }}" y="0"
+              width="{{ "%.4f"|format(b.w + 0.02) }}" height="20"
+              fill="{{ b.fill }}"><title>{{ b.regime }} · {{ b.from }} → {{ b.to }}</title></rect>
         {% endfor %}
-        <polyline points="{{ ribbon.area }}" class="ribbon-area"/>
-        <polyline points="{{ ribbon.line }}" class="ribbon-line"/>
       </svg>
 
       <div class="ribbon-axis num">
@@ -54,16 +51,15 @@
         {% for m in ribbon.mix %}
         <div class="mix-row">
           <span class="swatch" style="background:{{ m.fill }}"></span>
-          <span class="mix-label">{{ m.regime.replace('_',' ')|title }}</span>
+          <span class="mix-label">{{ m.regime }}</span>
           <span class="mix-bar"><i style="width:{{ "%.1f"|format(m.pct) }}%;background:{{ m.fill }}"></i></span>
           <span class="mix-pct num">{{ "%.0f"|format(m.pct) }}%</span>
         </div>
         {% endfor %}
       </div>
       <p class="ribbon-note">
-        Not an illustration — the engine's own output. The shaded zones are
-        the thresholds that define each regime, so where the line sits
-        <em>is</em> the classification.
+        Not an illustration — the engine's own output. Each block is the
+        regime that dominated roughly two months of sessions.
       </p>
     </figure>
     {% endif %}
@@ -165,6 +161,75 @@
 </section>
 {% endif %}
 
+<!-- ══════════════ screener ══════════════ -->
+{% if screener %}
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Run the scanner</h2>
+    <span class="faint">real setups · no account needed</span>
+  </div>
+  <p class="muted" style="max-width:62ch;margin-top:-4px">
+    These are bases the engine actually found, with the scores and context it
+    recorded at the time. Move the filters and the list responds — the same
+    condition evaluator the backtester uses.
+  </p>
+
+  <div class="screener" id="screener">
+    <div class="scr-controls">
+      <div class="scr-status" id="scr-status">
+        <span class="dot"></span><span id="scr-status-text">Scanning {{ universe_size }} symbols…</span>
+      </div>
+
+      <label class="scr-field">
+        <span>Minimum setup score <b class="num" id="v-score">0</b></span>
+        <input type="range" id="f-score" min="0" max="100" step="5" value="0" disabled>
+      </label>
+
+      <label class="scr-field">
+        <span>Minimum relative strength <b class="num" id="v-rs">0</b></span>
+        <input type="range" id="f-rs" min="0" max="100" step="5" value="0" disabled>
+      </label>
+
+      <label class="scr-field">
+        <span>Stage</span>
+        <select id="f-stage" disabled>
+          <option value="">Any</option>
+          <option value="FORMING">Forming</option>
+          <option value="NEAR_PIVOT">Near pivot</option>
+          <option value="BREAKOUT">Breakout</option>
+          <option value="CONFIRMED">Confirmed</option>
+        </select>
+      </label>
+
+      <label class="scr-field">
+        <span>Sector</span>
+        <select id="f-sector" disabled><option value="">Any</option></select>
+      </label>
+
+      <div class="scr-count">
+        <b class="num" id="scr-n">0</b> of <span class="num">{{ screener|length }}</span> match
+      </div>
+    </div>
+
+    <div class="scr-results">
+      <table class="setups scr-table">
+        <thead>
+          <tr><th>Symbol</th><th>Sector</th><th>Stage</th>
+              <th class="r">Score</th><th class="r">RS</th></tr>
+        </thead>
+        <tbody id="scr-body"></tbody>
+      </table>
+      <div class="scr-empty" id="scr-empty" hidden>
+        Nothing matches those filters. That is an answer, not an error —
+        most days, most stocks are not setting up.
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="application/json" id="screener-data">{{ screener|tojson }}</script>
+{% endif %}
+
 <!-- ══════════════ the ledger ══════════════ -->
 {% if ledger %}
 <section class="wrap">
@@ -264,4 +329,120 @@
     </div>
   </div>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var node = document.getElementById("screener-data");
+  if (!node) return;
+  var ROWS = JSON.parse(node.textContent);
+
+  var body    = document.getElementById("scr-body");
+  var empty   = document.getElementById("scr-empty");
+  var count   = document.getElementById("scr-n");
+  var status  = document.getElementById("scr-status");
+  var stext   = document.getElementById("scr-status-text");
+  var fScore  = document.getElementById("f-score");
+  var fRs     = document.getElementById("f-rs");
+  var fStage  = document.getElementById("f-stage");
+  var fSector = document.getElementById("f-sector");
+  var vScore  = document.getElementById("v-score");
+  var vRs     = document.getElementById("v-rs");
+
+  Array.from(new Set(ROWS.map(function (r) { return r.sector; }))).sort()
+    .forEach(function (s) {
+      var o = document.createElement("option");
+      o.value = s; o.textContent = s;
+      fSector.appendChild(o);
+    });
+
+  function stageLabel(s) {
+    return s.replace(/_/g, " ").toLowerCase()
+            .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+
+  function matches(r) {
+    if (r.score < +fScore.value) return false;
+    if (+fRs.value > 0 && (r.rs === null || r.rs < +fRs.value)) return false;
+    if (fStage.value && r.stage !== fStage.value) return false;
+    if (fSector.value && r.sector !== fSector.value) return false;
+    return true;
+  }
+
+  function render(rows, animate) {
+    body.innerHTML = "";
+    rows.forEach(function (r, i) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><b>' + r.symbol + '</b></td>' +
+        '<td class="muted">' + r.sector + '</td>' +
+        '<td><span class="stage stage-' + r.stage + '">' + stageLabel(r.stage) + '</span></td>' +
+        '<td class="r"><span class="score-cell">' +
+          '<span class="score-bar"><i style="width:' + r.score + '%"></i></span>' +
+          '<span class="num">' + Math.round(r.score) + '</span></span></td>' +
+        '<td class="r num">' + (r.rs === null ? "—" : Math.round(r.rs)) + '</td>';
+      if (animate) {
+        tr.style.animationDelay = Math.min(i * 45, 900) + "ms";
+        tr.classList.add("scr-in");
+      }
+      body.appendChild(tr);
+    });
+    count.textContent = rows.length;
+    empty.hidden = rows.length > 0;
+  }
+
+  function apply() {
+    vScore.textContent = fScore.value;
+    vRs.textContent = fRs.value;
+    render(ROWS.filter(matches), false);
+  }
+
+  // ---- the opening run: filters tighten on their own, then hand over ----
+  var steps = [
+    { text: "Scanning " + ROWS.length + " symbols…",      score: 0,  rs: 0,  wait: 700 },
+    { text: "Applying vcp_score \u2265 60",               score: 60, rs: 0,  wait: 900 },
+    { text: "Applying rs_score \u2265 80",                score: 60, rs: 80, wait: 900 },
+    { text: "Ranking by setup score",                     score: 60, rs: 80, wait: 700 }
+  ];
+
+  function enable() {
+    [fScore, fRs, fStage, fSector].forEach(function (el) { el.disabled = false; });
+    status.classList.add("ready");
+    stext.textContent = "Live — move the filters";
+    [fScore, fRs, fStage, fSector].forEach(function (el) {
+      el.addEventListener("input", apply);
+      el.addEventListener("change", apply);
+    });
+  }
+
+  function play(i) {
+    if (i >= steps.length) { enable(); return; }
+    var s = steps[i];
+    stext.textContent = s.text;
+    fScore.value = s.score; fRs.value = s.rs;
+    vScore.textContent = s.score; vRs.textContent = s.rs;
+    render(ROWS.filter(matches), i === 0);
+    setTimeout(function () { play(i + 1); }, s.wait);
+  }
+
+  // Only animate when it is actually on screen; a demo that already finished
+  // before the visitor scrolled to it has demonstrated nothing.
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    play(0);
+  }
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { start(); io.disconnect(); } });
+    }, { threshold: 0.25 });
+    io.observe(document.getElementById("screener"));
+  } else {
+    start();
+  }
+  render(ROWS, false);
+})();
+</script>
 {% endblock %}
