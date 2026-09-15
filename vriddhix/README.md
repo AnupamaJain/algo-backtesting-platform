@@ -41,6 +41,11 @@ detected, tracked and confirmed five sessions later.
 
 ## Quick start
 
+Already set up? **[RUNNING.md](RUNNING.md)** covers start/stop, the URL, and
+sign-in. In short: `./run.sh start`, then <http://127.0.0.1:8787>.
+
+From scratch:
+
 ```bash
 pip install -r requirements.txt
 export PYTHONPATH=src
