@@ -75,3 +75,10 @@ quant_backtester/data_india/
 Dependencies/
 Dependencies\\*
 *.bak.[0-9]*
+
+# Editor workspace files. They hardcode absolute local paths -- including
+# broker-login folders outside this repo -- and are useless on any other
+# machine.
+*.code-workspace
+.vscode/
+.idea/
