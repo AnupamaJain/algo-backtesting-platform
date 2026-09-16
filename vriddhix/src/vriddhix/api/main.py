@@ -26,7 +26,8 @@ from .errors import ApiError, api_error_handler, validation_error_handler
 from fastapi.responses import HTMLResponse
 
 from .routers import (
-    ai, breakouts, market, ops, pages, product, research, scanners, sectors, stocks,
+    ai, breakouts, market, ops, pages, product, research, scanners, sectors,
+    seo, stocks,
 )
 
 logger = logging.getLogger(__name__)
@@ -179,7 +180,7 @@ def create_app() -> FastAPI:
     for router in (
         market.router, sectors.router, stocks.router, scanners.router,
         breakouts.router, research.router, product.router, ai.router,
-        ops.router, auth.router, pages.router,
+        ops.router, auth.router, seo.router, pages.router,
     ):
         app.include_router(router)
 

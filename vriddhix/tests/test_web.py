@@ -458,3 +458,116 @@ def test_the_logo_is_served_and_self_coloured(client):
     assert "currentColor" not in markup
     assert re.search(r'(fill|stop-color|stroke)="#[0-9a-fA-F]{3,6}"', markup), \
         "no explicit colour in the mark"
+
+
+# ---------------------------------------------------------------------------
+# Search-engine surface
+# ---------------------------------------------------------------------------
+
+
+def test_an_unconfigured_instance_refuses_crawling(client, monkeypatch):
+    """A dev box must never invite indexing.
+
+    Without VRIDDHIX_PUBLIC_URL there is no way to emit correct canonicals,
+    and a staging instance that gets indexed tells Google production is the
+    duplicate.
+    """
+    monkeypatch.delenv("VRIDDHIX_PUBLIC_URL", raising=False)
+    body = client.get("/robots.txt").text
+    assert "Disallow: /" in body
+    assert "Allow:" not in body
+
+    # ...and every page says so in its own head, not only in robots.txt.
+    assert 'name="robots" content="noindex' in client.get("/").text
+
+
+def test_a_public_instance_invites_crawling_and_names_its_sitemap(client, monkeypatch):
+    monkeypatch.setenv("VRIDDHIX_PUBLIC_URL", "https://vriddhix.example")
+    body = client.get("/robots.txt").text
+
+    assert "Sitemap: https://vriddhix.example/sitemap.xml" in body
+    # The API is machine surface; indexing it burns crawl budget on JSON.
+    assert "Disallow: /api/" in body
+    assert 'name="robots" content="noindex' not in client.get("/").text
+
+
+def test_the_sitemap_is_valid_and_lists_only_indexable_pages(client, monkeypatch):
+    import xml.dom.minidom as minidom
+
+    monkeypatch.setenv("VRIDDHIX_PUBLIC_URL", "https://vriddhix.example")
+    body = client.get("/sitemap.xml").text
+    doc = minidom.parseString(body)
+
+    locs = [n.firstChild.data for n in doc.getElementsByTagName("loc")]
+    assert locs == [
+        "https://vriddhix.example/",
+        "https://vriddhix.example/learn",
+        "https://vriddhix.example/signup",
+    ]
+    # Account surfaces stay out.
+    assert not any("/login" in u or "/api" in u for u in locs)
+
+
+def test_every_page_declares_one_canonical_url(client, monkeypatch):
+    monkeypatch.setenv("VRIDDHIX_PUBLIC_URL", "https://vriddhix.example")
+    for path, expected in (
+        ("/", "https://vriddhix.example/"),
+        ("/learn", "https://vriddhix.example/learn"),
+        ("/signup", "https://vriddhix.example/signup"),
+    ):
+        body = client.get(path).text
+        assert f'<link rel="canonical" href="{expected}">' in body
+
+
+def test_the_canonical_origin_never_leaks_a_dev_host(client, monkeypatch):
+    """Publishing localhost canonicals from production would deindex the site."""
+    monkeypatch.setenv("VRIDDHIX_PUBLIC_URL", "https://vriddhix.example")
+    body = client.get("/").text
+    assert "127.0.0.1" not in body
+    assert "localhost" not in body
+
+
+def test_pages_carry_link_preview_metadata(client):
+    body = client.get("/").text
+    for tag in ("og:title", "og:description", "og:url", "og:image",
+                "twitter:card", "og:locale"):
+        assert tag in body, f"missing {tag}"
+
+
+def test_structured_data_claims_nothing_it_cannot_substantiate(client):
+    """A schema block with an invented rating is the markup equivalent of a
+    fabricated backtest, and it is penalised when noticed."""
+    import json
+    import re
+
+    body = client.get("/").text
+    block = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', body, re.S
+    ).group(1)
+    data = json.loads(block)
+
+    assert data["@type"] == "SoftwareApplication"
+    assert data["offers"]["price"] == "0"
+    for invented in ("aggregateRating", "review", "ratingValue"):
+        assert invented not in json.dumps(data)
+
+
+def test_the_learn_page_is_marked_up_as_an_article(client):
+    import json
+    import re
+
+    body = client.get("/learn").text
+    data = json.loads(re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', body, re.S).group(1))
+    assert data["@type"] == "TechArticle"
+    assert data["headline"]
+
+
+def test_the_open_graph_image_exists_and_is_the_right_shape(client):
+    r = client.get("/static/og.png")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    # 1200x630 is what every platform crops to; PNG header carries the size.
+    width = int.from_bytes(r.content[16:20], "big")
+    height = int.from_bytes(r.content[20:24], "big")
+    assert (width, height) == (1200, 630)

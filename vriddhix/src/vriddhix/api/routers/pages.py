@@ -44,6 +44,38 @@ TEMPLATES = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent
 router = APIRouter(tags=["pages"], include_in_schema=False)
 
 
+def _seo(request, path: str, *, kind: str = "WebPage", extra: dict | None = None) -> dict:
+    """Per-page SEO context: canonical origin, and structured data.
+
+    The structured data describes what the page IS rather than claiming
+    ratings or offers it cannot substantiate. A SoftwareApplication block
+    with an invented aggregateRating is the schema equivalent of a fabricated
+    backtest, and Google penalises it when it notices.
+    """
+    from .seo import is_public, public_origin
+
+    origin = public_origin(request)
+    canonical = f"{origin}{path}"
+
+    data = {
+        "@context": "https://schema.org",
+        "@type": kind,
+        "name": "VriddhiX",
+        "url": canonical,
+        "inLanguage": "en-IN",
+        "publisher": {"@type": "Organization", "name": "VriddhiX", "url": origin},
+    }
+    if extra:
+        data.update(extra)
+
+    return {
+        "origin": origin,
+        "canonical": canonical,
+        "is_public": is_public(request),
+        "structured_data": data,
+    }
+
+
 def _coverage(session) -> dict:
     """What the database actually holds right now.
 
@@ -250,6 +282,21 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
     return TEMPLATES.TemplateResponse(
         request, "landing.html",
         {
+            **_seo(request, "/", kind="SoftwareApplication", extra={
+                "applicationCategory": "FinanceApplication",
+                "operatingSystem": "Web",
+                "description": (
+                    "Pattern research for Indian equities: volatility contraction "
+                    "bases, market structure, regime and relative strength, with "
+                    "the outcome of every detected setup recorded."
+                ),
+                "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"},
+                "featureList": [
+                    "VCP detection", "Market structure (BOS/CHoCH)",
+                    "Fair value gaps", "Market regime", "Relative strength",
+                    "Sector rotation", "Breakout ledger", "Backtesting",
+                ],
+            }),
             "coverage": _coverage(session),
             "regime": regime,
             "regime_colour": REGIME_COLOURS.get(regime.regime) if regime else None,
@@ -272,7 +319,8 @@ def signup_page(request: Request):
 
     return TEMPLATES.TemplateResponse(
         request, "signup.html",
-        {"page": "signup", "min_password": MIN_PASSWORD_LENGTH},
+        {**_seo(request, "/signup"), "page": "signup",
+         "min_password": MIN_PASSWORD_LENGTH},
     )
 
 
@@ -282,12 +330,22 @@ def login_page(request: Request):
 
     return TEMPLATES.TemplateResponse(
         request, "signup.html",
-        {"page": "login", "mode": "login", "min_password": MIN_PASSWORD_LENGTH},
+        {**_seo(request, "/login"), "page": "login", "mode": "login",
+         "min_password": MIN_PASSWORD_LENGTH},
     )
 
 
 @router.get("/learn", response_class=HTMLResponse)
 def learn(request: Request, session: SessionDep):
     return TEMPLATES.TemplateResponse(
-        request, "learn.html", {"page": "learn", "coverage": _coverage(session)},
+        request, "learn.html",
+        {**_seo(request, "/learn", kind="TechArticle", extra={
+            "headline": "How VriddhiX measures a chart",
+            "description": (
+                "How the VCP, market structure, regime and relative strength "
+                "engines work, and the five ways a research platform misleads "
+                "you without meaning to."
+            ),
+        }),
+         "page": "learn", "coverage": _coverage(session)},
     )

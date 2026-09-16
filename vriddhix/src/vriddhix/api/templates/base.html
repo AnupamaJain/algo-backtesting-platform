@@ -7,6 +7,33 @@
 <meta name="description" content="{% block description %}Pattern intelligence and quantitative research for Indian equities. A research instrument, not a prediction machine.{% endblock %}">
 <link rel="stylesheet" href="/static/app.css">
 <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+
+{# One unambiguous URL per page. Without it, /?utm_source=x and / are two
+   pages competing with each other for the same terms. #}
+<link rel="canonical" href="{{ canonical }}">
+{% block alternates %}{% endblock %}
+
+{# Link previews. A page shared without these renders as a bare URL, which
+   costs more clicks than most on-page tweaks gain. #}
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="VriddhiX">
+<meta property="og:locale" content="{{ og_locale|default('en_IN') }}">
+<meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+<meta property="og:description" content="{{ self.description() }}">
+<meta property="og:url" content="{{ canonical }}">
+<meta property="og:image" content="{{ origin }}/static/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ self.title() }}">
+<meta name="twitter:description" content="{{ self.description() }}">
+<meta name="twitter:image" content="{{ origin }}/static/og.png">
+
+{# Crawlers are told not to index anything until this instance has a public
+   URL configured; robots.txt says the same. #}
+{% if not is_public %}<meta name="robots" content="noindex, nofollow">{% endif %}
+
+<script type="application/ld+json">
+{{ structured_data | tojson }}
+</script>
 <script>
   // Applied before first paint: a flash of the wrong theme is the first
   // thing a reader notices and the last thing they forgive.
