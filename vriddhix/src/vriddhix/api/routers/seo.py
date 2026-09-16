@@ -48,6 +48,7 @@ def is_public(request: Request | None = None) -> bool:
 INDEXABLE = [
     ("/",       "daily",   "1.0"),
     ("/learn",  "monthly", "0.8"),
+    ("/vcp-breakout-failure-rate", "weekly", "0.9"),
     ("/signup", "yearly",  "0.4"),
 ]
 
@@ -71,6 +72,7 @@ def robots(request: Request) -> Response:
 User-agent: *
 Allow: /$
 Allow: /learn
+Allow: /vcp-breakout-failure-rate
 Allow: /signup
 
 # Account-scoped and machine surfaces. Nothing here is useful in an index,

@@ -640,3 +640,37 @@ tr.scr-in { animation: scr-slide .32s ease both; }
   letter-spacing: .07em; text-transform: uppercase; margin-right: 5px;
 }
 @media (max-width: 760px) { .rules dt { grid-row: auto; } }
+
+/* ---- evidence page ---- */
+
+.headline-stat {
+  display: flex; flex-wrap: wrap; gap: 20px 46px; align-items: baseline;
+  margin-top: 34px; padding-bottom: 22px;
+  border-bottom: 2px solid var(--text);
+}
+.hs-n { font-size: clamp(3.2rem, 9vw, 5rem); font-weight: 650; line-height: .95;
+        letter-spacing: -.035em; color: var(--bear); }
+.hs-k { font-size: 1rem; color: var(--muted); margin-top: 6px; max-width: 24ch; }
+.hs-meta { display: flex; flex-direction: column; gap: 5px; font-size: .88rem;
+           color: var(--muted); margin-left: auto; }
+.hs-meta b { color: var(--text); }
+
+table.evidence-table { width: 100%; border-collapse: collapse; margin-top: 18px;
+                       font-size: .94rem; }
+table.evidence-table th {
+  text-align: left; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--faint); font-weight: 700; padding: 10px 12px 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+table.evidence-table td { padding: 13px 12px 13px 0; border-bottom: 1px solid var(--border); }
+table.evidence-table .r, table.evidence-table th.r { text-align: right; }
+table.evidence-table tr:last-child td { border-bottom: 0; }
+.rate-bar { display: block; height: 6px; border-radius: 3px;
+            background: var(--surface-2); overflow: hidden; }
+.rate-bar i { display: block; height: 100%; opacity: .85; }
+
+.faq { margin: 22px 0 0; }
+.faq > div { padding: 18px 0; border-top: 1px solid var(--border); }
+.faq > div:last-child { border-bottom: 1px solid var(--border); }
+.faq dt { font-weight: 640; font-size: 1rem; margin-bottom: 6px; }
+.faq dd { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.65; }

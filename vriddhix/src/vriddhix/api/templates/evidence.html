@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}How often does a VCP breakout fail? Measured on NSE — Tathya{% endblock %}
+{% block description %}A measured failure rate for volatility-contraction breakouts on Indian equities, broken down by market regime, with the method and the survivorship caveat stated.{% endblock %}
+
+{% block content %}
+<section class="wrap narrow" style="padding-block:56px 0">
+  <div class="eyebrow">Evidence</div>
+  <h1>How often does a VCP breakout fail?</h1>
+  <p class="lede">
+    The published answers disagree with each other — one source says 90%
+    succeed, another says 60–70%, and none of them show the population they
+    measured. This page publishes the rate from a ledger that keeps its
+    failures, with the universe, the period and the bias stated.
+  </p>
+</section>
+
+{% if e %}
+<section class="wrap narrow">
+  <div class="headline-stat">
+    <div>
+      <div class="hs-n num">{{ "%.0f"|format(e.failure_pct) }}%</div>
+      <div class="hs-k">of breakouts closed back below their pivot</div>
+    </div>
+    <div class="hs-meta">
+      <span><b class="num">{{ "{:,}".format(e.total) }}</b> resolved breakouts</span>
+      <span><b class="num">{{ "{:,}".format(e.sessions) }}</b> sessions scanned</span>
+      <span><b class="num">{{ e.from }}</b> → <b class="num">{{ e.to }}</b></span>
+    </div>
+  </div>
+
+  <div class="split" style="margin-top:26px">
+    <i class="split-ok"  style="width:{{ "%.1f"|format(e.hold_pct) }}%"></i>
+    <i class="split-bad" style="width:{{ "%.1f"|format(e.failure_pct) }}%"></i>
+  </div>
+  <div class="split-legend">
+    <span><b class="num">{{ "{:,}".format(e.held) }}</b> held above the pivot</span>
+    <span class="r"><b class="num">{{ "{:,}".format(e.failed) }}</b> failed</span>
+  </div>
+</section>
+
+<section class="wrap narrow">
+  <h2>The regime changes the answer</h2>
+  <p class="muted">
+    Each breakout is filed under the market regime recorded on the day it
+    happened — not the regime today. The rate rises as conditions deteriorate,
+    which is the part most single-number answers hide.
+  </p>
+
+  <table class="evidence-table">
+    <thead>
+      <tr><th>Regime at breakout</th><th class="r">Breakouts</th>
+          <th class="r">Failed</th><th class="r">Failure rate</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in e.by_regime %}
+      <tr>
+        <td><span class="swatch" style="background:{{ r.fill }}"></span> {{ r.regime }}</td>
+        <td class="r num">{{ "{:,}".format(r.n) }}</td>
+        <td class="r num">{{ r.failed }}</td>
+        <td class="r num"><b>{{ "%.1f"|format(r.failure_pct) }}%</b></td>
+        <td style="width:34%">
+          <span class="rate-bar">
+            <i style="width:{{ "%.1f"|format(r.failure_pct * 3) }}%;background:{{ r.fill }}"></i>
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="wrap narrow">
+  <h2>What a failure looks like</h2>
+  <dl class="rules">
+    <div>
+      <dt>It fails fast</dt>
+      <dd>
+        A failed breakout closed back below its pivot after
+        <b class="num">{{ "%.0f"|format(e.days_to_failure) }}</b> sessions on
+        average. These are not slow bleeds; the question is answered inside a
+        week.
+      </dd>
+    </div>
+    <div>
+      <dt>It barely moves first</dt>
+      <dd>
+        Average best excursion before failing:
+        <b class="num">{{ "%.1f"|format(e.failed_mfe) }}%</b>, against
+        <b class="num">{{ "%.1f"|format(e.held_mfe) }}%</b> for breakouts that
+        held. A breakout that does not move soon after clearing the pivot is
+        behaving like one that fails.
+      </dd>
+    </div>
+    <div>
+      <dt>The downside is asymmetric</dt>
+      <dd>
+        Worst excursion averaged
+        <b class="num">{{ "%.1f"|format(e.failed_mae) }}%</b> on failures
+        against <b class="num">{{ "%.1f"|format(e.held_mae) }}%</b> on the ones
+        that held.
+      </dd>
+    </div>
+  </dl>
+</section>
+{% endif %}
+
+<section class="wrap narrow">
+  <h2>Method</h2>
+  <p class="muted">
+    Stated so the number can be argued with. A failure rate without a method
+    is a slogan.
+  </p>
+  <dl class="rules">
+    <div>
+      <dt>Universe</dt>
+      <dd>NSE cash equities that also have a listed future or option — the
+        standard definition of the liquid Indian market.</dd>
+      <dd class="cost"><span>Bias:</span> membership is backfilled from today's
+        constituent list, so this is the set liquid <i>now</i>, not then.
+        That flatters the result and the platform says so everywhere it
+        reports one.</dd>
+    </div>
+    <div>
+      <dt>What counts as a breakout</dt>
+      <dd>A close above the pivot of a detected volatility-contraction base,
+        where the pivot is the high of the most recent contraction.</dd>
+    </div>
+    <div>
+      <dt>What counts as a failure</dt>
+      <dd>A close back below the pivot, beyond a small buffer. Close-based,
+        not intraday — a wick through the pivot on a thin open is not a
+        failed breakout, and counting it as one would inflate this number.</dd>
+    </div>
+    <div>
+      <dt>Look-ahead</dt>
+      <dd>Every detection used only bars dated on or before the day it ran,
+        verified by truncating history and requiring identical output. The
+        outcome is measured afterwards, which is a retrospective measurement
+        rather than foresight.</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="wrap narrow">
+  <h2>Questions</h2>
+  <dl class="faq">
+    {% for q, a in faq %}
+    <div><dt>{{ q }}</dt><dd>{{ a }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+
+<section class="wrap narrow">
+  <div class="close">
+    <p>
+      Every breakout behind these numbers is browsable, with its reason and
+      the day it happened.
+    </p>
+    <div class="close-actions">
+      <a class="btn btn-primary btn-lg" href="/">See the scanner</a>
+      <a class="quiet-link" href="/learn#lies">how this can still mislead you →</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

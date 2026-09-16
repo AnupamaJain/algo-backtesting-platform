@@ -502,6 +502,7 @@ def test_the_sitemap_is_valid_and_lists_only_indexable_pages(client, monkeypatch
     assert locs == [
         "https://vriddhix.example/",
         "https://vriddhix.example/learn",
+        "https://vriddhix.example/vcp-breakout-failure-rate",
         "https://vriddhix.example/signup",
     ]
     # Account surfaces stay out.
@@ -625,3 +626,65 @@ def test_sqlite_waits_for_a_busy_lock_rather_than_failing(migrated_db):
 
     assert timeout >= 5000, "a contended write would fail instantly"
     assert journal.lower() == "wal"
+
+
+# ---------------------------------------------------------------------------
+# The evidence page
+# ---------------------------------------------------------------------------
+
+
+def test_the_evidence_page_renders_with_no_data(client, seeded):
+    """A brand-new instance must still serve the page, without a rate."""
+    r = client.get("/vcp-breakout-failure-rate")
+    assert r.status_code == 200
+    assert "Internal Server Error" not in r.text
+
+
+def test_no_failure_rate_is_published_over_a_tiny_sample(client, session, seeded):
+    """A percentage over a handful of rows reads as a finding and is not one."""
+    from datetime import date
+
+    from vriddhix.db.models import Breakout, Stock
+
+    stock = session.query(Stock).first()
+    for i in range(10):
+        session.add(Breakout(
+            stock_id=stock.id, breakout_date=date(2025, 1, 1),
+            breakout_price=100, pivot_price=99,
+            status="CONFIRMED" if i else "FAILED",
+            engine_version="VCP_ENGINE_V1.0",
+        ))
+    session.flush()
+
+    body = client.get("/vcp-breakout-failure-rate").text
+    # Ten rows is below the floor, so no headline percentage is shown.
+    assert "of breakouts closed back below" not in body
+
+
+def test_the_evidence_page_states_its_survivorship_bias(client):
+    """A failure rate without its caveat is a slogan."""
+    body = client.get("/vcp-breakout-failure-rate").text.lower()
+    assert "backfilled from today" in body
+    assert "flatters" in body
+
+
+def test_the_evidence_page_carries_faq_structured_data(client):
+    import json
+    import re
+
+    body = client.get("/vcp-breakout-failure-rate").text
+    data = json.loads(re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', body, re.S).group(1))
+    questions = data.get("mainEntity", [])
+    assert len(questions) >= 3
+    for q in questions:
+        assert q["@type"] == "Question"
+        assert q["acceptedAnswer"]["text"]
+
+
+def test_the_evidence_page_is_crawlable_from_the_homepage(client, monkeypatch):
+    """A page reachable only from the sitemap is a page Google deprioritises."""
+    monkeypatch.setenv("VRIDDHIX_PUBLIC_URL", "https://tathya.example")
+    assert "/vcp-breakout-failure-rate" in client.get("/").text
+    assert "/vcp-breakout-failure-rate" in client.get("/sitemap.xml").text
+    assert "/vcp-breakout-failure-rate" in client.get("/robots.txt").text

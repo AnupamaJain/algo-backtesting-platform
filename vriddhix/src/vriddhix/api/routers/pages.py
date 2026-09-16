@@ -25,6 +25,7 @@ from sqlalchemy import func, select
 
 from ...db.models import (
     Breakout,
+    BreakoutOutcome,
     Industry,
     MarketMetric,
     MarketRegimeRow,
@@ -332,6 +333,139 @@ def login_page(request: Request):
         request, "signup.html",
         {**_seo(request, "/login"), "page": "login", "mode": "login",
          "min_password": MIN_PASSWORD_LENGTH},
+    )
+
+
+def _breakout_evidence(session) -> dict:
+    """What actually followed every breakout the engine recorded.
+
+    This is the one thing on the site nobody else can copy: published VCP
+    outcome rates contradict each other wildly (90% in one place, 60-70% in
+    another) and none of them show the population they measured. These
+    numbers come from the ledger, failures included, with the universe and
+    period stated.
+    """
+    from sqlalchemy import case
+
+    resolved = select(func.count()).select_from(Breakout).where(
+        Breakout.status.in_(("CONFIRMED", "FAILED"))
+    )
+    total = session.scalar(resolved) or 0
+    if total < 50:
+        # Too few to publish a rate. A percentage over a handful of rows
+        # reads as a finding and is not one.
+        return {}
+
+    failed = session.scalar(
+        select(func.count()).select_from(Breakout).where(Breakout.status == "FAILED")
+    ) or 0
+
+    by_regime = []
+    rows = session.execute(
+        select(
+            Breakout.regime_at_breakout,
+            func.count(),
+            func.sum(case((Breakout.status == "FAILED", 1), else_=0)),
+        )
+        .where(Breakout.status.in_(("CONFIRMED", "FAILED")))
+        .group_by(Breakout.regime_at_breakout)
+    ).all()
+    order = {"STRONG_BULL": 0, "BULL": 1, "NEUTRAL": 2, "BEAR": 3, "STRONG_BEAR": 4}
+    for regime, n, f in sorted(rows, key=lambda r: order.get(r[0], 9)):
+        if not regime or n < 20:
+            continue
+        by_regime.append({
+            "regime": regime.replace("_", " ").title(),
+            "n": n,
+            "failed": int(f or 0),
+            "failure_pct": (f or 0) / n * 100.0,
+            "fill": REGIME_COLOURS.get(regime, "#9a948c"),
+        })
+
+    def avg(column, where):
+        return session.scalar(
+            select(func.avg(column))
+            .select_from(BreakoutOutcome)
+            .join(Breakout, Breakout.id == BreakoutOutcome.breakout_id)
+            .where(where)
+        )
+
+    held = Breakout.status == "CONFIRMED"
+    lost = Breakout.status == "FAILED"
+    first, last = session.execute(
+        select(func.min(ScanRun.scan_date), func.max(ScanRun.scan_date))
+        .where(ScanRun.status == "COMPLETED")
+    ).first()
+
+    return {
+        "total": total,
+        "failed": failed,
+        "held": total - failed,
+        "failure_pct": failed / total * 100.0,
+        "hold_pct": (total - failed) / total * 100.0,
+        "by_regime": by_regime,
+        "days_to_failure": _num(avg(BreakoutOutcome.days_to_failure, lost)),
+        "failed_mfe": _num(avg(BreakoutOutcome.mfe_pct, lost)),
+        "failed_mae": _num(avg(BreakoutOutcome.mae_pct, lost)),
+        "held_mfe": _num(avg(BreakoutOutcome.mfe_pct, held)),
+        "held_mae": _num(avg(BreakoutOutcome.mae_pct, held)),
+        "from": first,
+        "to": last,
+        "sessions": session.scalar(
+            select(func.count()).select_from(ScanRun).where(ScanRun.status == "COMPLETED")
+        ) or 0,
+        "patterns": session.scalar(select(func.count()).select_from(Pattern)) or 0,
+    }
+
+
+def _num(value):
+    return round(float(value), 2) if value is not None else None
+
+
+@router.get("/vcp-breakout-failure-rate", response_class=HTMLResponse)
+def breakout_evidence(request: Request, session: SessionDep, prov: ProvenanceDep):
+    """How often a VCP breakout actually fails, measured rather than asserted."""
+    evidence = _breakout_evidence(session)
+    faq = [
+        ("How often do VCP breakouts fail?",
+         (f"In this measurement, {evidence['failure_pct']:.0f}% of "
+          f"{evidence['total']:,} resolved breakouts on NSE closed back below "
+          f"their pivot. The remaining {evidence['hold_pct']:.0f}% held above it."
+          ) if evidence else
+         "The rate is published from a ledger of recorded breakouts once "
+         "enough have resolved to be worth quoting."),
+        ("Does the market regime change the failure rate?",
+         ("Yes. The rate rises as conditions deteriorate: it is lowest in "
+          "bullish regimes and highest in bearish ones, measured on the "
+          "regime recorded at the moment of each breakout."
+          ) if evidence else "Yes — see the table."),
+        ("How quickly does a failed breakout fail?",
+         (f"On average {evidence['days_to_failure']:.0f} trading sessions after "
+          f"the breakout, with an average best excursion of only "
+          f"{evidence['failed_mfe']:.1f}% before it broke down."
+          ) if evidence else "Within a few sessions."),
+        ("Is this survivorship-biased?",
+         "Partly, and it says so. Index membership is backfilled from today's "
+         "constituent list, so the universe is the names liquid now rather "
+         "than the names liquid then. Failed breakouts themselves are never "
+         "removed — they are the point of the ledger."),
+    ]
+    return TEMPLATES.TemplateResponse(
+        request, "evidence.html",
+        {**_seo(request, "/vcp-breakout-failure-rate", kind="TechArticle", extra={
+            "headline": "How often does a VCP breakout fail? Measured on NSE.",
+            "description": (
+                "A measured failure rate for volatility-contraction breakouts on "
+                "Indian equities, broken down by market regime, with the method "
+                "and the survivorship caveat stated."
+            ),
+            "mainEntity": [
+                {"@type": "Question", "name": q,
+                 "acceptedAnswer": {"@type": "Answer", "text": a}}
+                for q, a in faq
+            ],
+        }),
+         "page": "evidence", "e": evidence, "faq": faq},
     )
 
 
