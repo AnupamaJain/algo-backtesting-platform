@@ -1,4 +1,4 @@
-# Running VriddhiX
+# Running Tathya
 
 Everything runs on this machine. One process serves the pages and the API;
 the database is a SQLite file under `state/`.
@@ -22,7 +22,7 @@ Then open:
 | http://127.0.0.1:8787/learn | How each engine measures a chart, and the five quiet lies |
 | http://127.0.0.1:8787/login | Sign in |
 | http://127.0.0.1:8787/signup | Create an account |
-| http://127.0.0.1:8787/api/docs | Browsable API reference (43 endpoints) |
+| http://127.0.0.1:8787/api/docs | Browsable API reference (46 endpoints) |
 
 `127.0.0.1` means **this machine only**. Nothing is reachable from your
 network or the internet, which is the right default for something holding a
@@ -72,10 +72,10 @@ only reset.
 `status` looks like this:
 
 ```
-server: running (pid 88542) — http://127.0.0.1:8787
-data  : 23 symbols · 56,897 bars · 2016-09-14 .. 2026-09-11
+server: running (pid 95715) — http://127.0.0.1:8787
+data  : 212 symbols · 475,835 bars · 2016-09-14 .. 2026-09-15
 scans : 2,415 sessions · 813 patterns · 406 breakouts
-regime: STRONG_BEAR (20.0) as of 2026-09-11
+regime: STRONG_BEAR (20.0) as of 2026-09-15
 users : 2
 agent : ai.vriddhix.nightly loaded (weekdays 19:00 IST)
 ```
@@ -154,7 +154,7 @@ survivorship mode the run was defined against.
 cd ~/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhix
 source ../venv/bin/activate
 export PYTHONPATH=src
-pytest -q                 # 433 tests, about 25 seconds
+pytest -q                 # 451 tests, about 30 seconds
 ```
 
 The schema is built by running the migrations, so a migration that has
@@ -194,7 +194,7 @@ relative strength. They are not predictions and not recommendations. The
 ledger records what followed similar setups historically, failures included;
 that is a record of the past, not a claim about the future.
 
-**This universe is 23 symbols with a survivorship warning.** Every hit rate,
-failure rate and backtest figure the platform reports is a measurement of
-that universe, not of the Indian market. Widen the universe before treating
-any of it as a finding.
+**This universe is 209 NSE F&O-eligible names, with a survivorship warning.**
+Membership is backfilled from today's constituent list, so every hit rate,
+failure rate and backtest figure is a measurement of the names that are
+liquid *today* — not of the market as it stood in 2016.

@@ -2,7 +2,7 @@
 
 Three self-hosted tools for Indian equity and index markets, in one
 repository: a **live options-trading dashboard**, a **strategy backtester**,
-and **VriddhiX**, a pattern-research platform that measures chart structure
+and **Tathya**, a pattern-research platform that measures chart structure
 and records what happened next.
 
 Everything runs on your own machine against your own broker account. Nothing
@@ -18,7 +18,7 @@ is a hosted service, and nothing here is investment advice.
 > reaches the broker. Read **[DISCLAIMER.md](DISCLAIMER.md)** in full before
 > you change that.
 >
-> The research platform (VriddhiX) has **no trading path at all**. It reads
+> The research platform (Tathya) has **no trading path at all**. It reads
 > market data and writes measurements; it cannot place an order.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -31,7 +31,7 @@ is a hosted service, and nothing here is investment advice.
 
 | | | |
 |---|---|---|
-| 🔬 | **[VriddhiX](vriddhix/)** | Pattern research: VCP, market structure, regime, relative strength. Detects, scores, and tracks outcomes across a decade. **Read-only — cannot trade.** |
+| 🔬 | **[Tathya](vriddhix/)** | Pattern research: VCP, market structure, regime, relative strength. Detects, scores, and tracks outcomes across a decade. **Read-only — cannot trade.** |
 | 📊 | **[quant_backtester](quant_backtester/)** | Strategy backtesting over Indian equities, with broker adapters for Dhan and Flattrade. |
 | 📈 | **UI Trading System** (repo root) | Flask dashboard for live NIFTY/SENSEX options trading on Zerodha Kite. Positions, Greeks, GTT monitoring, automated strategies. **Trades real money.** |
 
@@ -40,7 +40,7 @@ any one without the others.
 
 ---
 
-## 🔬 VriddhiX — pattern research
+## 🔬 Tathya — pattern research
 
 A research instrument, not a prediction machine. It finds chart structure in
 NSE equities, places each setup in market and sector context, scores it, and
@@ -87,7 +87,7 @@ Design docs: **[vriddhix/docs/](vriddhix/docs/)** (10 specifications)
   and no view drops them by default. A hit rate over survivors is the single
   most flattering lie a research tool can tell.
 
-436 tests, including no-look-ahead and engine-purity suites.
+451 tests, including no-look-ahead and engine-purity suites.
 
 ---
 
@@ -146,7 +146,7 @@ whichever parts you use:
 
 | Component | Needs |
 |---|---|
-| VriddhiX | Nothing. Market data comes from yfinance. |
+| Tathya | Nothing. Market data comes from yfinance. |
 | quant_backtester | Dhan or Flattrade credentials for live data; historical CSVs work offline |
 | UI Trading System | A Zerodha [Kite Connect](https://developers.kite.trade/) subscription (paid) |
 
@@ -190,7 +190,7 @@ Dependencies/               instrument dumps and live access tokens
 
 ```
 .
-├── vriddhix/            🔬 pattern research platform (self-contained)
+├── vriddhix/            🔬 Tathya — pattern research (self-contained)
 │   ├── src/vriddhix/       domain · db · data · engines · services · jobs · api
 │   ├── docs/               10 design specifications
 │   ├── tests/              436 tests
@@ -213,8 +213,8 @@ Dependencies/               instrument dumps and live access tokens
 ## Testing
 
 ```bash
-# VriddhiX
-cd vriddhix && PYTHONPATH=src python -m pytest -q     # 436 tests
+# Tathya
+cd vriddhix && PYTHONPATH=src python -m pytest -q     # 451 tests
 
 # Backtester
 cd quant_backtester && python -m pytest -q
@@ -223,7 +223,7 @@ cd quant_backtester && python -m pytest -q
 python -m pytest tests -q
 ```
 
-VriddhiX builds its test schema by running the Alembic migrations, so a
+Tathya builds its test schema by running the Alembic migrations, so a
 migration that has drifted from the models fails in the suite rather than in
 a deployment.
 

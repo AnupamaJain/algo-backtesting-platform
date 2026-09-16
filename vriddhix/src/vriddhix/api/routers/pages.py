@@ -60,7 +60,7 @@ def _seo(request, path: str, *, kind: str = "WebPage", extra: dict | None = None
     data = {
         "@context": "https://schema.org",
         "@type": kind,
-        "name": "VriddhiX",
+        "name": "Tathya",
         "url": canonical,
         "inLanguage": "en-IN",
         "publisher": {"@type": "Organization", "name": "VriddhiX", "url": origin},
@@ -340,7 +340,7 @@ def learn(request: Request, session: SessionDep):
     return TEMPLATES.TemplateResponse(
         request, "learn.html",
         {**_seo(request, "/learn", kind="TechArticle", extra={
-            "headline": "How VriddhiX measures a chart",
+            "headline": "How Tathya measures a chart",
             "description": (
                 "How the VCP, market structure, regime and relative strength "
                 "engines work, and the five ways a research platform misleads "

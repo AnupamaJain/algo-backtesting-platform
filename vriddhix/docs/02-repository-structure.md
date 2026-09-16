@@ -1,4 +1,4 @@
-# VriddhiX — Repository Structure
+# Tathya — Repository Structure
 
 Directories marked **[P1]** exist now (Phase 1). The rest are the planned
 shape, listed so that later phases add files to a known place rather than

@@ -1,4 +1,4 @@
-# VriddhiX
+# Tathya
 
 Pattern intelligence and quantitative research for Indian equities.
 

@@ -430,7 +430,7 @@ def test_every_tag_in_use_is_described(client):
 
 def test_the_spec_carries_identity_and_licence(client):
     spec = client.get("/api/openapi.json").json()["info"]
-    assert spec["title"] == "Sakshi"
+    assert spec["title"] == "Tathya"
     assert spec["version"]
     assert spec.get("summary")
     assert spec.get("license", {}).get("name") == "MIT"
@@ -439,7 +439,7 @@ def test_the_spec_carries_identity_and_licence(client):
 def test_the_docs_page_carries_the_mark(client):
     body = client.get("/api/docs").text
     assert "/static/logo.svg" in body
-    assert "Sakshi" in body
+    assert "Tathya" in body
 
 
 def test_the_logo_is_served_and_self_coloured(client):

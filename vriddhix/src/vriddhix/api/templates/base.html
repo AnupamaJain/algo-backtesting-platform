@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}VriddhiX{% endblock %}</title>
+<title>{% block title %}Tathya{% endblock %}</title>
 <meta name="description" content="{% block description %}Pattern intelligence and quantitative research for Indian equities. A research instrument, not a prediction machine.{% endblock %}">
 <link rel="stylesheet" href="/static/app.css">
 <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
@@ -16,7 +16,7 @@
 {# Link previews. A page shared without these renders as a bare URL, which
    costs more clicks than most on-page tweaks gain. #}
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="VriddhiX">
+<meta property="og:site_name" content="Tathya">
 <meta property="og:locale" content="{{ og_locale|default('en_IN') }}">
 <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
 <meta property="og:description" content="{{ self.description() }}">
@@ -38,7 +38,7 @@
   // Applied before first paint: a flash of the wrong theme is the first
   // thing a reader notices and the last thing they forgive.
   try {
-    var t = localStorage.getItem("vriddhix-theme");
+    var t = localStorage.getItem("tathya-theme");
     if (t) document.documentElement.setAttribute("data-theme", t);
   } catch (e) {}
 </script>
@@ -49,7 +49,7 @@
   <div class="wrap topbar">
     <a class="brand" href="/">
       <img src="/static/logo.svg" alt="" width="24" height="24" class="brand-mark">
-      VriddhiX <span class="mark">NSE</span>
+      Tathya <span class="mark">NSE</span>
     </a>
     <nav class="links">
       <a href="/learn" class="secondary {% if page == 'learn' %}active{% endif %}">Learn</a>
@@ -66,7 +66,7 @@
   <div class="wrap">
     <div class="disclaimer">
       <strong>This is research software, not investment advice.</strong>
-      VriddhiX measures and records chart structure, market breadth and
+      Tathya measures and records chart structure, market breadth and
       relative strength. It does not predict prices, recommend securities, or
       forecast returns. Scores and grades are classifications of measured
       behaviour — a high score describes what a chart has done, never what it
@@ -76,7 +76,7 @@
       SEBI-registered adviser before acting on anything you read.
     </div>
     <div class="foot-row">
-      <span>VriddhiX · NSE equities</span>
+      <span>Tathya · NSE equities</span>
       <a href="/learn">Learn</a>
       <a href="/api/docs">API reference</a>
       <a href="/api/v1/ops/health">Status</a>
@@ -97,7 +97,7 @@
          window.matchMedia("(prefers-color-scheme: dark)").matches);
       var next = isDark ? "light" : "dark";
       root.setAttribute("data-theme", next);
-      try { localStorage.setItem("vriddhix-theme", next); } catch (e) {}
+      try { localStorage.setItem("tathya-theme", next); } catch (e) {}
     });
   })();
 </script>

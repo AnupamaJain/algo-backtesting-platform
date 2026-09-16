@@ -1,4 +1,4 @@
-# VriddhiX — System Architecture
+# Tathya — System Architecture
 
 ## 1. What this system is
 

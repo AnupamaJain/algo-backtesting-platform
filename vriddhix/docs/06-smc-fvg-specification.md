@@ -1,4 +1,4 @@
-# VriddhiX — SMC & FVG Engine Specification
+# Tathya — SMC & FVG Engine Specification
 
 `SMC_ENGINE_V1.0` (Phase 4) · `FVG_ENGINE_V1.0` (Phase 5)
 

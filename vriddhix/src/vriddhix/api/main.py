@@ -68,18 +68,17 @@ _DOCS_STYLE = """
     head.className = "sk-head";
     head.innerHTML =
       '<img src="/static/logo.svg" alt="">' +
-      '<h1>Sakshi<span>the witness \u00b7 VriddhiX read API</span></h1>';
+      '<h1>Tathya<span>that which is so \u00b7 read API</span></h1>';
     document.body.insertBefore(head, document.body.firstChild);
   });
 </script>
 """ 
 
-#: The API is named separately from the platform. VriddhiX is the product;
-#: Sākṣī -- "the witness" -- is the read surface, and the name is the design
-#: brief: a witness testifies to what it observed and does not speculate about
-#: what comes next. Every endpoint here reports a measurement already taken.
-API_NAME = "Sakshi"
-API_TAGLINE = "the witness \u00b7 VriddhiX read API"
+#: Tathya -- तथ्य, "that which is so". The name is the design brief: every
+#: endpoint here reports a measurement already taken, and none of them
+#: speculates about what comes next.
+API_NAME = "Tathya"
+API_TAGLINE = "that which is so \u00b7 read API"
 
 TAGS_METADATA = [
     {"name": "market", "description":
@@ -136,7 +135,7 @@ def create_app() -> FastAPI:
         openapi_tags=TAGS_METADATA,
         license_info={"name": "MIT",
                       "url": "https://github.com/AnupamaJain/algo-backtesting-platform/blob/main/LICENSE"},
-        contact={"name": "VriddhiX",
+        contact={"name": "Tathya",
                  "url": "https://github.com/AnupamaJain/algo-backtesting-platform"},
         # Default docs route is disabled; a custom one below carries the
         # mark and the brand colours. Swagger's own header cannot be styled

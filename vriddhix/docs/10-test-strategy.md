@@ -1,4 +1,4 @@
-# VriddhiX — Test Strategy
+# Tathya — Test Strategy
 
 ## 1. What testing is for here
 

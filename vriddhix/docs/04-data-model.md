@@ -1,4 +1,4 @@
-# VriddhiX — Data Model
+# Tathya — Data Model
 
 The ERD (`03`) describes storage. This describes **meaning**: the vocabulary
 every layer shares, and the invariants that hold everywhere.

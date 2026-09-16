@@ -1,4 +1,4 @@
-# VriddhiX — Relative Strength & Sector Rotation Specification
+# Tathya — Relative Strength & Sector Rotation Specification
 
 `RS_ENGINE_V1.0`, `SECTOR_ENGINE_V1.0` · Phase 3
 

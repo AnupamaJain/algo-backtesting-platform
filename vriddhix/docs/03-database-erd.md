@@ -1,4 +1,4 @@
-# VriddhiX — Database ERD
+# Tathya — Database ERD
 
 Tables marked **[P1]** are created by migration `0001_phase1_foundation`.
 The rest are specified here so later phases extend a known design.
