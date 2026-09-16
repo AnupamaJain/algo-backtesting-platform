@@ -122,45 +122,6 @@
 </section>
 {% endif %}
 
-<!-- ══════════════ what it sees ══════════════ -->
-{% if setups %}
-<section class="wrap">
-  <div class="sec-head">
-    <h2>What the scanner sees today</h2>
-    <a class="quiet-link" href="/api/docs">every field via the API →</a>
-  </div>
-  <div class="table-card">
-    <table class="setups">
-      <thead>
-        <tr><th>Symbol</th><th>Sector</th><th>Stage</th>
-            <th class="r">Score</th><th class="r">RS</th><th class="r">Contractions</th></tr>
-      </thead>
-      <tbody>
-        {% for s in setups %}
-        <tr>
-          <td><b>{{ s.symbol }}</b></td>
-          <td class="muted">{{ s.sector.replace('_',' ')|title if s.sector else '—' }}</td>
-          <td><span class="stage stage-{{ s.stage }}">{{ s.stage.replace('_',' ')|title }}</span></td>
-          <td class="r">
-            <span class="score-cell">
-              <span class="score-bar"><i style="width:{{ "%.0f"|format(s.score) }}%"></i></span>
-              <span class="num">{{ "%.0f"|format(s.score) }}</span>
-            </span>
-          </td>
-          <td class="r num">{{ "%.0f"|format(s.rs) if s.rs is not none else '—' }}</td>
-          <td class="r num">{{ s.contractions or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <p class="faint" style="margin-top:10px">
-    A score classifies what a chart has measurably done. It is not a
-    recommendation, and it is not a prediction.
-  </p>
-</section>
-{% endif %}
-
 <!-- ══════════════ screener ══════════════ -->
 {% if screener %}
 <section class="wrap">
@@ -286,46 +247,78 @@
 
 <!-- ══════════════ commitments ══════════════ -->
 <section class="wrap">
-  <div class="sec-head"><h2>Four commitments</h2></div>
-  <p class="muted" style="max-width:60ch;margin-top:-4px">
-    Constraints, not features. Each one costs something — which is how you can
-    tell they are real.
+  <div class="sec-head"><h2>What it refuses to do</h2></div>
+  <p class="muted lead-narrow">
+    Four constraints. Each one costs something — which is the only reason to
+    believe they are real.
   </p>
-  <div class="grid">
-    <div class="card">
-      <span class="tag">one implementation</span>
-      <h3>The backtest cannot drift from the scanner</h3>
-      <p>Live scanner, backtester and X-Ray call the same function objects. There is no second implementation to drift from, and a test walks the syntax tree to keep it that way.</p>
+
+  <dl class="rules">
+    <div>
+      <dt>There is one implementation of every rule</dt>
+      <dd>
+        The live scanner, the backtester and the historical X-Ray call the same
+        function objects. Not the same algorithm written twice — the same
+        objects.
+      </dd>
+      <dd class="cost">
+        <span>Costs:</span> engines cannot take shortcuts that only make sense
+        live, and a test walks the syntax tree on every commit to keep it that
+        way.
+      </dd>
     </div>
-    <div class="card">
-      <span class="tag">causality</span>
-      <h3>Nothing may see the future</h3>
-      <p>Verified by truncating history, recomputing, and demanding identical output. A look-ahead bug never crashes — it produces a backtest that looks excellent and means nothing.</p>
+
+    <div>
+      <dt>Nothing may see the future</dt>
+      <dd>
+        A value dated <i>t</i> depends only on bars dated <i>t</i> or earlier,
+        checked by truncating history, recomputing, and requiring byte-identical
+        output.
+      </dd>
+      <dd class="cost">
+        <span>Costs:</span> a swing is not confirmed until the bars that confirm
+        it have printed, so the detector is always some days behind the chart a
+        human would draw.
+      </dd>
     </div>
-    <div class="card">
-      <span class="tag">honest nulls</span>
-      <h3>It says what it does not know</h3>
-      <p>An unranked sector reads <span class="num">null</span>, not <span class="num">0</span>. Absence is never quietly rendered as a bearish number.</p>
+
+    <div>
+      <dt>It says what it does not know</dt>
+      <dd>
+        An unranked sector reads <code>null</code>, not <code>0</code>. A win
+        rate over zero resolved trades is <code>null</code>, not
+        <code>0%</code>.
+      </dd>
+      <dd class="cost">
+        <span>Costs:</span> every chart and every caller has to handle absence,
+        because absence is never quietly rendered as a bearish number.
+      </dd>
     </div>
-    <div class="card">
-      <span class="tag">failures kept</span>
-      <h3>Nothing that failed is deleted</h3>
-      <p>Failed breakouts stay in the ledger with their reason, and no view drops them by default.</p>
+
+    <div>
+      <dt>Nothing that failed is deleted</dt>
+      <dd>
+        Failed breakouts keep their row, their reason and the day it happened.
+        No view drops them by default.
+      </dd>
+      <dd class="cost">
+        <span>Costs:</span> the hit rate on this page is lower than the one a
+        platform reports when it quietly counts only survivors.
+      </dd>
     </div>
-  </div>
+  </dl>
 </section>
 
 <!-- ══════════════ close ══════════════ -->
 <section class="wrap">
   <div class="close">
-    <h2 style="margin:0 0 8px">Read the data yourself</h2>
-    <p class="muted" style="max-width:54ch;margin:0 auto 22px">
+    <p>
       Watchlists, saved screens built on the same evaluator the backtester
-      uses, and alerts over stored scan results. Free.
+      uses, and alerts over stored scan results.
     </p>
-    <div class="cta-row" style="justify-content:center">
-      <a class="btn btn-primary btn-lg" href="/signup">Create an account</a>
-      <a class="btn btn-ghost btn-lg" href="/api/docs">Browse the API</a>
+    <div class="close-actions">
+      <a class="btn btn-primary btn-lg" href="/signup">Create a free account</a>
+      <a class="quiet-link" href="/api/docs">or read it through the API →</a>
     </div>
   </div>
 </section>

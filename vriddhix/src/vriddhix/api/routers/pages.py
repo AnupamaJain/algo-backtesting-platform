@@ -169,36 +169,6 @@ def _breadth_spark(session, sessions: int = 180) -> dict:
     return _sparkline(values)
 
 
-def _top_setups(session, as_of, limit: int = 5) -> list[dict]:
-    """What the scanner is looking at right now."""
-    if as_of is None:
-        return []
-    rows = session.execute(
-        select(Pattern, Stock.symbol, Sector.code, RelativeStrength.rs_score)
-        .join(Stock, Stock.id == Pattern.stock_id)
-        .outerjoin(Industry, Industry.id == Stock.industry_id)
-        .outerjoin(Sector, Sector.id == Industry.sector_id)
-        .outerjoin(
-            RelativeStrength,
-            (RelativeStrength.stock_id == Stock.id)
-            & (RelativeStrength.date == as_of),
-        )
-        .where(Pattern.base_end == as_of, Pattern.score.isnot(None))
-        .order_by(Pattern.score.desc())
-        .limit(limit)
-    ).all()
-    return [
-        {
-            "symbol": symbol,
-            "sector": sector,
-            "stage": pattern.status,
-            "score": float(pattern.score),
-            "rs": float(rs) if rs is not None else None,
-            "contractions": pattern.contraction_count,
-        }
-        for pattern, symbol, sector, rs in rows
-    ]
-
 
 def _screener_rows(session, as_of, *, days: int = 365, limit: int = 120) -> list[dict]:
     """Real setups for the screener demo on the landing page.
@@ -286,7 +256,6 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "breadth": breadth,
             "ribbon": _regime_ribbon(session),
             "spark": _breadth_spark(session),
-            "setups": _top_setups(session, prov.as_of),
             "screener": _screener_rows(session, prov.as_of),
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),

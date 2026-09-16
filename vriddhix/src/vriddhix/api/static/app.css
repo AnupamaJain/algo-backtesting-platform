@@ -286,10 +286,7 @@ footer.bottom .disclaimer {
 
 .hero-wrap {
   border-bottom: 1px solid var(--border);
-  background:
-    radial-gradient(900px 420px at 15% -10%,
-      color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--surface-2), var(--bg));
+  background: var(--surface-2);
 }
 .hero {
   display: grid; gap: clamp(30px, 5vw, 60px);
@@ -517,14 +514,18 @@ table.setups .r, th.r { text-align: right; }
 
 /* ---- close ---- */
 
+/* Left-aligned, unboxed, no gradient. A centred CTA in a glowing card is
+   the stock ending of every generated landing page. */
 .close {
-  text-align: center; margin-top: 70px; padding: 44px 24px;
-  border: 1px solid var(--border); border-radius: 16px;
-  background:
-    radial-gradient(600px 240px at 50% 0%,
-      color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
-    var(--surface);
+  margin-top: 64px; padding-top: 30px;
+  border-top: 2px solid var(--text);
+  display: grid; gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
 }
+@media (max-width: 760px) { .close { grid-template-columns: 1fr; } }
+.close p { margin: 0; max-width: 46ch; color: var(--muted); font-size: 1.02rem; }
+.close-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 
 /* ---- screener demo ---- */
 
@@ -601,3 +602,41 @@ tr.scr-in { animation: scr-slide .32s ease both; }
 }
 
 .brand-mark { flex: 0 0 auto; align-self: center; }
+
+
+/* ---- commitments as an editorial list, not a card grid ----
+   Four cards in a three-column grid orphan the fourth on its own row, and
+   the card-with-a-label pattern is interchangeable with every other product
+   page. A definition list with hairlines carries more and imitates less. */
+
+.lead-narrow { max-width: 58ch; margin-top: -4px; }
+
+.rules { margin: 26px 0 0; padding: 0; }
+.rules > div {
+  display: grid; gap: 4px 34px;
+  grid-template-columns: minmax(0, 20ch) minmax(0, 1fr);
+  padding: 22px 0;
+  border-top: 1px solid var(--border);
+}
+.rules > div:last-child { border-bottom: 1px solid var(--border); }
+@media (max-width: 760px) {
+  .rules > div { grid-template-columns: 1fr; gap: 8px; }
+}
+
+.rules dt {
+  font-size: 1.02rem; font-weight: 640; letter-spacing: -0.012em;
+  line-height: 1.35; grid-row: span 2;
+}
+.rules dd { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.6; }
+.rules dd code {
+  font-family: var(--mono); font-size: .86em;
+  background: var(--surface-2); padding: 1px 5px; border-radius: 4px;
+}
+.rules dd i { font-style: italic; }
+
+.rules dd.cost { margin-top: 7px; font-size: .9rem; color: var(--faint); }
+.rules dd.cost span {
+  color: var(--accent); font-weight: 650; font-size: .76rem;
+  letter-spacing: .07em; text-transform: uppercase; margin-right: 5px;
+}
+@media (max-width: 760px) { .rules dt { grid-row: auto; } }
