@@ -571,3 +571,57 @@ def test_the_open_graph_image_exists_and_is_the_right_shape(client):
     width = int.from_bytes(r.content[16:20], "big")
     height = int.from_bytes(r.content[20:24], "big")
     assert (width, height) == (1200, 630)
+
+
+def test_login_survives_a_failure_to_record_the_timestamp(client, session, monkeypatch):
+    """A verified password must not be undone by bookkeeping.
+
+    last_login_at is a nicety. When a backfill held the SQLite write lock,
+    that UPDATE raised and took the whole login down with it -- a 500 on
+    correct credentials.
+    """
+    from sqlalchemy.exc import OperationalError
+
+    client.post(
+        "/api/v1/auth/signup",
+        json={"email": "locked@example.com", "password": "a long enough passphrase"},
+    )
+
+    real_flush = session.flush
+
+    def flaky_flush(*args, **kwargs):
+        # Fail only a flush that is actually writing last_login_at, not the
+        # autoflush SQLAlchemy runs before the lookup query.
+        stamping = any(
+            getattr(obj, "last_login_at", None) is not None
+            for obj in session.dirty
+        )
+        if stamping:
+            raise OperationalError("UPDATE users", {}, Exception("database is locked"))
+        return real_flush(*args, **kwargs)
+
+    monkeypatch.setattr(session, "flush", flaky_flush)
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "locked@example.com", "password": "a long enough passphrase"},
+    )
+    assert response.status_code == 200
+    assert response.json()["user"]["email"] == "locked@example.com"
+
+
+def test_sqlite_waits_for_a_busy_lock_rather_than_failing(migrated_db):
+    """SQLite's default is to fail a contended write immediately."""
+    from sqlalchemy import create_engine, event, text
+
+    from vriddhix.db.base import _configure_sqlite
+
+    engine = create_engine(migrated_db, future=True)
+    event.listen(engine, "connect", _configure_sqlite)
+    with engine.connect() as conn:
+        timeout = conn.execute(text("PRAGMA busy_timeout")).scalar()
+        journal = conn.execute(text("PRAGMA journal_mode")).scalar()
+    engine.dispose()
+
+    assert timeout >= 5000, "a contended write would fail instantly"
+    assert journal.lower() == "wal"

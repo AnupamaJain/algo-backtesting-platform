@@ -44,10 +44,18 @@ def _configure_sqlite(dbapi_connection, _record) -> None:
     Foreign keys are off by default, which would let the ORM write an orphaned
     feature row and only discover it in production on PostgreSQL. WAL improves
     concurrent read behaviour while a nightly ingest is writing.
+
+    busy_timeout matters more than it looks. WAL lets readers run during a
+    write, but two writers still collide, and SQLite's default is to fail the
+    statement immediately rather than wait. With a nightly backfill holding
+    the write lock in bursts, that turned an ordinary login into a 500 the
+    moment it tried to stamp last_login_at. Five seconds is far longer than
+    any single scan's commit.
     """
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
     cursor.close()
 
 

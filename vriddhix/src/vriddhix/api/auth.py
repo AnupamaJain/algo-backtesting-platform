@@ -33,6 +33,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..db.models import User
 from . import errors
@@ -278,9 +279,27 @@ def login(session: SessionDep, payload: Annotated[dict, Body()]) -> dict:
         )
 
     reset_failures(email)
-    user.last_login_at = datetime.now(timezone.utc)
-    session.flush()
-    return {"user": _profile(user), "token": _maybe_token(user)}
+
+    # Built BEFORE the stamp. A failed flush leaves the session unusable until
+    # it is rolled back, and a rollback expires `user` -- so reading the
+    # profile afterwards would raise on a detached instance and turn a
+    # recovered error back into a 500.
+    profile = _profile(user)
+    token = _maybe_token(user)
+    user_id = user.id
+
+    # The password is already verified; this stamp is bookkeeping. If the
+    # write cannot land -- a backfill holding the write lock, a read-only
+    # replica -- the user is still authenticated, and failing their login over
+    # it would be absurd.
+    try:
+        user.last_login_at = datetime.now(timezone.utc)
+        session.flush()
+    except SQLAlchemyError:
+        session.rollback()
+        logger.warning("could not record last_login_at for user %s", user_id)
+
+    return {"user": profile, "token": token}
 
 
 @router.get("/me")
