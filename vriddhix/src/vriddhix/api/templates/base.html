@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+{# Marks the document as scriptable before the stylesheet is parsed, so the
+   scroll-entrance rules can hide content knowing something will reveal it.
+   Inline and first: a deferred script would run after paint and the page
+   would flash its content and then hide it. #}
+<script>document.documentElement.className += " js";</script>
 <title>{% block title %}Pramana{% endblock %}</title>
 <meta name="description" content="{% block description %}Pattern intelligence and quantitative research for Indian equities. A research instrument, not a prediction machine.{% endblock %}">
 <link rel="stylesheet" href="/static/app.css">

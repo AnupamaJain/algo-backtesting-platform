@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# VriddhiX — start, stop and check the local server.
+# Pramana — start, stop and check the local server.
+#
+# The Python package is still named vriddhix: renaming it would churn every
+# import and migration for a cosmetic gain. The name people see is Pramana.
 #
 #   ./run.sh start     start on http://127.0.0.1:8787
 #   ./run.sh stop      stop it
@@ -64,7 +67,7 @@ start() {
   # Wait for it to answer rather than guessing at a sleep duration.
   for _ in $(seq 1 40); do
     if curl -fsS -o /dev/null "http://$HOST:$PORT/api/v1/ops/health" 2>/dev/null; then
-      echo "✓ VriddhiX is up"
+      echo "✓ Pramana is up"
       echo
       echo "   http://$HOST:$PORT/          landing"
       echo "   http://$HOST:$PORT/learn     how the engines work"

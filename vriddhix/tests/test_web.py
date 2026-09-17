@@ -228,13 +228,17 @@ def test_every_page_renders(client, path):
     response = client.get(path)
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "VriddhiX" in response.text
+    # The product name, not the publisher organisation. These assertions
+    # used to read "VriddhiX", which is the umbrella brand in the structured
+    # data -- so they passed unchanged through a full rename of the product
+    # and proved nothing about the page having rendered its own identity.
+    assert "Pramana" in response.text
 
 
 def test_the_landing_page_renders_without_any_scan_data(client):
     """A brand-new deployment must still have a homepage."""
     body = client.get("/").text
-    assert "VriddhiX" in body
+    assert "Pramana" in body
     assert "Internal Server Error" not in body
 
 
@@ -284,6 +288,11 @@ def test_the_landing_page_reports_real_coverage(client, session):
     # Seven bars in, seven bars reported. The figure is carried in the
     # count-up attribute, which is also what the animation lands on.
     assert 'data-count="7"' in body
+    # ...and rendered as the element's own text, so a reader whose browser
+    # never runs the count-up sees 7 rather than 0. Rendering "0" and having
+    # script fill it in is not a missing number but a wrong one, on the
+    # figures the page is arguing from.
+    assert 'data-count="7">7</b>' in body
 
 
 def test_the_landing_chart_is_drawn_from_stored_regimes(client, session):
@@ -827,13 +836,25 @@ def test_the_surface_is_dropped_rather_than_faked_when_history_is_thin(client):
 
 
 def test_no_page_presents_a_result_as_a_return(client):
-    """The product refuses to promise returns; an ROI figure anywhere would
-    contradict every other surface."""
+    """The product refuses to promise returns.
+
+    Matching is on whole words and on phrases that promise, not on the
+    substring "roi" -- OBEROIRLTY is an NSE symbol and appears in the scanner
+    demo, and the results copy names ROI in order to refuse it.
+    """
+    import re
+
+    promises = [
+        r"\byou would (?:have )?(?:earn|make|made|get)",
+        r"\breturns? you(?:'ll| will)? (?:earn|make|get)",
+        r"\bprofits? you(?:'ll| will)? (?:earn|make|get)",
+        r"\bguaranteed\b", r"\bassured returns?\b",
+        r"\b\d+x\s+returns?\b",
+    ]
     for path in ("/", "/learn", "/vcp-breakout-failure-rate"):
         body = client.get(path).text.lower()
-        for claim in ("roi", "returns you", "profit you", "you would earn",
-                      "you would have made"):
-            assert claim not in body, f"{path} claims '{claim}'"
+        for pattern in promises:
+            assert not re.search(pattern, body), f"{path} matches {pattern!r}"
 
 
 def test_no_testimonials_are_fabricated(client):
@@ -843,3 +864,114 @@ def test_no_testimonials_are_fabricated(client):
     for tell in ("testimonial", "★★★★★", "5-star", "trusted by thousands",
                  "loved by traders", "join 10,000"):
         assert tell not in body
+
+
+def test_nothing_is_hidden_from_a_browser_that_cannot_reveal_it(client):
+    """The scroll entrance must be an enhancement, not a prerequisite.
+
+    Written the other way round -- opacity:0 in the stylesheet, restored by
+    script -- one JS error blanks most of the page, and anything rendering
+    without scripting sees empty space where the evidence should be.
+    """
+    css = client.get("/static/app.css").text
+    for line in css.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(".rise") and "opacity: 0" in stripped:
+            raise AssertionError(
+                "unscoped '.rise { opacity: 0 }' hides content from any "
+                "browser that does not run the reveal script"
+            )
+    assert "html.js .rise" in css, "the reveal rules are no longer JS-scoped"
+    # ...and the flag has to be set before the stylesheet is parsed, or the
+    # page paints its content and then hides it.
+    head = client.get("/").text.split("<title>")[0]
+    assert 'className += " js"' in head
+
+
+
+def test_measured_results_refuse_the_word_they_are_closest_to(client, session):
+    """The excursion panel is the one place a reader expects a return figure.
+
+    It has to say, in the copy itself, that it is not one -- and that copy is
+    only reachable with enough resolved breakouts to render the panel, so the
+    fixture seeds them rather than trusting an empty database to prove it.
+    """
+    from datetime import date, timedelta
+
+    from vriddhix.db.models import (
+        Breakout, BreakoutOutcome, OhlcvDaily, Pattern, Stock,
+    )
+
+    stock = Stock(symbol="TESTCO", name="Test", exchange="NSE")
+    session.add(stock)
+    session.flush()
+    session.add(OhlcvDaily(stock_id=stock.id, date=date(2024, 1, 1), open=1,
+                           high=2, low=1, close=2, volume=10, provider="test"))
+    session.flush()
+
+    for i in range(60):
+        pat = Pattern(
+            stock_id=stock.id, pattern_type="VCP", detected_on=date(2024, 1, 1),
+            base_start=date(2023, 11, 1), base_end=date(2024, 1, 1),
+            status="CONFIRMED", engine_version="v1", rule_version="v1",
+        )
+        session.add(pat)
+        session.flush()
+        failed = i % 4 == 0
+        bo = Breakout(
+            pattern_id=pat.id, stock_id=stock.id,
+            breakout_date=date(2024, 1, 1) + timedelta(days=i),
+            breakout_price=102.0, pivot_price=100.0,
+            status="FAILED" if failed else "CONFIRMED",
+            engine_version="v1",
+        )
+        session.add(bo)
+        session.flush()
+        session.add(BreakoutOutcome(
+            breakout_id=bo.id,
+            mfe_pct=3.0 if failed else 11.0,
+            mae_pct=-7.0 if failed else -2.5,
+        ))
+    session.flush()
+
+    body = client.get("/").text
+    assert "What actually followed" in body, "the panel did not render"
+    low = body.lower()
+    assert "not a return anyone" in low
+    assert "no position sizing" in low and "no slippage" in low
+
+
+def test_nothing_wide_is_left_to_push_the_page_sideways(client):
+    """Three things took the document into a horizontal scroll on a phone,
+    and each has a different correct fix. Asserted here because the suite has
+    no browser to measure a real layout with.
+
+    Measured after these fixes: no horizontal scroll on any of five pages at
+    320, 360, 390, 430, 768, 1024 or 1440 px.
+    """
+    css = client.get("/static/app.css").text
+
+    # 1. A bare `1fr` track floors at the min-content width of whatever is
+    #    inside it, so a wide table inflates the grid past the viewport.
+    import re
+
+    for m in re.finditer(r"grid-template-columns:\s*([^;]+);", css):
+        tracks = m.group(1)
+        if re.search(r"(^|\s)1fr(\s|$)", tracks) and "minmax" not in tracks:
+            # A single flexible track alongside fixed ones is fine; a lone
+            # `1fr` standing in for the whole grid is the dangerous case.
+            assert tracks.strip() != "1fr", (
+                f"bare '1fr' track: {tracks.strip()!r} cannot shrink below "
+                "its content and will push the page sideways"
+            )
+
+    # 2. The card stack offsets its back cards sideways on purpose.
+    assert "overflow: clip visible" in css, "the deck stage no longer clips"
+
+    # 3. Tables that genuinely need width scroll inside their own box.
+    assert ".table-scroll { overflow-x: auto; }" in css
+    assert ".scr-results" in css and "overflow: auto" in css
+
+    body = client.get("/vcp-breakout-failure-rate").text
+    if "evidence-table" in body:
+        assert '<div class="table-scroll">' in body

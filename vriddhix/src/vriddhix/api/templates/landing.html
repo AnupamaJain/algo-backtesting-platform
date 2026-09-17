@@ -24,9 +24,9 @@
       </div>
       {% if coverage and coverage.bars %}
       <div class="proof">
-        <span><b class="num" data-count="{{ coverage.bars }}">0</b> bars</span>
-        <span><b class="num" data-count="{{ coverage.scans }}">0</b> sessions scanned</span>
-        <span><b class="num" data-count="{{ coverage.patterns }}">0</b> patterns recorded</span>
+        <span><b class="num" data-count="{{ coverage.bars }}">{{ "{:,}".format(coverage.bars) }}</b> bars</span>
+        <span><b class="num" data-count="{{ coverage.scans }}">{{ "{:,}".format(coverage.scans) }}</b> sessions scanned</span>
+        <span><b class="num" data-count="{{ coverage.patterns }}">{{ "{:,}".format(coverage.patterns) }}</b> patterns recorded</span>
       </div>
       {% endif %}
     </div>
@@ -303,7 +303,7 @@
     </div>
 
     <div class="res-stats">
-      <div><b class="num" data-count="{{ results.total }}">0</b><span>resolved breakouts</span></div>
+      <div><b class="num" data-count="{{ results.total }}">{{ "{:,}".format(results.total) }}</b><span>resolved breakouts</span></div>
       <div><b class="num">{{ "%.0f"|format(results.hold_pct) }}%</b><span>held above the pivot</span></div>
       <div><b class="num">{{ "%.0f"|format(results.fail_pct) }}%</b><span>failed, and kept</span></div>
       {% if results.edge %}
@@ -581,16 +581,21 @@
 <script>
 /* Numbers count up when they first come into view. Motion earns its place
    here because the figures are the argument; it is skipped entirely when the
-   visitor has asked for reduced motion. */
+   visitor has asked for reduced motion.
+
+   The real figure is in the HTML and the script counts *down* to zero before
+   animating up to it. The other way round -- rendering "0" and relying on
+   script to fill it in -- means anything that does not run this loop reads
+   "0 bars, 0 sessions scanned", which is not a missing number but a wrong
+   one, on the figures the whole page is arguing from. */
 (function () {
   var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var nodes = document.querySelectorAll("[data-count]");
-  if (!nodes.length) return;
+  if (!nodes.length || still) return;
 
   function run(el) {
     var target = parseFloat(el.dataset.count);
     if (!isFinite(target)) return;
-    if (still) { el.textContent = target.toLocaleString("en-US"); return; }
     var started = null, dur = 900;
     function step(ts) {
       if (!started) started = ts;

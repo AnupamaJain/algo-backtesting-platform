@@ -57,6 +57,11 @@
 
 * { box-sizing: border-box; }
 
+/* The header is sticky, so an anchor jump lands with the target tucked
+   underneath it. Set on the scroll container it covers every anchor on every
+   page, rather than the one heading that had it. */
+html { scroll-padding-top: 84px; }
+
 body {
   margin: 0;
   background: var(--bg);
@@ -180,7 +185,7 @@ nav.links a:hover, nav.links a.active { color: var(--text); }
 
 .auth-shell { display: grid; gap: 40px; grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
               align-items: start; padding-block: 56px; }
-@media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .auth-shell { grid-template-columns: minmax(0, 1fr); } }
 
 .panel {
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -241,7 +246,7 @@ article h2:first-of-type { border-top: 0; }
   display: grid; grid-template-columns: 168px 1fr; gap: 4px 20px;
   border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px;
 }
-@media (max-width: 620px) { .term { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .term { grid-template-columns: minmax(0, 1fr); } }
 .term dt { font-family: var(--mono); font-size: .85rem; color: var(--accent); }
 .term dd { margin: 0; color: var(--muted); font-size: .93rem; }
 
@@ -294,7 +299,7 @@ footer.bottom .disclaimer {
   align-items: center;
   padding-block: clamp(44px, 6vw, 74px);
 }
-@media (max-width: 940px) { .hero { grid-template-columns: 1fr; } }
+@media (max-width: 940px) { .hero { grid-template-columns: minmax(0, 1fr); } }
 
 .eyebrow {
   font-size: .7rem; letter-spacing: .16em; text-transform: uppercase;
@@ -369,7 +374,7 @@ footer.bottom .disclaimer {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   margin-top: 46px;
 }
-@media (max-width: 860px) { .today { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .today { grid-template-columns: minmax(0, 1fr); } }
 
 .today-main, .today-side {
   border: 1px solid var(--border); border-radius: 14px;
@@ -477,7 +482,7 @@ table.setups .r, th.r { text-align: right; }
   border: 1px solid var(--border); border-radius: 14px;
   background: var(--surface); padding: 28px; margin-top: 18px;
 }
-@media (max-width: 860px) { .ledger-card { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .ledger-card { grid-template-columns: minmax(0, 1fr); } }
 .ledger-copy p { font-size: .94rem; }
 .ledger-viz { display: flex; flex-direction: column; justify-content: center; }
 .stat-n { font-size: 2.6rem; font-weight: 650; line-height: 1; letter-spacing: -0.02em; }
@@ -523,7 +528,7 @@ table.setups .r, th.r { text-align: right; }
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
 }
-@media (max-width: 760px) { .close { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .close { grid-template-columns: minmax(0, 1fr); } }
 .close p { margin: 0; max-width: 46ch; color: var(--muted); font-size: 1.02rem; }
 .close-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 
@@ -535,7 +540,10 @@ table.setups .r, th.r { text-align: right; }
   border: 1px solid var(--border); border-radius: 14px;
   background: var(--surface); overflow: hidden;
 }
-@media (max-width: 840px) { .screener { grid-template-columns: 1fr; } }
+/* minmax(0, 1fr), not 1fr: a bare 1fr track floors at the min-content
+   width of the table inside it, so the grid grew past the viewport and took
+   the whole document into a horizontal scroll on every phone. */
+@media (max-width: 840px) { .screener { grid-template-columns: minmax(0, 1fr); } }
 
 .scr-controls {
   padding: 22px; border-right: 1px solid var(--border);
@@ -581,8 +589,12 @@ table.setups .r, th.r { text-align: right; }
 }
 .scr-count b { font-size: 1.35rem; color: var(--text); }
 
-.scr-results { position: relative; max-height: 430px; overflow-y: auto; }
-.scr-table { min-width: 0; }
+/* The table has a floor width it cannot usefully go below -- symbol,
+   sector, stage, score and RS are all load-bearing. On a phone it scrolls
+   sideways inside this box rather than pushing the whole document sideways,
+   which is what it was doing. */
+.scr-results { position: relative; max-height: 430px; overflow: auto; }
+.scr-table { min-width: 460px; }
 .scr-table th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
 
 /* Rows arrive rather than appear, so the opening run reads as a scan. */
@@ -620,7 +632,7 @@ tr.scr-in { animation: scr-slide .32s ease both; }
 }
 .rules > div:last-child { border-bottom: 1px solid var(--border); }
 @media (max-width: 760px) {
-  .rules > div { grid-template-columns: 1fr; gap: 8px; }
+  .rules > div { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
 
 .rules dt {
@@ -654,6 +666,12 @@ tr.scr-in { animation: scr-slide .32s ease both; }
 .hs-meta { display: flex; flex-direction: column; gap: 5px; font-size: .88rem;
            color: var(--muted); margin-left: auto; }
 .hs-meta b { color: var(--text); }
+
+/* Five columns of figures have a floor below which they stop being
+   readable. On a narrow phone the table scrolls inside this box rather than
+   taking the document sideways with it. */
+.table-scroll { overflow-x: auto; }
+.table-scroll > table { min-width: 460px; }
 
 table.evidence-table { width: 100%; border-collapse: collapse; margin-top: 18px;
                        font-size: .94rem; }
@@ -740,6 +758,12 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
   position: relative; height: clamp(300px, 40vw, 480px);
   display: flex; align-items: center; justify-content: center;
   perspective: 1600px; cursor: grab; touch-action: pan-y;
+  /* The cards behind the front one are offset sideways to show they are a
+     stack, and on a phone that offset reached past the viewport and took the
+     whole document into a horizontal scroll. Clipped on one axis only:
+     `clip` (not `hidden`) lets the vertical shadow stay visible instead of
+     forcing this into a scroll container. The shorthand is x then y. */
+  overflow: clip visible;
 }
 .deck-stage.dragging { cursor: grabbing; }
 .deck-stage.dragging .screen { transition: none; }
@@ -781,7 +805,7 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
 
 .results { display: grid; gap: 26px; margin-top: 20px;
            grid-template-columns: minmax(0,1.45fr) minmax(0,1fr); }
-@media (max-width: 860px) { .results { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .results { grid-template-columns: minmax(0,1fr); } }
 
 .res-row { display: grid; grid-template-columns: 130px 1fr 150px;
            gap: 14px; align-items: center; padding: 12px 0;
@@ -793,6 +817,13 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
 .res-up   { background: var(--bull); }
 .res-down { background: var(--bear); }
 .res-v { text-align: right; font-size: .86rem; color: var(--muted); }
+/* 130px + 150px + two gaps is a 308px floor before the bar gets any width,
+   which is wider than a small phone. Below that the bar takes its own line
+   under the label and the figure. */
+@media (max-width: 430px) {
+  .res-row { grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .res-track { grid-column: 1 / -1; }
+}
 .res-legend { display: flex; gap: 20px; margin-top: 14px;
               font-size: .8rem; color: var(--faint); }
 .res-legend .sw { display: inline-block; width: 10px; height: 10px;
@@ -806,11 +837,15 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
 
 /* ---- scroll entrance ---- */
 
-.rise { opacity: 0; transform: translateY(14px);
+/* Hidden only once JS has confirmed it can reveal it again. Written the
+   other way round -- opacity:0 in the stylesheet, restored by script -- one
+   JS error takes most of the page with it, and anything rendering without
+   scripting sees a blank column where the evidence should be. */
+html.js .rise { opacity: 0; transform: translateY(14px);
         transition: opacity .55s ease, transform .55s cubic-bezier(.22,1,.28,1); }
-.rise.in { opacity: 1; transform: none; }
+html.js .rise.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
-  .rise { opacity: 1; transform: none; transition: none; }
+  html.js .rise { opacity: 1; transform: none; transition: none; }
   .screen { transition: none; }
   .res-track i { transition: none; }
 }
