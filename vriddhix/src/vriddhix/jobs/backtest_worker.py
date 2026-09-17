@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from ..config import get_config
 from ..db.base import session_scope
 from ..db.models import (
+    BacktestEquityPoint,
     BacktestRun,
     BacktestTrade,
     Industry,
@@ -222,6 +223,19 @@ def _persist_trades(session: Session, run: BacktestRun, result) -> int:
             )
         )
         written += 1
+
+    # The curve and the metrics the engine already computed. Recomputing them
+    # downstream from the trade ledger can only give a realised curve, which
+    # understates drawdown -- so keep what was measured rather than letting a
+    # weaker version of it be derived later.
+    run.metrics = json.dumps(result.metrics.__dict__, default=float)
+    for ts, equity in result.equity_curve.items():
+        session.add(BacktestEquityPoint(
+            run_id=run.id,
+            date=ts.date() if hasattr(ts, "date") else ts,
+            equity=float(equity),
+        ))
+
     session.flush()
     return written
 

@@ -18,11 +18,13 @@ from pathlib import Path
 
 from datetime import timedelta
 
+import yaml
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 
+from ...config import PROJECT_ROOT
 from ...db.models import (
     Breakout,
     BreakoutOutcome,
@@ -134,6 +136,13 @@ LANDING_FAQ = [
      "backtester uses, so a strategy cannot mean one thing on the dashboard "
      "and another in its own backtest. Fills are at the next open and costs "
      "include STT, stamp duty, exchange, SEBI and GST."),
+    ("Does a VCP strategy beat buying the Nifty index?",
+     "On this data, no. Replaying a 70+ VCP score over ten years of NSE F&O "
+     "names returned 10.58% compound annually against 11.61% for holding the "
+     "Nifty 50 ETF — after 353 trades, next-open fills and full statutory "
+     "costs. It did fall less: worst drawdown 24.8% against 36.3%, because it "
+     "sat in cash through most of the 2020 crash. The comparison is on the "
+     "home page with the survivorship caveat attached."),
     ("Does it predict which stocks will go up?",
      "No, and it is built so it cannot pretend to. Scores classify what a "
      "chart has measurably done. The ledger records what followed each "
@@ -439,6 +448,46 @@ def _ledger(session) -> dict:
     }
 
 
+def _testimonials() -> list[dict]:
+    """Quotes from config/testimonials.yaml, verified ones only.
+
+    An unverified entry is a draft, not a testimonial, and never reaches the
+    page. A fabricated quote on a financial product is a false statement
+    about a real person's experience of something that affects money -- and
+    in India that sits inside SEBI's advertising rules, which cover research
+    and analytics products, not only advice. The section disappears when
+    there is nothing real to put in it.
+    """
+    path = PROJECT_ROOT / "config" / "testimonials.yaml"
+    try:
+        with path.open() as handle:
+            loaded = yaml.safe_load(handle) or {}
+    except (OSError, yaml.YAMLError):
+        return []
+
+    out = []
+    for entry in loaded.get("testimonials") or []:
+        if not isinstance(entry, dict) or entry.get("verified") is not True:
+            continue
+        quote, name = str(entry.get("quote", "")).strip(), str(entry.get("name", "")).strip()
+        if not quote or not name:
+            continue
+        out.append({
+            "quote": quote,
+            "name": name,
+            "role": str(entry.get("role", "")).strip() or None,
+            "initials": "".join(w[0] for w in name.split()[:2]).upper(),
+        })
+    return out
+
+
+def _performance(session) -> dict:
+    """The backtested equity curve, against buying the index and waiting."""
+    from ...services.performance import performance_panel
+
+    return performance_panel(session)
+
+
 @router.get("/", response_class=HTMLResponse)
 def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
     regime = session.get(MarketRegimeRow, prov.as_of) if prov.as_of else None
@@ -477,6 +526,8 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "screens": APP_SCREENS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),
+            "performance": _performance(session),
+            "testimonials": _testimonials(),
             "faq": LANDING_FAQ,
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),

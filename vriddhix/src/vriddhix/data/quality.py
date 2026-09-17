@@ -137,6 +137,93 @@ def check_suspected_splits(
     ]
 
 
+def check_reverting_spikes(
+    df: pd.DataFrame, symbol: str, threshold_pct: float = 25.0,
+    revert_within: int = 5, revert_tolerance_pct: float = 3.0,
+    flat_tolerance_pct: float = 3.0,
+) -> list[QualityFinding]:
+    """Flag a large move that comes back to where it started, and the flat
+    stretch it spans.
+
+    A corporate action never reverts: a 1:10 split moves price down and it
+    stays down. A move of the same size that returns within a few sessions is
+    bad data, and the bars *between* the two ends are the corrupted ones --
+    precisely what a split check misses, because the flat stretch in the
+    middle contains no large move of its own to flag.
+
+    Two conditions, and both are needed, because the alternative is flagging
+    a real crash as corruption -- which would be its own silent falsification
+    of the record:
+
+      *reversion*   price returns to within a few percent of where it left.
+      *flatness*    the displaced bars barely move relative to each other.
+
+    March 2020 is why. YESBANK fell 56% on the RBI moratorium and was back
+    near its prior level three sessions later, which satisfies reversion on
+    its own; the bars in between moved +32% and +36%, so it fails flatness
+    and is correctly left alone. NIFTYBEES, BANKBEES and GOLDBEES all printed
+    a flat displaced level on the same two sessions -- GOLDBEES at 0.34
+    against neighbours at 33.60, a decimal point moved two places on 238x its
+    usual volume.
+
+    Nothing is corrected here. A guessed adjustment factor is its own silent
+    corruption; this raises the flag and leaves the bar where it is.
+    """
+    if len(df) < 3:
+        return []
+
+    close = df["close"]
+    change = (close / close.shift(1) - 1.0) * 100.0
+    big = [ts for ts in df.index if abs(change.get(ts, 0.0)) >= threshold_pct]
+
+    findings: list[QualityFinding] = []
+    claimed: set = set()
+    for i, start in enumerate(big):
+        if start in claimed:
+            continue
+        fell = change[start] < 0
+        for end in big[i + 1:]:
+            gap = df.index.get_loc(end) - df.index.get_loc(start)
+            if gap > revert_within:
+                break
+            if (change[end] > 0) != fell:
+                continue
+
+            before = float(close.shift(1).loc[start])
+            after = float(close.loc[end])
+            if before <= 0:
+                continue
+            if abs(after / before - 1.0) * 100.0 > revert_tolerance_pct:
+                continue
+
+            span = df.index[df.index.get_loc(start):df.index.get_loc(end)]
+            inner = change.loc[span].iloc[1:]
+            if len(inner) and float(inner.abs().max()) > flat_tolerance_pct:
+                continue  # it moved while displaced -- a real event, not a stuck feed
+
+            level = float(close.loc[span].mean())
+            ratio = before / level if level > 0 else 0.0
+            for ts in span:
+                claimed.add(ts)
+                findings.append(QualityFinding(
+                    issue=DataIssue.BAD_PRICE_SPAN,
+                    severity=Severity.ERROR,
+                    symbol=symbol,
+                    bar_date=ts.date(),
+                    detail={
+                        "close": float(close.loc[ts]),
+                        "expected_near": round(before, 4),
+                        "ratio": round(ratio, 2),
+                        "span_start": str(start.date()),
+                        "span_end": str(end.date()),
+                        "move_pct": round(float(change[start]), 2),
+                        "reverted_pct": round(float(change[end]), 2),
+                    },
+                ))
+            break
+    return findings
+
+
 def check_staleness(
     df: pd.DataFrame, symbol: str, as_of: date, stale_after_days: int = 5
 ) -> list[QualityFinding]:
@@ -221,6 +308,7 @@ def validate(
 
     findings.extend(check_zero_volume(df, symbol, zero_volume_severity))
     findings.extend(check_suspected_splits(df, symbol, suspected_split_pct))
+    findings.extend(check_reverting_spikes(df, symbol, suspected_split_pct))
     findings.extend(check_missing_bars(df, symbol, max_missing_bar_streak))
     if as_of is not None:
         findings.extend(check_staleness(df, symbol, as_of, stale_after_days))

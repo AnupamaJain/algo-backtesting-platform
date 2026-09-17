@@ -129,8 +129,22 @@ python3 -m vriddhix.cli status      # what is in the database
 python3 -m vriddhix.cli ingest      # fetch bars and recompute features
 python3 -m vriddhix.cli scan        # scan one date (default: the latest bar)
 python3 -m vriddhix.cli backtests   # run whatever backtests are queued
+python3 -m vriddhix.cli revalidate  # re-run quality rules over stored bars
 python3 -m vriddhix.cli init        # apply migrations (first run only)
 ```
+
+`revalidate` exists because a rule added today would otherwise only ever
+apply to data arriving tomorrow, leaving the stored decade unexamined by it.
+It re-runs every quality check over bars already in the database, without
+re-fetching, and replaces the previous findings rather than adding to them.
+Nothing is corrected — a guessed adjustment factor is its own silent
+corruption, so a bad bar is flagged and left where it is.
+
+It currently finds six `BAD_PRICE_SPAN` bars: NIFTYBEES, BANKBEES and
+GOLDBEES each printed a decimal-shifted level for two sessions in December
+2019 (GOLDBEES at ₹0.34 against neighbours at ₹33.60). Those bars are
+excluded from the benchmark curve on the landing page. YESBANK's 56% fall on
+the RBI moratorium is *not* flagged, because it was real.
 
 A backtest is created through the API and then picked up by the worker:
 
@@ -183,6 +197,38 @@ nobody reads.
 
 **Server will not start.** `tail -20 state/logs/serve.log` — `run.sh` prints
 the same lines when a start times out.
+
+---
+
+## The landing page
+
+Two sections are driven by files rather than by the database:
+
+**`config/testimonials.yaml`** — quotes shown under "What people using it
+say". An entry renders only when `verified: true`, which means a real,
+identifiable person said it about this software and agreed to it being
+published with their name. The file ships empty, so the section does not
+appear at all. It is written this way because a fabricated quote on a
+financial product is a false statement about someone's experience of
+something that affects money, and in India that sits inside SEBI's
+advertising rules, which cover research and analytics products and not only
+advice.
+
+**The equity comparison** comes from the most recent completed backtest run.
+To change what it shows, queue a different one:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/v1/backtests \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"VCP 70+ · 10y","start_date":"2016-10-01","end_date":"2026-09-17",
+       "config":{"entry":{"field":"vcp_score","cmp":"gte","value":70}}}'
+
+python3 -m vriddhix.cli backtests
+```
+
+The section disappears when no run has completed. It is never drawn from
+placeholder data — an invented equity curve is the most misleading graphic a
+research tool could show.
 
 ---
 

@@ -975,3 +975,63 @@ def test_nothing_wide_is_left_to_push_the_page_sideways(client):
     body = client.get("/vcp-breakout-failure-rate").text
     if "evidence-table" in body:
         assert '<div class="table-scroll">' in body
+
+
+# ---------------------------------------------------------------------------
+# Testimonials
+# ---------------------------------------------------------------------------
+
+
+def test_only_verified_testimonials_reach_the_page(tmp_path, monkeypatch):
+    """`verified: true` means a real, identifiable person said this.
+
+    A fabricated quote on a financial product is a false statement about
+    someone's experience of something that affects money, and in India that
+    sits inside SEBI's advertising rules -- which cover research and
+    analytics products, not only advice. An unverified entry is a draft.
+    """
+    import yaml
+
+    from vriddhix.api.routers import pages
+
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "testimonials.yaml").write_text(yaml.safe_dump({"testimonials": [
+        {"quote": "Real words.", "name": "A Person", "role": "Trader",
+         "verified": True},
+        {"quote": "Not cleared yet.", "name": "B Person", "verified": False},
+        {"quote": "No flag at all.", "name": "C Person"},
+        {"quote": "", "name": "D Person", "verified": True},
+        {"quote": "Anonymous.", "name": "", "verified": True},
+    ]}))
+    monkeypatch.setattr(pages, "PROJECT_ROOT", tmp_path)
+
+    loaded = pages._testimonials()
+
+    assert [t["name"] for t in loaded] == ["A Person"]
+    assert loaded[0]["initials"] == "AP"
+
+
+def test_the_shipped_file_contains_nothing_invented():
+    """The repository must not ship a stocked fake shelf."""
+    from vriddhix.api.routers.pages import _testimonials
+
+    assert _testimonials() == []
+
+
+def test_the_section_is_absent_rather_than_empty(client):
+    body = client.get("/").text
+    assert "What people using it say" not in body
+    assert 'class="quotes"' not in body
+
+
+def test_a_missing_or_broken_file_is_not_an_error(tmp_path, monkeypatch):
+    from vriddhix.api.routers import pages
+
+    monkeypatch.setattr(pages, "PROJECT_ROOT", tmp_path)
+    assert pages._testimonials() == []
+
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "testimonials.yaml").write_text("testimonials: [unclosed")
+    assert pages._testimonials() == []

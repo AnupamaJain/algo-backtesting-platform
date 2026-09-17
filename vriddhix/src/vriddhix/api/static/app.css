@@ -849,3 +849,85 @@ html.js .rise.in { opacity: 1; transform: none; }
   .screen { transition: none; }
   .res-track i { transition: none; }
 }
+
+/* ---- what it did to money ---- */
+
+.lede-sm { color: var(--muted); max-width: 66ch; margin: 6px 0 0; font-size: .95rem; }
+
+.perf {
+  display: grid; gap: 26px; margin-top: 22px; align-items: start;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+}
+@media (max-width: 900px) { .perf { grid-template-columns: minmax(0, 1fr); } }
+
+.perf-chart { margin: 0; }
+.perf-chart svg {
+  display: block; width: 100%; height: clamp(220px, 26vw, 320px);
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); padding: 0;
+}
+/* Non-scaling strokes: the viewBox is stretched to the container, so a plain
+   stroke-width would render the line thin and wide instead of even. */
+.perf-line { fill: none; stroke-width: 10; vector-effect: non-scaling-stroke;
+             stroke-linejoin: round; stroke-linecap: round; }
+.perf-st { stroke: var(--accent); stroke-width: 14; vector-effect: non-scaling-stroke; }
+.perf-bm { stroke: var(--muted); opacity: .8; }
+.perf-base { stroke: var(--border); stroke-width: 6; vector-effect: non-scaling-stroke; }
+
+.perf-chart figcaption {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px;
+  font-size: .82rem; color: var(--muted);
+}
+.key { display: inline-block; width: 14px; height: 3px; border-radius: 2px;
+       margin-right: 7px; vertical-align: 4px; }
+.key-st { background: var(--accent); height: 4px; }
+.key-bm { background: var(--muted); }
+
+/* Positioned rather than laid out: each label has to sit at the same
+   fraction across as the point it marks on the curve above it. */
+.perf-axis { position: relative; height: 15px; margin-top: 5px; }
+.perf-axis span {
+  position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font-size: .72rem; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.perf-axis span:first-child { transform: none; }
+.perf-axis span:last-child  { transform: translateX(-100%); }
+.perf-base-k { color: var(--faint); }
+
+.perf-table { border-top: 1px solid var(--border); }
+.perf-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 18px; padding: 11px 0; border-bottom: 1px solid var(--border);
+  font-size: .9rem; align-items: baseline;
+}
+.perf-row > .r { min-width: 6.5ch; text-align: right; }
+.perf-head { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase;
+             color: var(--faint); border-bottom: 1px solid var(--border); }
+.perf-row .win { color: var(--bull); font-weight: 650; }
+
+.verdict {
+  margin-top: 22px; padding: 18px 20px; border-radius: 12px;
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+}
+.verdict p { margin: 0; font-size: .95rem; line-height: 1.7; }
+
+/* ---- testimonials ---- */
+
+.quotes { display: grid; gap: 18px; margin-top: 20px;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.quote {
+  margin: 0; padding: 22px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface);
+}
+.quote blockquote { margin: 0; font-size: .95rem; line-height: 1.7; }
+.quote blockquote::before { content: "\201C"; }
+.quote blockquote::after  { content: "\201D"; }
+.quote figcaption { display: flex; align-items: center; gap: 11px; margin-top: 16px; }
+.quote figcaption b { display: block; font-size: .88rem; }
+.quote figcaption .faint { display: block; font-size: .8rem; }
+.avatar {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center; font-size: .78rem; font-weight: 650;
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+}

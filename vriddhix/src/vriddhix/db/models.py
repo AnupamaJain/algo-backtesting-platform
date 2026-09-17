@@ -947,9 +947,38 @@ class BacktestRun(Base):
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    #: Everything compute_metrics() produced, as JSON. Recomputing from the
+    #: trade ledger can only give a realised curve -- equity stepping on
+    #: exits, open losing positions never marked -- which understates
+    #: drawdown against any daily-marked benchmark.
+    metrics: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    equity: Mapped[list[BacktestEquityPoint]] = relationship(
+        back_populates="run", cascade="all, delete-orphan"
+    )
+
     trades: Mapped[list[BacktestTrade]] = relationship(
         back_populates="run", cascade="all, delete-orphan"
     )
+
+
+class BacktestEquityPoint(Base):
+    """One daily mark of a backtest's equity, including open positions."""
+
+    __tablename__ = "backtest_equity"
+    __table_args__ = (
+        UniqueConstraint("run_id", "date", name="uq_backtest_equity_run_date"),
+        Index("ix_backtest_equity_run", "run_id", "date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("backtest_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    equity: Mapped[float] = mapped_column(Numeric(18, 2), nullable=False)
+
+    run: Mapped[BacktestRun] = relationship(back_populates="equity")
 
 
 class BacktestTrade(Base):

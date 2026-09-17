@@ -318,6 +318,152 @@
 </section>
 {% endif %}
 
+<!-- ══════════════ what people said ══════════════ -->
+{#
+  Renders only from config/testimonials.yaml entries marked verified, which
+  means a real named person said it. With none, the section is absent rather
+  than filled in -- see the note at the top of that file.
+#}
+{% if testimonials %}
+<section class="wrap">
+  <div class="sec-head"><h2>What people using it say</h2></div>
+  <div class="quotes">
+    {% for t in testimonials %}
+    <figure class="quote rise">
+      <blockquote>{{ t.quote }}</blockquote>
+      <figcaption>
+        <span class="avatar" aria-hidden="true">{{ t.initials }}</span>
+        <span><b>{{ t.name }}</b>{% if t.role %}<span class="faint">{{ t.role }}</span>{% endif %}</span>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════ what it did to money ══════════════ -->
+{% if performance %}
+{% set st = performance.strategy %}
+{% set bm = performance.benchmark %}
+<section class="wrap">
+  <div class="sec-head">
+    <h2>What it did to ₹10 lakh</h2>
+    <span class="sec-note">
+      run {{ performance.run_id }} · {{ performance.engine_version }}
+    </span>
+  </div>
+  <p class="lede-sm">
+    One rule — {{ performance.name }} — replayed over
+    {{ performance.from.year }}–{{ performance.to.year }}. Entries fill at the
+    next open, never the closing price that triggered them. STT, stamp duty,
+    exchange and SEBI charges, GST and slippage come out of every trade.
+    Equity is marked daily, open positions included.
+  </p>
+
+  <div class="perf rise">
+    <figure class="perf-chart">
+      <svg viewBox="0 0 {{ 100 * st.points|length }} 3200" preserveAspectRatio="none"
+           role="img" aria-label="Equity of the strategy against the index, {{ performance.from }} to {{ performance.to }}">
+        {# Fit the band both curves actually occupy, with the 1.0 starting
+           line kept inside it. Anchoring at zero would spend a third of the
+           height on empty space below a line neither series goes near. #}
+        {% set span = st.points|length %}
+        {% set hi = [st.points|max, (bm.points|max) if bm else 1]|max * 1.03 %}
+        {% set lo = [st.points|min, (bm.points|min) if bm else 1, 1]|min * 0.97 %}
+        {% set scale = 2900 / (hi - lo) %}
+        {% if bm %}
+        {# Not dashed: the viewBox is stretched to the container, so a dash
+           is either invisible or, sized up to compensate, swallows whole
+           years of the line. Colour and weight carry the distinction. #}
+        <polyline class="perf-line perf-bm" points="{% for v in bm.points %}{{ loop.index0 * 100 }},{{ 3050 - (v - lo) * scale }} {% endfor %}"/>
+        {% endif %}
+        <polyline class="perf-line perf-st" points="{% for v in st.points %}{{ loop.index0 * 100 }},{{ 3050 - (v - lo) * scale }} {% endfor %}"/>
+        <line class="perf-base" x1="0" y1="{{ 3050 - (1 - lo) * scale }}" x2="{{ 100 * (span - 1) }}" y2="{{ 3050 - (1 - lo) * scale }}"/>
+      </svg>
+      {% if st.ticks %}
+      <div class="perf-axis" aria-hidden="true">
+        {% for at, label in st.ticks %}
+        <span style="left:{{ "%.2f"|format(at * 100) }}%">{{ label }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <figcaption>
+        <span><i class="key key-st"></i>{{ performance.name }}</span>
+        {% if bm %}<span><i class="key key-bm"></i>{{ bm.label }}</span>{% endif %}
+        <span class="perf-base-k">— ₹10,00,000 starting line</span>
+      </figcaption>
+    </figure>
+
+    <div class="perf-table">
+      <div class="perf-row perf-head">
+        <span></span><span class="r">This rule</span>
+        {% if bm %}<span class="r">Index</span>{% endif %}
+      </div>
+      <div class="perf-row">
+        <span>Ended at</span>
+        <span class="r num">₹{{ "{:,.0f}".format(st.final) }}</span>
+        {% if bm %}<span class="r num">₹{{ "{:,.0f}".format(bm.final) }}</span>{% endif %}
+      </div>
+      <div class="perf-row">
+        <span>Compound annual</span>
+        <span class="r num{{ ' win' if bm and st.cagr_pct > bm.cagr_pct }}">{{ "%.2f"|format(st.cagr_pct) }}%</span>
+        {% if bm %}<span class="r num{{ ' win' if st.cagr_pct <= bm.cagr_pct }}">{{ "%.2f"|format(bm.cagr_pct) }}%</span>{% endif %}
+      </div>
+      <div class="perf-row">
+        <span>Worst drawdown</span>
+        <span class="r num{{ ' win' if bm and st.max_drawdown_pct > bm.max_drawdown_pct }}">{{ "%.1f"|format(st.max_drawdown_pct) }}%</span>
+        {% if bm %}<span class="r num{{ ' win' if st.max_drawdown_pct <= bm.max_drawdown_pct }}">{{ "%.1f"|format(bm.max_drawdown_pct) }}%</span>{% endif %}
+      </div>
+      <div class="perf-row">
+        <span>Trades</span>
+        <span class="r num">{{ "{:,}".format(performance.trades) }}</span>
+        {% if bm %}<span class="r num">1</span>{% endif %}
+      </div>
+      <div class="perf-row">
+        <span>Paid in costs</span>
+        <span class="r num">₹{{ "{:,.0f}".format(performance.costs) }}</span>
+        {% if bm %}<span class="r faint">once</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if performance.verdict %}
+  <div class="verdict">
+    <p>
+      {% if performance.verdict.beat_on_return %}
+        The rule compounded
+        <b class="num">{{ "%.2f"|format(performance.verdict.return_gap_pct) }}</b>
+        points a year faster than the index.
+      {% else %}
+        <b>Buying the index and doing nothing returned more.</b>
+        The rule gave up
+        <b class="num">{{ "%.2f"|format(performance.verdict.return_gap_pct|abs) }}</b>
+        points of compound annual return against it — over ten years, after
+        {{ "{:,}".format(performance.trades) }} trades and
+        ₹{{ "{:,.0f}".format(performance.costs) }} in costs.
+      {% endif %}
+      {% if performance.verdict.beat_on_drawdown %}
+        What it bought was a shallower hole: the worst peak-to-trough fall was
+        <b class="num">{{ "%.1f"|format(performance.verdict.drawdown_gap_pct) }}</b>
+        points smaller, and it was in cash for most of the crash rather than
+        riding it down.
+      {% endif %}
+      Whether that trade is worth making is a question about you, not about
+      the data.
+    </p>
+  </div>
+  {% endif %}
+
+  <p class="faint" style="margin-top:14px">
+    A backtest is a measurement of the past under stated assumptions, not a
+    forecast and not advice.
+    {% if performance.survivorship_warning %}
+    <br><b>Survivorship:</b> {{ performance.survivorship_warning }}
+    {% endif %}
+  </p>
+</section>
+{% endif %}
+
 <!-- ══════════════ the ledger ══════════════ -->
 {% if ledger %}
 <section class="wrap">

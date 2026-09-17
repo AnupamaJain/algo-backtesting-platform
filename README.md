@@ -87,7 +87,16 @@ Design docs: **[vriddhix/docs/](vriddhix/docs/)** (10 specifications)
   and no view drops them by default. A hit rate over survivors is the single
   most flattering lie a research tool can tell.
 
-451 tests, including no-look-ahead and engine-purity suites.
+**What a rule actually did**
+
+The landing page carries the equity curve of a stored backtest against the
+obvious alternative — buying the Nifty 50 ETF once and holding it. On the
+shipped data the strategy loses that comparison, returning 10.58% compound
+annually against 11.61%, while falling less far: a 24.8% worst drawdown
+against 36.3%. Both numbers are shown, because reporting only the
+favourable one is how a backtest becomes marketing.
+
+492 tests, including no-look-ahead and engine-purity suites.
 
 ---
 
@@ -193,7 +202,7 @@ Dependencies/               instrument dumps and live access tokens
 ├── vriddhix/            🔬 Pramana — pattern research (self-contained)
 │   ├── src/vriddhix/       domain · db · data · engines · services · jobs · api
 │   ├── docs/               10 design specifications
-│   ├── tests/              436 tests
+│   ├── tests/              492 tests
 │   └── RUNNING.md          start/stop, sign in, scheduling
 │
 ├── quant_backtester/    📊 strategy backtesting + broker adapters
@@ -214,7 +223,7 @@ Dependencies/               instrument dumps and live access tokens
 
 ```bash
 # Pramana
-cd vriddhix && PYTHONPATH=src python -m pytest -q     # 451 tests
+cd vriddhix && PYTHONPATH=src python -m pytest -q     # 492 tests
 
 # Backtester
 cd quant_backtester && python -m pytest -q

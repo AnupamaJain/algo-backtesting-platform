@@ -16,6 +16,7 @@ from vriddhix.data.quality import (
     check_duplicates,
     check_missing_bars,
     check_ohlc_sanity,
+    check_reverting_spikes,
     check_staleness,
     check_suspected_splits,
     check_zero_volume,
@@ -204,3 +205,88 @@ def test_validate_from_config_uses_configured_thresholds(cfg):
     cleaned, findings = validate_from_config(df, "CFG", cfg)
     assert len(cleaned) == len(df)
     assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# Reverting spikes -- bad data that a split check cannot see
+# ---------------------------------------------------------------------------
+
+
+def _decimal_shift(df: pd.DataFrame, at: int, span: int, factor: float) -> pd.DataFrame:
+    """Displace `span` bars by `factor`, the way a dropped decimal point does."""
+    df = df.copy()
+    cols = [df.columns.get_loc(c) for c in ("open", "high", "low", "close")]
+    df.iloc[at:at + span, cols] /= factor
+    return df
+
+
+def test_a_flat_displaced_span_is_flagged():
+    """The NIFTYBEES case: two sessions printed at a tenth of their
+    neighbours, with the bar in between carrying no large move of its own."""
+    df = _decimal_shift(make_ohlcv(60, seed=11), at=30, span=2, factor=10.0)
+
+    findings = check_reverting_spikes(df, "ETF", threshold_pct=25.0)
+
+    assert DataIssue.BAD_PRICE_SPAN in issues(findings)
+    flagged = {f.bar_date for f in findings}
+    # Both bars, not just the two ends where the big moves are. The middle
+    # bar is the one a split check cannot reach.
+    assert flagged == {df.index[30].date(), df.index[31].date()}
+    assert all(f.severity is Severity.ERROR for f in findings)
+
+
+def test_the_flagged_span_records_the_ratio_it_was_displaced_by():
+    df = _decimal_shift(make_ohlcv(60, seed=12), at=30, span=2, factor=100.0)
+    findings = check_reverting_spikes(df, "ETF", threshold_pct=25.0)
+    assert findings
+    assert findings[0].detail["ratio"] == pytest.approx(100.0, rel=0.05)
+
+
+def test_a_real_crash_that_recovers_is_not_flagged():
+    """March 2020, and the reason flatness is required at all.
+
+    YESBANK fell 56% on the RBI moratorium and was back near its prior level
+    three sessions later -- which satisfies reversion on its own. The bars in
+    between moved +32% and +36%. Flagging that span would delete a real
+    market event from the record, which is a worse failure than missing a
+    corrupted one.
+    """
+    base = make_ohlcv(60, seed=13)
+    close = base["close"].copy()
+    prior = float(close.iloc[29])
+    path = [prior * 0.44, prior * 0.58, prior * 0.79, prior * 0.99]
+    for offset, price in enumerate(path):
+        for col in ("open", "high", "low", "close"):
+            base.iloc[30 + offset, base.columns.get_loc(col)] = price
+
+    findings = check_reverting_spikes(base, "YESBANK", threshold_pct=25.0)
+
+    assert findings == [], "a real crash was flagged as corrupt data"
+
+
+def test_a_genuine_split_is_not_flagged_as_a_bad_span():
+    """A split does not revert -- that is the whole distinction."""
+    df = make_ohlcv(60, seed=14)
+    cols = [df.columns.get_loc(c) for c in ("open", "high", "low", "close")]
+    df.iloc[30:, cols] /= 5.0
+
+    assert check_reverting_spikes(df, "SPLIT", threshold_pct=25.0) == []
+    # ...and the split rule still sees it, so nothing is lost.
+    assert DataIssue.SUSPECTED_SPLIT in issues(
+        check_suspected_splits(df, "SPLIT", threshold_pct=25.0)
+    )
+
+
+def test_ordinary_volatility_produces_no_bad_spans():
+    assert check_reverting_spikes(make_ohlcv(250, seed=15), "NORMAL") == []
+
+
+def test_a_bad_span_is_flagged_not_repaired():
+    """Same commitment as the split rule. A guessed correction factor is a
+    silent rewrite of the record."""
+    df = _decimal_shift(make_ohlcv(60, seed=16), at=30, span=2, factor=10.0)
+    before = df["close"].copy()
+
+    check_reverting_spikes(df, "ETF", threshold_pct=25.0)
+
+    pd.testing.assert_series_equal(df["close"], before)

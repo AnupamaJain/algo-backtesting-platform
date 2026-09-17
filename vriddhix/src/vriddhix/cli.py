@@ -13,12 +13,14 @@ out to this.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-from sqlalchemy import func, select
+import pandas as pd
+from sqlalchemy import delete, func, select
 
 from .config import PROJECT_ROOT, get_config
 from .data.ingest import ingest_universe
@@ -281,6 +283,77 @@ def cmd_ingest(args) -> int:
     return 0 if not report.failed else 2
 
 
+def cmd_revalidate(args) -> int:
+    """Re-run the quality rules over stored bars, without re-fetching.
+
+    A rule added after an ingest would otherwise only ever apply to data
+    arriving later, leaving the existing decade unexamined by it. Nothing is
+    corrected and no bar is touched -- this only records what the rules find,
+    replacing the previous findings for each symbol so repeated runs do not
+    accumulate duplicates of the same event.
+    """
+    from .data.quality import validate_from_config
+    from .db.models import DataQualityEvent
+
+    with session_scope() as session:
+        symbols = args.symbols or [s for (s,) in session.execute(
+            select(Stock.symbol).order_by(Stock.symbol)).all()]
+        if not symbols:
+            print("no symbols; run `bootstrap` first", file=sys.stderr)
+            return 1
+
+        found: dict[str, int] = {}
+        for symbol in symbols:
+            stock_id = session.scalar(select(Stock.id).where(Stock.symbol == symbol))
+            if stock_id is None:
+                continue
+            rows = session.execute(
+                select(OhlcvDaily.date, OhlcvDaily.open, OhlcvDaily.high,
+                       OhlcvDaily.low, OhlcvDaily.close, OhlcvDaily.volume)
+                .where(OhlcvDaily.stock_id == stock_id)
+                .order_by(OhlcvDaily.date)
+            ).all()
+            if len(rows) < 3:
+                continue
+
+            frame = pd.DataFrame(
+                rows, columns=["date", "open", "high", "low", "close", "volume"]
+            )
+            frame["date"] = pd.to_datetime(frame["date"])
+            frame = frame.set_index("date").astype(float)
+
+            _, findings = validate_from_config(frame, symbol, get_config())
+
+            session.execute(
+                delete(DataQualityEvent).where(DataQualityEvent.stock_id == stock_id)
+            )
+            for finding in findings:
+                session.add(DataQualityEvent(
+                    stock_id=stock_id,
+                    date=finding.bar_date,
+                    severity=finding.severity.value,
+                    category=finding.issue.value,
+                    detail=json.dumps(finding.detail) if finding.detail else None,
+                ))
+            if findings:
+                found[symbol] = len(findings)
+            session.commit()
+
+        errors = session.execute(
+            select(DataQualityEvent.category, func.count())
+            .where(DataQualityEvent.severity == "ERROR")
+            .group_by(DataQualityEvent.category)
+        ).all()
+
+        print(f"revalidated {len(symbols)} symbols · "
+              f"{sum(found.values())} findings on {len(found)} of them")
+        if errors:
+            print("\nerrors:")
+            for category, count in errors:
+                print(f"  {category:<18} {count}")
+    return 0
+
+
 def cmd_status(_args) -> int:
     with session_scope() as session:
         counts = {
@@ -315,7 +388,7 @@ def cmd_status(_args) -> int:
 
 def cmd_scan(args) -> int:
     """Run the daily pipeline for one date, or backfill a range."""
-    from sqlalchemy import func, select
+    import pandas as pd
 
     from .db.models import OhlcvDaily
     from .jobs.daily_scan import backfill, run_daily_scan, summarise
@@ -424,6 +497,11 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", help="apply migrations").set_defaults(func=cmd_init)
+
+    revalidate = sub.add_parser(
+        "revalidate", help="re-run quality rules over stored bars")
+    revalidate.add_argument("symbols", nargs="*", help="default: every symbol")
+    revalidate.set_defaults(func=cmd_revalidate)
 
     bootstrap = sub.add_parser("bootstrap", help="seed reference data")
     bootstrap.add_argument("--universe", default=None,

@@ -1,0 +1,27 @@
+# Testimonials shown on the landing page.
+#
+# Nothing here is invented. An entry renders only when `verified: true`, and
+# that flag means a real, identifiable person said this about this software
+# and agreed to it being published with their name.
+#
+# The reason the flag exists rather than a plain list: a fabricated quote on
+# a financial product is not a marketing shortcut, it is a false statement
+# about a real person's experience of something that affects money. In India
+# that also puts you inside SEBI's advertising rules, which apply to research
+# and analytics products, not only to advice. The section simply does not
+# appear while this file has no verified entries -- an empty shelf is honest,
+# a stocked fake one is not.
+#
+# To add one:
+#
+#   - quote:    what they actually said, trimmed but not reworded
+#     name:     how they want to be credited
+#     role:     what they do, if they want it shown
+#     source:   where it was said -- an email, an issue, a post, a call
+#     date:     when
+#     verified: true
+#
+# `source` is not rendered. It is there so that in a year you can still tell
+# where each line came from.
+
+testimonials: []
