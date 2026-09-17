@@ -1,4 +1,4 @@
-# Tathya — API Contracts
+# Pramana — API Contracts
 
 FastAPI, JSON, prefix `/api/v1`. Implemented from Phase 6; specified now so
 the frontend and the services layer agree before either is written.

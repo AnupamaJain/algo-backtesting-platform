@@ -1,4 +1,4 @@
-# Tathya — Market Regime & Breadth Specification
+# Pramana — Market Regime & Breadth Specification
 
 `REGIME_ENGINE_V1.0` · Phase 3 · `src/vriddhix/engines/regime.py`
 

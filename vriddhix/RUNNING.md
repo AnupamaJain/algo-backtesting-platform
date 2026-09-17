@@ -1,4 +1,4 @@
-# Running Tathya
+# Running Pramana
 
 Everything runs on this machine. One process serves the pages and the API;
 the database is a SQLite file under `state/`.

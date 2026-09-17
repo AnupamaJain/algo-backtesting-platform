@@ -1,4 +1,4 @@
-# Tathya — System Architecture
+# Pramana — System Architecture
 
 ## 1. What this system is
 

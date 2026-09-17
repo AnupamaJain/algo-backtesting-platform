@@ -1,4 +1,4 @@
-# Tathya — VCP Engine Specification
+# Pramana — VCP Engine Specification
 
 `VCP_ENGINE_V1.0` · implemented in Phase 2 · `src/vriddhix/engines/vcp/`
 

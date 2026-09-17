@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Learn — how Tathya measures a chart{% endblock %}
+{% block title %}Learn — how Pramana measures a chart{% endblock %}
 {% block description %}How the VCP, market structure, regime and relative strength engines work — and the five ways a research platform lies to you without meaning to.{% endblock %}
 
 {% block content %}
@@ -7,7 +7,7 @@
   <div class="eyebrow">Learn</div>
   <h1>How a chart becomes a number</h1>
   <p class="lede">
-    Every score Tathya shows decomposes into named parts, and every part is
+    Every score Pramana shows decomposes into named parts, and every part is
     arithmetic over past bars. This page explains that arithmetic — and, more
     usefully, the ways a platform like this can be wrong without anybody
     noticing.
@@ -94,7 +94,7 @@
       <strong>BOS</strong> — a break of structure, continuation. If the
       structure was bearish, that same break is a <strong>CHoCH</strong> — a
       change of character, the first evidence the trend may be turning.
-      Tathya stores both in one table, because they are the same event shape
+      Pramana stores both in one table, because they are the same event shape
       and differ only in context.
     </p>
 
@@ -103,7 +103,7 @@
       A swing high is only a swing high once enough bars have printed
       <em>after</em> it without exceeding it. If the engine needs three bars
       of confirmation, then on the day the swing occurred nobody knew it was
-      one. Tathya stores the date a swing became knowable separately from
+      one. Pramana stores the date a swing became knowable separately from
       the date it happened, and history is read by the former. Reading by the
       latter hands a backtest information from the future and produces
       results that cannot be repeated in life.
@@ -227,7 +227,7 @@
       Using information the moment did not have — a swing not yet confirmed, a
       close not yet printed, a statistic computed over the whole series. It
       never crashes. It produces a beautiful equity curve that cannot be
-      reproduced with real money. Tathya tests for it by truncating history
+      reproduced with real money. Pramana tests for it by truncating history
       and demanding identical output.
     </p>
 
@@ -236,7 +236,7 @@
       Backtesting today's index constituents over ten years measures the
       stocks that survived to be in the index today. The failures were removed
       from the sample by the same process that made them failures. When
-      point-in-time membership is unavailable, Tathya marks the run
+      point-in-time membership is unavailable, Pramana marks the run
       <span class="num">CURRENT_UNIVERSE</span> and carries that warning into
       the results — the bias travels with the numbers instead of living in
       documentation nobody reads.
@@ -246,7 +246,7 @@
     <p>
       A hit rate over only the setups that worked. It happens by accident:
       failures get closed, archived, filtered from the default view, and the
-      remaining rows look like the whole population. Tathya keeps failed
+      remaining rows look like the whole population. Pramana keeps failed
       breakouts as first-class rows with the same shape as successes, and no
       view drops them by default.
     </p>
@@ -264,7 +264,7 @@
     <h3>5. Silent repair</h3>
     <p>
       A platform that quietly "fixes" a suspicious price produces a series
-      nobody can reconcile against the exchange. Tathya flags a suspected
+      nobody can reconcile against the exchange. Pramana flags a suspected
       split as suspected and leaves the data alone. Zero-volume bars are kept
       too — an NSE circuit halt is a real event, and deleting those bars would
       fabricate a gap that never existed.

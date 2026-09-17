@@ -62,7 +62,7 @@ def _seo(request, path: str, *, kind: str = "WebPage", extra: dict | None = None
     data = {
         "@context": "https://schema.org",
         "@type": kind,
-        "name": "Tathya",
+        "name": "Pramana",
         "url": canonical,
         "inLanguage": "en-IN",
         "publisher": {"@type": "Organization", "name": "VriddhiX", "url": origin},
@@ -110,14 +110,14 @@ def _coverage(session) -> dict:
 #: be true first: a question-and-answer block that exists only to carry terms
 #: reads as filler and is treated as such.
 LANDING_FAQ = [
-    ("Is Tathya a free NSE stock screener?",
+    ("Is Pramana a free NSE stock screener?",
      "Yes. It scans NSE cash equities daily for volatility-contraction bases, "
      "breaks of market structure and fair value gaps, and an account costs "
      "nothing. It is a research tool rather than a broker — it has no trading "
      "path and cannot place an order."),
     ("What is the VCP or volatility contraction pattern?",
      "A base where each pullback is shallower than the last on drying volume, "
-     "popularised by Mark Minervini. Tathya measures the prior trend, counts "
+     "popularised by Mark Minervini. Pramana measures the prior trend, counts "
      "the contractions, locates the pivot and scores the base out of 100, "
      "showing every weighted component rather than a single opaque number."),
     ("Which smart money concepts does it detect?",
@@ -338,6 +338,86 @@ def _rotation(session, as_of) -> list[dict]:
     return sorted(out, key=lambda r: (order.get(r["quadrant"], 9), r["rank"] or 99))
 
 
+#: Real screens, captured from this application rather than drawn. Each one
+#: is a region of a page that actually renders from the database.
+APP_SCREENS = [
+    ("scanner",  "Live scanner",
+     "209 NSE names, filtered in the browser against stored scan rows."),
+    ("regime",   "Market regime",
+     "Five weighted components with hysteresis, or an explicit refusal."),
+    ("rotation", "Sector rotation",
+     "Equal-weight aggregation into four quadrants."),
+    ("evidence", "Breakout ledger",
+     "Every outcome recorded, failures kept and counted."),
+    ("api",      "Read API",
+     "46 endpoints, every payload carrying its provenance."),
+]
+
+
+def _regime_surface(session, points: int = 420) -> list[float]:
+    """Regime score over time, for the WebGL terrain.
+
+    The 3D piece is built from this rather than from noise. A decorative
+    surface would be the one graphic on the page not answerable to the data.
+    """
+    rows = session.execute(
+        select(MarketRegimeRow.regime_score).order_by(MarketRegimeRow.date)
+    ).all()
+    if len(rows) < 20:
+        return []
+    step = max(1, len(rows) // points)
+    return [
+        round(float(r[0]), 2) for r in rows[::step] if r[0] is not None
+    ]
+
+
+def _measured_results(session) -> dict:
+    """What the recorded breakouts actually did -- shown instead of an ROI.
+
+    Deliberately not framed as a return anyone would have earned: there is no
+    position sizing, no slippage and no capital here, only what price did
+    after each recorded breakout. Calling that ROI would contradict every
+    other surface on the site.
+    """
+    from sqlalchemy import case
+
+    row = session.execute(
+        select(
+            func.count(),
+            func.sum(case((Breakout.status == "FAILED", 1), else_=0)),
+        ).where(Breakout.status.in_(("CONFIRMED", "FAILED")))
+    ).first()
+    total, failed = (row[0] or 0), int(row[1] or 0)
+    if total < 50:
+        return {}
+
+    def avg(column, status):
+        return session.scalar(
+            select(func.avg(column))
+            .select_from(BreakoutOutcome)
+            .join(Breakout, Breakout.id == BreakoutOutcome.breakout_id)
+            .where(Breakout.status == status)
+        )
+
+    held_mfe = _num(avg(BreakoutOutcome.mfe_pct, "CONFIRMED")) or 0.0
+    held_mae = _num(avg(BreakoutOutcome.mae_pct, "CONFIRMED")) or 0.0
+    lost_mfe = _num(avg(BreakoutOutcome.mfe_pct, "FAILED")) or 0.0
+    lost_mae = _num(avg(BreakoutOutcome.mae_pct, "FAILED")) or 0.0
+
+    return {
+        "total": total,
+        "held": total - failed,
+        "failed": failed,
+        "hold_pct": (total - failed) / total * 100.0,
+        "fail_pct": failed / total * 100.0,
+        "held_mfe": held_mfe, "held_mae": held_mae,
+        "lost_mfe": lost_mfe, "lost_mae": lost_mae,
+        # The asymmetry is the finding, and it is a ratio of measured
+        # excursions rather than a projected return.
+        "edge": round(held_mfe / abs(lost_mae), 2) if lost_mae else None,
+    }
+
+
 def _ledger(session) -> dict:
     """Confirmed against failed. Shown because hiding it would be the lie."""
     rows = session.execute(
@@ -394,6 +474,9 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "spark": _breadth_spark(session),
             "screener": _screener_rows(session, prov.as_of),
             "rotation": _rotation(session, prov.as_of),
+            "screens": APP_SCREENS,
+            "surface": _regime_surface(session),
+            "results": _measured_results(session),
             "faq": LANDING_FAQ,
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),
@@ -564,7 +647,7 @@ def learn(request: Request, session: SessionDep):
     return TEMPLATES.TemplateResponse(
         request, "learn.html",
         {**_seo(request, "/learn", kind="TechArticle", extra={
-            "headline": "How Tathya measures a chart",
+            "headline": "How Pramana measures a chart",
             "description": (
                 "How the VCP, market structure, regime and relative strength "
                 "engines work, and the five ways a research platform misleads "

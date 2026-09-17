@@ -68,7 +68,7 @@ def robots(request: Request) -> Response:
         )
         return Response(body, media_type="text/plain")
 
-    body = f"""# Tathya
+    body = f"""# Pramana
 User-agent: *
 Allow: /$
 Allow: /learn

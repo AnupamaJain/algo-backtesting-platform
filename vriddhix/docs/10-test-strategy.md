@@ -1,4 +1,4 @@
-# Tathya — Test Strategy
+# Pramana — Test Strategy
 
 ## 1. What testing is for here
 

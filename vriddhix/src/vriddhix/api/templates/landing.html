@@ -1,16 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Tathya — pattern intelligence for Indian equities{% endblock %}
+{% block title %}Pramana — pattern intelligence for Indian equities{% endblock %}
 
 {% block content %}
 
 <!-- ══════════════ hero ══════════════ -->
 <section class="hero-wrap">
+  {% if surface %}
+  <canvas id="terrain" class="terrain" aria-hidden="true"></canvas>
+  <script type="application/json" id="surface-data">{{ surface | tojson }}</script>
+  {% endif %}
   <div class="wrap hero">
     <div class="hero-copy">
       <div class="eyebrow">NSE equities · research instrument</div>
       <h1>Ten years of the market,<br><em>measured the same way.</em></h1>
       <p class="lede">
-        Tathya finds chart structure in Indian equities, scores it against
+        Pramana finds chart structure in Indian equities, scores it against
         market and sector context, and records what happened next — including
         every time it was wrong.
       </p>
@@ -231,6 +235,87 @@
 </section>
 
 <script type="application/json" id="screener-data">{{ screener|tojson }}</script>
+{% endif %}
+
+<!-- ══════════════ app screens ══════════════ -->
+{% if screens %}
+<section class="wrap deck-section">
+  <div class="sec-head">
+    <h2>The application, running</h2>
+    <span class="faint">captured from this instance · drag or swipe</span>
+  </div>
+  <p class="muted lead-narrow">
+    Not mockups. Each of these is a region of a page that renders from the
+    database on every request.
+  </p>
+
+  <div class="deck" id="deck">
+    <div class="deck-stage" id="deck-stage">
+      {% for slug, title, blurb in screens %}
+      <figure class="screen" data-i="{{ loop.index0 }}">
+        <img src="/static/screens/{{ slug }}.png" alt="{{ title }} — {{ blurb }}"
+             loading="lazy" draggable="false">
+        <figcaption><b>{{ title }}</b><span>{{ blurb }}</span></figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    <div class="deck-nav">
+      <button class="deck-btn" id="deck-prev" aria-label="Previous screen">←</button>
+      <div class="deck-dots" id="deck-dots"></div>
+      <button class="deck-btn" id="deck-next" aria-label="Next screen">→</button>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════ measured results ══════════════ -->
+{% if results %}
+<section class="wrap">
+  <div class="sec-head"><h2>What actually followed</h2></div>
+  <p class="muted lead-narrow">
+    Measured excursions after every recorded breakout — not a return anyone
+    earned. There is no position sizing, no slippage and no capital here, so
+    calling this ROI would be a claim the data does not support.
+  </p>
+
+  <div class="results">
+    <div class="res-chart" id="res-chart">
+      <div class="res-row">
+        <span class="res-k">Held above pivot</span>
+        <span class="res-track">
+          <i class="res-up"   data-w="{{ "%.1f"|format(results.held_mfe * 8) }}"></i>
+          <i class="res-down" data-w="{{ "%.1f"|format(results.held_mae|abs * 8) }}"></i>
+        </span>
+        <span class="res-v num">+{{ "%.1f"|format(results.held_mfe) }}% / {{ "%.1f"|format(results.held_mae) }}%</span>
+      </div>
+      <div class="res-row">
+        <span class="res-k">Failed</span>
+        <span class="res-track">
+          <i class="res-up"   data-w="{{ "%.1f"|format(results.lost_mfe * 8) }}"></i>
+          <i class="res-down" data-w="{{ "%.1f"|format(results.lost_mae|abs * 8) }}"></i>
+        </span>
+        <span class="res-v num">+{{ "%.1f"|format(results.lost_mfe) }}% / {{ "%.1f"|format(results.lost_mae) }}%</span>
+      </div>
+      <div class="res-legend">
+        <span><i class="sw res-up"></i> best excursion</span>
+        <span><i class="sw res-down"></i> worst excursion</span>
+      </div>
+    </div>
+
+    <div class="res-stats">
+      <div><b class="num" data-count="{{ results.total }}">0</b><span>resolved breakouts</span></div>
+      <div><b class="num">{{ "%.0f"|format(results.hold_pct) }}%</b><span>held above the pivot</span></div>
+      <div><b class="num">{{ "%.0f"|format(results.fail_pct) }}%</b><span>failed, and kept</span></div>
+      {% if results.edge %}
+      <div><b class="num">{{ results.edge }}×</b><span>upside on holds vs downside on failures</span></div>
+      {% endif %}
+    </div>
+  </div>
+  <p class="faint" style="margin-top:12px">
+    Past measurements. Not a forecast, not advice, and not a return you would
+    have received. <a href="/vcp-breakout-failure-rate">Method and bias →</a>
+  </p>
+</section>
 {% endif %}
 
 <!-- ══════════════ the ledger ══════════════ -->
@@ -553,7 +638,7 @@
       .then(function (d) {
         if (!d || !d.regime) return;
         var name = d.regime.regime;
-        regimeEl.textContent = name.replace(/_/g, " ")
+        regimeEl.textContent = name.replace(/_/g, " ").toLowerCase()
           .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         regimeEl.style.color = COLOURS[name] || "";
         var m = document.getElementById("live-meta");
@@ -571,6 +656,245 @@
 
   poll();
   setInterval(poll, 60000);
+})();
+</script>
+
+<script>
+/* ── WebGL: the regime history as a terrain ──────────────────────────────
+   Raw WebGL rather than a library. A 600KB dependency on a self-hosted
+   research tool to draw one ribbon is a bad trade, and this is ~120 lines.
+
+   The height is the actual regime score for each sampled session, so the
+   ridge line IS the market's history -- decorative noise would have been the
+   one graphic on the page not answerable to the data. */
+(function () {
+  var node = document.getElementById("surface-data");
+  var cv = document.getElementById("terrain");
+  if (!node || !cv) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  var DATA = JSON.parse(node.textContent);
+  if (DATA.length < 20) return;
+
+  var gl = cv.getContext("webgl", { alpha: true, antialias: true });
+  if (!gl) return;                       // no WebGL: the page is fine without it
+
+  var VS = [
+    "attribute vec3 p; attribute float h;",
+    "uniform mat4 mvp; varying float vh; varying float vz;",
+    "void main(){ vh = h; vz = p.z; gl_Position = mvp * vec4(p,1.0); }"
+  ].join("\n");
+
+  var FS = [
+    "precision mediump float; varying float vh; varying float vz;",
+    "uniform float dark;",
+    // bear red -> neutral grey -> bull green, the same scale the engine uses
+    "void main(){",
+    "  vec3 bear = vec3(0.72,0.25,0.18);",
+    "  vec3 mid  = vec3(0.60,0.58,0.55);",
+    "  vec3 bull = vec3(0.12,0.61,0.38);",
+    "  vec3 c = vh < 0.5 ? mix(bear, mid, vh*2.0) : mix(mid, bull, (vh-0.5)*2.0);",
+    "  float fade = 1.0 - clamp(abs(vz)*0.45, 0.0, 0.7);",
+    "  gl_FragColor = vec4(c, fade * (dark > 0.5 ? 0.80 : 0.62));",
+    "}"
+  ].join("\n");
+
+  function shader(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+  }
+  var vs = shader(gl.VERTEX_SHADER, VS), fs = shader(gl.FRAGMENT_SHADER, FS);
+  if (!vs || !fs) return;
+  var prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+  gl.useProgram(prog);
+
+  // Build parallel ridges: one per "depth" row, each the same history offset
+  // slightly, so the surface reads as terrain rather than a single line.
+  var ROWS = 14, N = DATA.length, verts = [], heights = [];
+  for (var r = 0; r < ROWS; r++) {
+    var z = (r / (ROWS - 1)) * 2.0 - 1.0;
+    for (var i = 0; i < N; i++) {
+      var x = (i / (N - 1)) * 2.0 - 1.0;
+      var v = DATA[Math.min(N - 1, i + r * 2)] / 100.0;
+      verts.push(x, v * 0.55 - 0.18 - Math.abs(z) * 0.06, z);
+      heights.push(v);
+    }
+  }
+  // Line strips per row, drawn as segments.
+  var idx = [];
+  for (var r2 = 0; r2 < ROWS; r2++)
+    for (var i2 = 0; i2 < N - 1; i2++) {
+      var base = r2 * N + i2; idx.push(base, base + 1);
+    }
+
+  function buf(target, arr, Type) {
+    var b = gl.createBuffer(); gl.bindBuffer(target, b);
+    gl.bufferData(target, new Type(arr), gl.STATIC_DRAW); return b;
+  }
+  buf(gl.ARRAY_BUFFER, verts, Float32Array);
+  var pLoc = gl.getAttribLocation(prog, "p");
+  gl.enableVertexAttribArray(pLoc); gl.vertexAttribPointer(pLoc, 3, gl.FLOAT, false, 0, 0);
+
+  buf(gl.ARRAY_BUFFER, heights, Float32Array);
+  var hLoc = gl.getAttribLocation(prog, "h");
+  gl.enableVertexAttribArray(hLoc); gl.vertexAttribPointer(hLoc, 1, gl.FLOAT, false, 0, 0);
+
+  var ib = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+
+  var mvpLoc = gl.getUniformLocation(prog, "mvp");
+  var darkLoc = gl.getUniformLocation(prog, "dark");
+
+  function mat(rotY, tilt, aspect) {
+    var c = Math.cos(rotY), s = Math.sin(rotY);
+    var ct = Math.cos(tilt), st = Math.sin(tilt);
+    var f = 1.9;
+    // rotateY · rotateX · perspective, written out to avoid a matrix library
+    return new Float32Array([
+      c / aspect * f, s * st * f, -s * ct, -s * ct,
+      0,              ct * f,      st,      st,
+      s / aspect * f, -c * st * f,  c * ct,  c * ct,
+      0,              0,           2.6,     2.8
+    ]);
+  }
+
+  var pointer = 0, target = 0, t0 = performance.now(), raf = null;
+  addEventListener("mousemove", function (e) {
+    target = (e.clientX / innerWidth - 0.5) * 0.5;
+  }, { passive: true });
+
+  function size() {
+    var d = Math.min(devicePixelRatio || 1, 2);
+    cv.width = cv.clientWidth * d; cv.height = cv.clientHeight * d;
+    gl.viewport(0, 0, cv.width, cv.height);
+  }
+  addEventListener("resize", size); size();
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  function isDark() {
+    var a = document.documentElement.getAttribute("data-theme");
+    return a === "dark" || (!a && matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function frame(now) {
+    pointer += (target - pointer) * 0.045;          // spring toward the cursor
+    var drift = Math.sin((now - t0) / 6400) * 0.18;
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniformMatrix4fv(mvpLoc, false,
+      mat(0.62 + pointer + drift, 0.40, cv.width / cv.height));
+    gl.uniform1f(darkLoc, isDark() ? 1.0 : 0.0);
+    gl.drawElements(gl.LINES, idx.length, gl.UNSIGNED_SHORT, 0);
+    raf = requestAnimationFrame(frame);
+  }
+
+  // Only animate while the hero is on screen; a canvas spinning behind the
+  // footer is pure battery drain.
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting && !raf) raf = requestAnimationFrame(frame);
+      else if (!e.isIntersecting && raf) { cancelAnimationFrame(raf); raf = null; }
+    });
+  }, { threshold: 0.02 });
+  io.observe(cv);
+})();
+
+/* ── the screen deck: drag, swipe, keys ─────────────────────────────── */
+(function () {
+  var stage = document.getElementById("deck-stage");
+  if (!stage) return;
+  var screens = Array.prototype.slice.call(stage.children);
+  var dots = document.getElementById("deck-dots");
+  var at = 0, dragFrom = null, dragDX = 0;
+
+  screens.forEach(function (_, i) {
+    var d = document.createElement("button");
+    d.className = "deck-dot"; d.setAttribute("aria-label", "Screen " + (i + 1));
+    d.addEventListener("click", function () { go(i); });
+    dots.appendChild(d);
+  });
+
+  function layout(drag) {
+    screens.forEach(function (el, i) {
+      var off = i - at;
+      var x = off * 62 + (drag || 0) * 0.35;
+      var scale = 1 - Math.min(Math.abs(off), 3) * 0.07;
+      var rot = off * -4;
+      el.style.transform =
+        "translate3d(" + x + "px,0,0) scale(" + scale + ") rotateY(" + rot + "deg)";
+      el.style.zIndex = String(50 - Math.abs(off));
+      el.style.opacity = Math.abs(off) > 3 ? "0" : String(1 - Math.abs(off) * 0.18);
+      el.classList.toggle("is-front", off === 0);
+    });
+    Array.prototype.forEach.call(dots.children, function (d, i) {
+      d.classList.toggle("on", i === at);
+    });
+  }
+
+  function go(i) { at = Math.max(0, Math.min(screens.length - 1, i)); layout(0); }
+
+  document.getElementById("deck-prev").addEventListener("click", function () { go(at - 1); });
+  document.getElementById("deck-next").addEventListener("click", function () { go(at + 1); });
+
+  stage.addEventListener("pointerdown", function (e) {
+    dragFrom = e.clientX; dragDX = 0; stage.setPointerCapture(e.pointerId);
+    stage.classList.add("dragging");
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (dragFrom === null) return;
+    dragDX = e.clientX - dragFrom; layout(dragDX);
+  });
+  function release() {
+    if (dragFrom === null) return;
+    stage.classList.remove("dragging");
+    if (Math.abs(dragDX) > 60) go(at + (dragDX < 0 ? 1 : -1)); else layout(0);
+    dragFrom = null; dragDX = 0;
+  }
+  stage.addEventListener("pointerup", release);
+  stage.addEventListener("pointercancel", release);
+
+  document.getElementById("deck").addEventListener("keydown", function (e) {
+    if (e.key === "ArrowLeft") go(at - 1);
+    if (e.key === "ArrowRight") go(at + 1);
+  });
+
+  layout(0);
+})();
+
+/* ── measured-result bars grow when scrolled to ─────────────────────── */
+(function () {
+  var chart = document.getElementById("res-chart");
+  if (!chart) return;
+  var still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function grow() {
+    chart.querySelectorAll("[data-w]").forEach(function (el) {
+      el.style.width = Math.min(100, parseFloat(el.dataset.w)) + "%";
+    });
+  }
+  if (still || !("IntersectionObserver" in window)) { grow(); return; }
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { grow(); io.disconnect(); } });
+  }, { threshold: 0.4 });
+  io.observe(chart);
+})();
+
+/* ── sections rise as they enter ────────────────────────────────────── */
+(function () {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll("section.wrap > *").forEach(function (el) {
+    el.classList.add("rise"); io.observe(el);
+  });
 })();
 </script>
 {% endblock %}

@@ -1,35 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"
-     aria-label="Tathya">
-  <title>Tathya</title>
+     aria-label="Pramana">
+  <title>Pramana</title>
   <!--
-    One candle, and the level someone wrote down on it.
+    A plumb line over a graduated scale.
 
-    The product's claim in a single shape: it reads a bar and records where
-    price actually was, with the end-serifs of a measurement rather than the
-    arrow of a forecast. It points nowhere.
+    Pramana is the valid means by which something is known, so the mark is an
+    instrument of measurement rather than a picture of a market. The bob hangs
+    where it hangs: it settles on a reading, it does not point ahead. The
+    graduations are uneven on purpose — a real scale read against real data,
+    not a decorative rule.
 
-    The level sits below centre, at the close, so it reads as an annotation
-    rather than a line struck through the body. Colour is baked in because
-    this file is used in <img> and as a favicon, where currentColor does not
-    reach and the mark would render black and vanish on a dark tab strip.
+    Colour is baked in because this is used in <img> and as a favicon, where
+    currentColor never resolves and the mark would render black and vanish on
+    a dark tab strip.
   -->
   <defs>
-    <linearGradient id="sk" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="pm" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"   stop-color="#e0ad74"/>
-      <stop offset="100%" stop-color="#b3702f"/>
+      <stop offset="100%" stop-color="#a9662c"/>
     </linearGradient>
   </defs>
 
-  <!-- wick -->
-  <path d="M32 7v50" stroke="#b3702f" stroke-opacity=".4"
-        stroke-width="3" stroke-linecap="round"/>
+  <!-- the scale it is read against -->
+  <g stroke="#b3702f" stroke-linecap="round" stroke-opacity=".5">
+    <path d="M45 13h12" stroke-width="2.6"/>
+    <path d="M48 24h9"  stroke-width="2.6"/>
+    <path d="M45 35h12" stroke-width="2.6"/>
+    <path d="M48 46h9"  stroke-width="2.6"/>
+  </g>
 
-  <!-- body -->
-  <rect x="23" y="15" width="18" height="30" rx="5" fill="url(#sk)"/>
+  <!-- the line -->
+  <path d="M22 6v30" stroke="#b3702f" stroke-opacity=".55"
+        stroke-width="2.8" stroke-linecap="round"/>
 
-  <!-- the recorded level: a measurement across the bar, at the close -->
-  <path d="M10 45h44" stroke="#6b3f18" stroke-width="3"
-        stroke-linecap="round" stroke-opacity=".92"/>
-  <path d="M10 40.5v9M54 40.5v9" stroke="#6b3f18" stroke-width="3"
-        stroke-linecap="round" stroke-opacity=".62"/>
+  <!-- the bob, settled -->
+  <path d="M22 34 L30 46 L22 58 L14 46 Z" fill="url(#pm)"/>
+
+  <!-- the reading it came to rest on -->
+  <path d="M10 46h40" stroke="#6b3f18" stroke-width="3"
+        stroke-linecap="round" stroke-opacity=".9"/>
 </svg>

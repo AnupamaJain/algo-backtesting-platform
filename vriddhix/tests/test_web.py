@@ -431,7 +431,7 @@ def test_every_tag_in_use_is_described(client):
 
 def test_the_spec_carries_identity_and_licence(client):
     spec = client.get("/api/openapi.json").json()["info"]
-    assert spec["title"] == "Tathya"
+    assert spec["title"] == "Pramana"
     assert spec["version"]
     assert spec.get("summary")
     assert spec.get("license", {}).get("name") == "MIT"
@@ -440,7 +440,7 @@ def test_the_spec_carries_identity_and_licence(client):
 def test_the_docs_page_carries_the_mark(client):
     body = client.get("/api/docs").text
     assert "/static/logo.svg" in body
-    assert "Tathya" in body
+    assert "Pramana" in body
 
 
 def test_the_logo_is_served_and_self_coloured(client):
@@ -758,3 +758,88 @@ def test_the_page_still_refuses_to_oversell(client):
                    "best stock to buy", "sure shot"):
         assert phrase not in body
     assert "not investment advice" in body
+
+# ---------------------------------------------------------------------------
+# Screens, 3D and measured results
+# ---------------------------------------------------------------------------
+
+
+def test_the_app_screens_are_real_files(client):
+    """Screenshots of this application, not stock imagery or mockups."""
+    from vriddhix.api.routers.pages import APP_SCREENS
+
+    for slug, title, note in APP_SCREENS:
+        r = client.get(f"/static/screens/{slug}.png")
+        assert r.status_code == 200, f"{slug}.png missing"
+        assert r.headers["content-type"] == "image/png"
+        assert len(r.content) > 8000, f"{slug}.png looks empty"
+        assert title and note
+
+
+def test_every_screen_has_alt_text(client):
+    """A deck of images with no alt text is invisible to a screen reader and
+    to a crawler -- which is half the point of putting real screens here."""
+    import re
+
+    body = client.get("/").text
+    imgs = re.findall(r"<img[^>]*/static/screens/[^>]*>", body)
+    assert imgs, "no screens rendered"
+    for tag in imgs:
+        alt = re.search(r'alt="([^"]*)"', tag)
+        assert alt and len(alt.group(1)) > 10, f"weak alt text: {tag[:80]}"
+
+
+def test_the_webgl_surface_is_built_from_stored_regimes(client, session):
+    """The 3D piece is engine output, not noise -- otherwise it would be the
+    one graphic on the page not answerable to the data."""
+    import json
+    import re
+    from datetime import date, timedelta
+
+    from vriddhix.db.models import MarketRegimeRow
+
+    start = date(2025, 1, 1)
+    for i in range(40):
+        session.add(
+            MarketRegimeRow(
+                date=start + timedelta(days=i),
+                regime="NEUTRAL",
+                regime_score=40.0 + i,
+                engine_version="REGIME_ENGINE_V1.0",
+            )
+        )
+    session.flush()
+
+    body = client.get("/").text
+    m = re.search(r'id="surface-data">(.*?)</script>', body, re.S)
+    assert m, "the surface rendered without its data"
+    values = json.loads(m.group(1))
+    assert len(values) >= 20
+    assert all(0 <= v <= 100 for v in values), "not regime scores"
+
+
+def test_the_surface_is_dropped_rather_than_faked_when_history_is_thin(client):
+    """With no regimes stored there is nothing to render, and inventing a
+    shape would be the one dishonest pixel on the page."""
+    body = client.get("/").text
+    assert 'id="surface-data"' not in body
+    assert "<canvas" not in body
+
+
+def test_no_page_presents_a_result_as_a_return(client):
+    """The product refuses to promise returns; an ROI figure anywhere would
+    contradict every other surface."""
+    for path in ("/", "/learn", "/vcp-breakout-failure-rate"):
+        body = client.get(path).text.lower()
+        for claim in ("roi", "returns you", "profit you", "you would earn",
+                      "you would have made"):
+            assert claim not in body, f"{path} claims '{claim}'"
+
+
+def test_no_testimonials_are_fabricated(client):
+    """Invented quotes on a financial product are deceptive, and in India
+    they are SEBI's business."""
+    body = client.get("/").text.lower()
+    for tell in ("testimonial", "★★★★★", "5-star", "trusted by thousands",
+                 "loved by traders", "join 10,000"):
+        assert tell not in body

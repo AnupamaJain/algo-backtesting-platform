@@ -1,4 +1,4 @@
-# Tathya
+# Pramana
 
 Pattern intelligence and quantitative research for Indian equities.
 
