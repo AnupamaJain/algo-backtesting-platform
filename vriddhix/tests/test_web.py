@@ -281,8 +281,9 @@ def test_the_landing_page_reports_real_coverage(client, session):
     session.flush()
 
     body = client.get("/").text
-    # Seven bars in, seven bars reported.
-    assert ">7</b> bars" in body or ">7</b>\n" in body or "7</b> bars" in body
+    # Seven bars in, seven bars reported. The figure is carried in the
+    # count-up attribute, which is also what the animation lands on.
+    assert 'data-count="7"' in body
 
 
 def test_the_landing_chart_is_drawn_from_stored_regimes(client, session):
@@ -688,3 +689,72 @@ def test_the_evidence_page_is_crawlable_from_the_homepage(client, monkeypatch):
     assert "/vcp-breakout-failure-rate" in client.get("/").text
     assert "/vcp-breakout-failure-rate" in client.get("/sitemap.xml").text
     assert "/vcp-breakout-failure-rate" in client.get("/robots.txt").text
+
+
+# ---------------------------------------------------------------------------
+# A page that moves, and the terms it carries
+# ---------------------------------------------------------------------------
+
+
+def test_acronym_sectors_are_not_title_cased(client, scanned=None):
+    """str.title() turns IT into "It" and FMCG into "Fmcg", which reads as a
+    typo to precisely the audience that would notice."""
+    from vriddhix.api.routers.pages import sector_label
+
+    assert sector_label("IT") == "IT"
+    assert sector_label("FMCG") == "FMCG"
+    assert sector_label("CONSUMER_DURABLES") == "Consumer Durables"
+    assert sector_label("CAPGOODS") == "Capgoods"
+    assert sector_label(None) == "Unclassified"
+
+
+def test_the_landing_page_polls_for_freshness(client):
+    """A tab left open overnight must not quietly show yesterday's regime."""
+    body = client.get("/").text
+    assert "/api/v1/market" in body, "nothing re-reads the regime"
+    assert "setInterval" in body
+    # Staleness is surfaced, never hidden -- the same rule the API follows.
+    assert "is_stale" in body
+
+
+def test_motion_is_skipped_when_the_visitor_asks_for_less(client):
+    body = client.get("/")
+    assert "prefers-reduced-motion" in body.text
+    css = client.get("/static/app.css").text
+    assert "prefers-reduced-motion" in css
+
+
+def test_the_landing_faq_is_marked_up_for_search(client):
+    import json
+    import re
+
+    body = client.get("/").text
+    data = json.loads(re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', body, re.S).group(1))
+    questions = data.get("mainEntity", [])
+    assert len(questions) >= 5
+    assert all(q["acceptedAnswer"]["text"] for q in questions)
+
+
+def test_the_page_names_what_it_does_in_the_words_people_search(client):
+    """Terminology carried by real answers, not stuffed into a keyword list.
+
+    If these disappear the page has stopped describing its own features, not
+    merely lost some SEO.
+    """
+    body = client.get("/").text.lower()
+    for term in (
+        "nse", "stock screener", "volatility contraction", "vcp",
+        "market structure", "fair value gap", "relative strength",
+        "sector rotation", "backtest", "breakout",
+    ):
+        assert term in body, f"the page never mentions {term!r}"
+
+
+def test_the_page_still_refuses_to_oversell(client):
+    """Adding search terms must not smuggle in promises."""
+    body = client.get("/").text.lower()
+    for phrase in ("guaranteed", "risk-free", "multibagger", "assured return",
+                   "best stock to buy", "sure shot"):
+        assert phrase not in body
+    assert "not investment advice" in body

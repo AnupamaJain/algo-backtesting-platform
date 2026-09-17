@@ -20,9 +20,9 @@
       </div>
       {% if coverage and coverage.bars %}
       <div class="proof">
-        <span><b class="num">{{ "{:,}".format(coverage.bars) }}</b> bars</span>
-        <span><b class="num">{{ "{:,}".format(coverage.scans) }}</b> sessions scanned</span>
-        <span><b class="num">{{ "{:,}".format(coverage.patterns) }}</b> patterns recorded</span>
+        <span><b class="num" data-count="{{ coverage.bars }}">0</b> bars</span>
+        <span><b class="num" data-count="{{ coverage.scans }}">0</b> sessions scanned</span>
+        <span><b class="num" data-count="{{ coverage.patterns }}">0</b> patterns recorded</span>
       </div>
       {% endif %}
     </div>
@@ -71,14 +71,18 @@
 <section class="wrap">
   <div class="today">
     <div class="today-main" style="--accent-regime: {{ regime_colour }}">
-      <div class="k">Right now</div>
-      <div class="regime-big" style="color:{{ regime_colour }}">
+      <div class="k live-k">
+        Right now <span class="live-dot" id="live-dot" title="polling"></span>
+      </div>
+      <div class="regime-big" id="live-regime" style="color:{{ regime_colour }}">
         {{ regime.regime.replace('_',' ')|title }}
       </div>
-      <div class="regime-meta num">
+      <div class="regime-meta num" id="live-meta">
         score {{ "%.0f"|format(regime.regime_score) }} · confidence {{ "%.0f"|format(regime.confidence or 0) }}
       </div>
-      <div class="faint" style="margin-top:6px">measured {{ as_of }}</div>
+      <div class="faint" style="margin-top:6px">
+        measured {{ as_of }} · <span id="live-age">checking…</span>
+      </div>
       {% if regime.pending_regime %}
       <div class="pending">
         A threshold was crossed toward <b>{{ regime.pending_regime.replace('_',' ')|title }}</b>,
@@ -118,6 +122,44 @@
       {% endif %}
     </div>
     {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════ rotation ══════════════ -->
+{% if rotation %}
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Where the money is rotating</h2>
+    <span class="faint">equal-weight · {{ as_of }}</span>
+  </div>
+  <p class="muted lead-narrow">
+    Sectors placed by relative strength against their own momentum. Equal-weight,
+    so a couple of index heavyweights cannot stand in for the whole group.
+  </p>
+
+  <div class="rotation">
+    {% for quad, label, hint in [
+        ('LEADING',   'Leading',   'strong and still improving'),
+        ('IMPROVING', 'Improving', 'weak but turning up'),
+        ('WEAKENING', 'Weakening', 'strong but fading'),
+        ('LAGGING',   'Lagging',   'weak and still falling')] %}
+    <div class="quad quad-{{ quad }}">
+      <div class="quad-head">
+        <b>{{ label }}</b><span>{{ hint }}</span>
+      </div>
+      <ul>
+        {% for s in rotation if s.quadrant == quad %}
+        <li>
+          <span class="q-name">{{ s.code }}</span>
+          <span class="q-rs num">{{ "%.0f"|format(s.rs) if s.rs is not none else '—' }}</span>
+        </li>
+        {% else %}
+        <li class="q-empty">none</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
   </div>
 </section>
 {% endif %}
@@ -309,6 +351,18 @@
   </dl>
 </section>
 
+<!-- ══════════════ faq ══════════════ -->
+{% if faq %}
+<section class="wrap">
+  <div class="sec-head"><h2>Questions people actually ask</h2></div>
+  <dl class="faq">
+    {% for q, a in faq %}
+    <div><dt>{{ q }}</dt><dd>{{ a }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+{% endif %}
+
 <!-- ══════════════ close ══════════════ -->
 <section class="wrap">
   <div class="close">
@@ -436,6 +490,87 @@
     start();
   }
   render(ROWS, false);
+})();
+</script>
+
+<script>
+/* Numbers count up when they first come into view. Motion earns its place
+   here because the figures are the argument; it is skipped entirely when the
+   visitor has asked for reduced motion. */
+(function () {
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var nodes = document.querySelectorAll("[data-count]");
+  if (!nodes.length) return;
+
+  function run(el) {
+    var target = parseFloat(el.dataset.count);
+    if (!isFinite(target)) return;
+    if (still) { el.textContent = target.toLocaleString("en-US"); return; }
+    var started = null, dur = 900;
+    function step(ts) {
+      if (!started) started = ts;
+      var p = Math.min(1, (ts - started) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased).toLocaleString("en-US");
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  if (!("IntersectionObserver" in window)) { nodes.forEach(run); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { run(e.target); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.6 });
+  nodes.forEach(function (n) { io.observe(n); });
+})();
+
+/* The regime panel polls rather than going stale behind the reader. The
+   nightly job writes once a day, so this is not about frequency -- it is so
+   a tab left open overnight is not quietly showing yesterday. */
+(function () {
+  var regimeEl = document.getElementById("live-regime");
+  var metaEl   = document.getElementById("live-age");
+  var dot      = document.getElementById("live-dot");
+  if (!regimeEl) return;
+
+  var COLOURS = {
+    STRONG_BULL: "#1f9d61", BULL: "#57b98a", NEUTRAL: "#9a948c",
+    BEAR: "#d98368", STRONG_BEAR: "#b8402f"
+  };
+
+  function ago(hours) {
+    if (hours == null) return "age unknown";
+    if (hours < 1)  return "updated " + Math.round(hours * 60) + " min ago";
+    if (hours < 48) return "updated " + Math.round(hours) + "h ago";
+    return "updated " + Math.round(hours / 24) + " days ago";
+  }
+
+  function poll() {
+    fetch("/api/v1/market", { headers: { "Accept": "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.regime) return;
+        var name = d.regime.regime;
+        regimeEl.textContent = name.replace(/_/g, " ")
+          .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        regimeEl.style.color = COLOURS[name] || "";
+        var m = document.getElementById("live-meta");
+        if (m) {
+          m.textContent = "score " + Math.round(d.regime.score) +
+                          " · confidence " + Math.round(d.regime.confidence || 0);
+        }
+        metaEl.textContent = ago(d.age_hours);
+        // Stale is shown, not hidden -- the same rule the API follows.
+        dot.classList.toggle("stale", !!d.is_stale);
+        dot.title = d.is_stale ? "older than the freshness threshold" : "fresh";
+      })
+      .catch(function () { metaEl.textContent = "offline"; });
+  }
+
+  poll();
+  setInterval(poll, 60000);
 })();
 </script>
 {% endblock %}

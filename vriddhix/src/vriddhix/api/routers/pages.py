@@ -34,6 +34,7 @@ from ...db.models import (
     RelativeStrength,
     ScanRun,
     Sector,
+    SectorMetric,
     Stock,
 )
 from ..deps import ProvenanceDep, SessionDep
@@ -103,6 +104,42 @@ def _coverage(session) -> dict:
         # context, not the product.
         logger.exception("coverage query failed")
         return {}
+
+
+#: Answers a reader actually searches for, in the words they use. Written to
+#: be true first: a question-and-answer block that exists only to carry terms
+#: reads as filler and is treated as such.
+LANDING_FAQ = [
+    ("Is Tathya a free NSE stock screener?",
+     "Yes. It scans NSE cash equities daily for volatility-contraction bases, "
+     "breaks of market structure and fair value gaps, and an account costs "
+     "nothing. It is a research tool rather than a broker — it has no trading "
+     "path and cannot place an order."),
+    ("What is the VCP or volatility contraction pattern?",
+     "A base where each pullback is shallower than the last on drying volume, "
+     "popularised by Mark Minervini. Tathya measures the prior trend, counts "
+     "the contractions, locates the pivot and scores the base out of 100, "
+     "showing every weighted component rather than a single opaque number."),
+    ("Which smart money concepts does it detect?",
+     "Swing structure, break of structure (BOS), change of character (CHoCH), "
+     "order blocks, liquidity sweeps and fair value gaps — each stored with "
+     "the date it became knowable, not just the date it printed."),
+    ("How does it measure relative strength and sector rotation?",
+     "Relative strength is a percentile rank across the universe blended over "
+     "1, 3, 6 and 12-month returns — percentile rather than z-score, because "
+     "Indian equity returns have fat tails. Sectors are aggregated "
+     "equal-weight into leading, improving, weakening and lagging quadrants."),
+    ("Can I backtest a screen on Indian stocks?",
+     "Yes. A saved screen runs through the same condition evaluator the "
+     "backtester uses, so a strategy cannot mean one thing on the dashboard "
+     "and another in its own backtest. Fills are at the next open and costs "
+     "include STT, stamp duty, exchange, SEBI and GST."),
+    ("Does it predict which stocks will go up?",
+     "No, and it is built so it cannot pretend to. Scores classify what a "
+     "chart has measurably done. The ledger records what followed each "
+     "breakout, failures included, which is a record of the past rather than "
+     "a claim about the future."),
+]
 
 
 #: Band colours for the regime ribbon, dark-mode friendly at both ends.
@@ -242,7 +279,7 @@ def _screener_rows(session, as_of, *, days: int = 365, limit: int = 120) -> list
         seen.add(symbol)
         out.append({
             "symbol": symbol,
-            "sector": (sector or "UNCLASSIFIED").replace("_", " ").title(),
+            "sector": sector_label(sector),
             "stage": pattern.status,
             "score": round(float(pattern.score), 1),
             "rs": round(float(rs), 1) if rs is not None else None,
@@ -253,6 +290,52 @@ def _screener_rows(session, as_of, *, days: int = 365, limit: int = 120) -> list
         if len(out) >= limit:
             break
     return sorted(out, key=lambda r: r["score"], reverse=True)
+
+
+#: Sector codes that are acronyms. str.title() renders IT as "It" and FMCG as
+#: "Fmcg", which looks like a typo to exactly the audience that would notice.
+_ACRONYMS = {"IT", "FMCG", "ETF", "NBFC", "QSR", "PSU", "AMC"}
+
+
+def sector_label(code: str | None) -> str:
+    """Human-readable sector name, with acronyms left alone."""
+    if not code:
+        return "Unclassified"
+    return " ".join(
+        word if word.upper() in _ACRONYMS else word.title()
+        for word in code.replace("_", " ").split()
+    )
+
+
+def _rotation(session, as_of) -> list[dict]:
+    """Sectors by quadrant, for the rotation strip.
+
+    Real output that was sitting unused: the engine has computed this on
+    every scan since 2016 and nothing on the marketing page showed it.
+    """
+    if as_of is None:
+        return []
+    rows = session.execute(
+        select(SectorMetric, Sector.code, Sector.name)
+        .join(Sector, Sector.id == SectorMetric.sector_id)
+        .where(SectorMetric.date == as_of)
+    ).all()
+
+    order = {"LEADING": 0, "IMPROVING": 1, "WEAKENING": 2, "LAGGING": 3}
+    out = []
+    for metric, code, name in rows:
+        if metric.quadrant is None:
+            continue          # unranked: no position to plot
+        out.append({
+            "code": sector_label(code),
+            "name": name,
+            "quadrant": metric.quadrant,
+            "rank": metric.rs_rank,
+            "rs": round(float(metric.rs_score), 1) if metric.rs_score is not None else None,
+            "momentum": round(float(metric.momentum_score), 1) if metric.momentum_score is not None else None,
+            "constituents": metric.constituent_count,
+        })
+    return sorted(out, key=lambda r: (order.get(r["quadrant"], 9), r["rank"] or 99))
 
 
 def _ledger(session) -> dict:
@@ -292,6 +375,11 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
                     "the outcome of every detected setup recorded."
                 ),
                 "offers": {"@type": "Offer", "price": "0", "priceCurrency": "INR"},
+                "mainEntity": [
+                    {"@type": "Question", "name": q,
+                     "acceptedAnswer": {"@type": "Answer", "text": a}}
+                    for q, a in LANDING_FAQ
+                ],
                 "featureList": [
                     "VCP detection", "Market structure (BOS/CHoCH)",
                     "Fair value gaps", "Market regime", "Relative strength",
@@ -305,6 +393,8 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "ribbon": _regime_ribbon(session),
             "spark": _breadth_spark(session),
             "screener": _screener_rows(session, prov.as_of),
+            "rotation": _rotation(session, prov.as_of),
+            "faq": LANDING_FAQ,
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),
             "as_of": prov.as_of,
