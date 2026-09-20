@@ -202,9 +202,34 @@ def backfill(
     stored value, so running dates out of order would compute today's regime
     against a future baseline.
     """
+    # A date older than something already scanned is not a replay, it is an
+    # insertion: NSE holds occasional weekend sessions -- Budget Day, Muhurat,
+    # a disaster-recovery drill -- and one discovered late lands in the middle
+    # of a chain that is already built. Every hysteresis decision after it was
+    # taken against a predecessor that is no longer its predecessor.
+    latest = last_successful_scan(session)
+    inserting = [d for d in dates if latest and d < latest]
+
     reports = []
     for as_of in sorted(dates):
         reports.append(run_daily_scan(session, cfg, as_of, **kwargs))
+
+    if inserting:
+        from ..engines.regime import RegimeConfig
+        from ..services.regime_chain import replay
+
+        logger.warning(
+            "inserted %d session(s) before the last scan (%s … %s); "
+            "rebuilding the regime chain",
+            len(inserting), min(inserting), latest,
+        )
+        repair = replay(session, RegimeConfig.from_config(cfg), commit=True)
+        if repair.changed:
+            logger.warning(
+                "regime chain: %d label(s) rebuilt from %s",
+                repair.changed, repair.first_change,
+            )
+
     return reports
 
 

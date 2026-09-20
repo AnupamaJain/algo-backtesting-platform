@@ -130,8 +130,33 @@ python3 -m vriddhix.cli ingest      # fetch bars and recompute features
 python3 -m vriddhix.cli scan        # scan one date (default: the latest bar)
 python3 -m vriddhix.cli backtests   # run whatever backtests are queued
 python3 -m vriddhix.cli revalidate  # re-run quality rules over stored bars
+python3 -m vriddhix.cli repair-regime  # rebuild the regime chain (dry run)
 python3 -m vriddhix.cli init        # apply migrations (first run only)
 ```
+
+`repair-regime` exists because regime is not a per-day fact. Hysteresis makes
+each label depend on the one before it, so the stored sequence is a chain —
+and a session inserted into the middle of it leaves every label after that
+point computed against a predecessor that is no longer its predecessor.
+
+That happens for a real reason: NSE holds occasional **weekend sessions** —
+Budget Day, Muhurat trading, disaster-recovery drills — and when the nightly
+catch-up discovers one long after the fact, it lands mid-chain. 2024-01-20
+arrived that way and was labelled `STRONG_BULL` on a score of 78.3 while the
+session before it, scoring 78.4, was `BULL`.
+
+The repair replays the chain through the engine's own `classify` and
+`apply_hysteresis`, so it cannot drift from what the scanner does. Scores are
+never rewritten — only labels, which are the part that depends on the chain.
+It is a dry run unless you pass `--apply`:
+
+```bash
+python3 -m vriddhix.cli repair-regime            # what would change
+python3 -m vriddhix.cli repair-regime --apply    # change it
+```
+
+The nightly job now runs this automatically whenever it scans a date older
+than its last completed scan, and logs that it did.
 
 `revalidate` exists because a rule added today would otherwise only ever
 apply to data arriving tomorrow, leaving the stored decade unexamined by it.

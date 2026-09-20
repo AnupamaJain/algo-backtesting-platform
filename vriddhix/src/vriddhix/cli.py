@@ -354,6 +354,47 @@ def cmd_revalidate(args) -> int:
     return 0
 
 
+def cmd_repair_regime(args) -> int:
+    """Rebuild the regime chain after a session lands out of order.
+
+    Hysteresis makes each label depend on the one before it, so inserting a
+    session in the middle leaves every label after it computed against a
+    predecessor that is no longer its predecessor. The nightly catch-up does
+    exactly that whenever NSE holds a weekend session -- Budget Day, Muhurat,
+    a disaster-recovery drill -- and it is discovered late.
+
+    Dry run by default. Nothing is written unless --apply is given.
+    """
+    from .engines.regime import RegimeConfig
+    from .services.regime_chain import flickers, replay
+
+    with session_scope() as session:
+        cfg = RegimeConfig.from_config(get_config())
+
+        before = flickers(session)
+        if before:
+            print(f"single-session flickers: {len(before)} "
+                  f"({', '.join(str(d) for d in before[:5])})")
+
+        report = replay(session, cfg, since=args.since, commit=args.apply)
+        print(report.summary())
+
+        for when, was, now in report.changes[:20]:
+            print(f"  {when}  {was:<12} -> {now}")
+        if report.changed > 20:
+            print(f"  … and {report.changed - 20} more")
+
+        if not args.apply:
+            if report.changed:
+                print("\ndry run — nothing written. Re-run with --apply.")
+            return 0
+
+        session.commit()
+        after = flickers(session)
+        print(f"\nflickers after repair: {len(after)}")
+        return 0 if not after else 2
+
+
 def cmd_status(_args) -> int:
     with session_scope() as session:
         counts = {
@@ -502,6 +543,13 @@ def main(argv: list[str] | None = None) -> int:
         "revalidate", help="re-run quality rules over stored bars")
     revalidate.add_argument("symbols", nargs="*", help="default: every symbol")
     revalidate.set_defaults(func=cmd_revalidate)
+
+    repair = sub.add_parser(
+        "repair-regime", help="rebuild the regime chain (dry run by default)")
+    repair.add_argument("--apply", action="store_true", help="write the changes")
+    repair.add_argument("--since", type=date.fromisoformat, default=None,
+                        help="report from this date (chain is still seeded before it)")
+    repair.set_defaults(func=cmd_repair_regime)
 
     bootstrap = sub.add_parser("bootstrap", help="seed reference data")
     bootstrap.add_argument("--universe", default=None,
