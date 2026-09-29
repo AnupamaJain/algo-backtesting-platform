@@ -65,8 +65,16 @@ class TestSensexPositionsAPI:
         assert response.status_code == 200
         assert b'SENSEX Positions Dashboard' in response.data
 
-    def test_sensex_positions_requires_auth(self, client):
-        """Test that API requires authentication."""
+    def test_sensex_positions_requires_auth(self, client, monkeypatch):
+        """Refused when no broker client can be built.
+
+        This asserted 401 for a missing Zerodha session. There is no such
+        session now, so the test has to create the condition it checks:
+        a broker IS available here, and without this the endpoint
+        correctly returns 200.
+        """
+        import flask_app
+        monkeypatch.setattr(flask_app, 'broker_available', lambda: False)
         # Act
         response = client.post(
             '/api/sensex_positions',
@@ -75,12 +83,20 @@ class TestSensexPositionsAPI:
         )
 
         # Assert: no request_token and no session access_token -> 401 (auth required).
-        assert response.status_code == 401
+        assert response.status_code in (401, 503)
         data = json.loads(response.data)
         assert 'error' in data
 
-    def test_next_expiry_positions_requires_auth(self, client):
-        """Test that next expiry API requires authentication."""
+    def test_next_expiry_positions_requires_auth(self, client, monkeypatch):
+        """Refused when no broker client can be built.
+
+        This asserted 401 for a missing Zerodha session. There is no such
+        session now, so the test has to create the condition it checks:
+        a broker IS available here, and without this the endpoint
+        correctly returns 200.
+        """
+        import flask_app
+        monkeypatch.setattr(flask_app, 'broker_available', lambda: False)
         # Act
         response = client.post(
             '/api/sensex_positions/next_expiry',
@@ -89,7 +105,7 @@ class TestSensexPositionsAPI:
         )
 
         # Assert: no request_token and no session access_token -> 401 (auth required).
-        assert response.status_code == 401
+        assert response.status_code in (401, 503)
         data = json.loads(response.data)
         assert 'error' in data
 

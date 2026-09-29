@@ -77,9 +77,15 @@ class TestAllStrikesValidation:
         # Assert
         assert response.status_code == 400
 
-    def test_no_session_returns_401(self, client):
-        """Test that missing session returns 401."""
-        # Arrange
+    def test_no_broker_returns_503(self, client, monkeypatch):
+        """No broker client means 503, not 401.
+
+        This asserted 401 for a missing Zerodha session. Zerodha is gone and
+        there is no session to lack: the endpoint asks whether a broker can
+        be built at all, which is a server-side availability problem.
+        """
+        import flask_app
+        monkeypatch.setattr(flask_app, "broker_available", lambda: False)
         payload = {"underlying": "NIFTY", "expiry": "2026-02-20"}
 
         # Act
@@ -90,9 +96,9 @@ class TestAllStrikesValidation:
         )
 
         # Assert
-        assert response.status_code == 401
+        assert response.status_code == 503
         data = json.loads(response.data)
-        assert 'session' in data['error'].lower() or 'expired' in data['error'].lower()
+        assert 'broker' in data['error'].lower()
 
 
 class TestAllStrikesGeneration:
