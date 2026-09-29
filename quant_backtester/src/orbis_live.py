@@ -243,6 +243,7 @@ class OrbisLiveEngine:
     def _place(self, state: SessionState, *, opening: bool, dry_run: bool) -> str | None:
         if dry_run or self._service is None:
             return None
+        from .broker.exceptions import BrokerError
         from .broker.models import OrderType, Side, UnifiedOrder
 
         long = state.direction == "LONG"
@@ -265,9 +266,22 @@ class OrbisLiveEngine:
                 strategy=order.strategy or "ORBIS-IB60",
             )
             return placed.broker_order_id or placed.order_id
-        except Exception as exc:  # noqa: BLE001 - a rejected order must not lose state
-            logger.error("ORBIS order failed for %s: %s", state.instrument, exc)
+        except BrokerError as exc:
+            # A broker refusing an order is an outcome, not a crash: the
+            # session keeps its state and the next pass can try again.
+            logger.error("ORBIS order rejected for %s: %s", state.instrument, exc)
             return None
+        except (AttributeError, TypeError) as exc:
+            # This is not the broker saying no, it is this code calling the
+            # service wrongly -- a renamed method or a changed signature. It
+            # used to be caught by the same `except Exception` and logged as
+            # a failed order, so a live strategy could place nothing at all
+            # for a whole session while the log said the broker was refusing.
+            # Programming errors have to be loud.
+            logger.critical(
+                "ORBIS cannot call the order service for %s: %s", state.instrument, exc
+            )
+            raise
 
     def _report(self, state: SessionState, note: str) -> dict:
         payload = asdict(state)

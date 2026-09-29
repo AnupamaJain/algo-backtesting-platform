@@ -5,6 +5,7 @@ held: at 10:20 that is a doubled position, not a fresh one. State
 persistence and idempotency are therefore the bulk of these tests.
 """
 
+from types import SimpleNamespace
 from datetime import date, time
 
 import pandas as pd
@@ -134,9 +135,17 @@ def test_a_second_pass_does_not_place_a_second_order(tmp_path):
     placed = []
 
     class Service:
-        def place(self, order):
-            placed.append(order)
-            return order.copy_with(broker_order_id=f"OID-{len(placed)}")
+        """Matches OrderService.place_order. It used to implement place(order),
+        which the engine has not called for some time -- so every order raised
+        AttributeError, the engine logged it as a failed order, and this test
+        counted zero instead of catching a re-entry."""
+
+        def place_order(self, symbol, side, quantity, *, order_type=None,
+                        strategy="manual", **kwargs):
+            placed.append({"symbol": symbol, "side": side, "quantity": quantity,
+                           "strategy": strategy})
+            return SimpleNamespace(broker_order_id=f"OID-{len(placed)}",
+                                   order_id=f"OID-{len(placed)}")
 
     rows = IB + [(150, 150, 90, 95), (95, 150, 95, 150)]
     cfg, trade = _cfg(tmp_path), _trade()
@@ -189,3 +198,41 @@ def test_dry_run_places_nothing(tmp_path):
         state_dir=tmp_path / "orbis",
     ).run("NIFTY", date(2026, 9, 3), dry_run=True)
     assert placed == []
+
+
+def test_a_broker_rejection_is_survivable(tmp_path):
+    """The broker saying no is an outcome. The session keeps its state and
+    the next pass can try again."""
+    from quant_backtester.src.broker.exceptions import OrderRejected
+
+    class Refusing:
+        def place_order(self, *a, **k):
+            raise OrderRejected("insufficient margin")
+
+    rows = IB + [(150, 150, 90, 95), (95, 150, 95, 150)]
+    result = OrbisLiveEngine(
+        _cfg(tmp_path), _trade(), FakeData(_bars(rows)), service=Refusing(),
+        state_dir=tmp_path / "orbis",
+    ).run("NIFTY", date(2026, 9, 3), dry_run=False)
+
+    assert result["phase"] == "filled"          # state kept, not lost
+
+
+def test_calling_the_service_wrongly_is_not_treated_as_a_rejection(tmp_path):
+    """The bug this file just had.
+
+    A stale method name raised AttributeError, `except Exception` caught it,
+    and the log said the order failed. A live strategy could place nothing
+    for an entire session while appearing to be refused by the broker.
+    Programming errors have to surface.
+    """
+    class Wrong:
+        def place(self, order):             # not the service's interface
+            raise AssertionError("should never be reached")
+
+    rows = IB + [(150, 150, 90, 95), (95, 150, 95, 150)]
+    with pytest.raises(AttributeError):
+        OrbisLiveEngine(
+            _cfg(tmp_path), _trade(), FakeData(_bars(rows)), service=Wrong(),
+            state_dir=tmp_path / "orbis",
+        ).run("NIFTY", date(2026, 9, 3), dry_run=False)
