@@ -780,10 +780,24 @@ def get_token_for_script(user_provided_token=None):
     """
     if user_provided_token:
         return user_provided_token
-    
+
     if "access_token" in session:
         return "access:" + session["access_token"]
-        
+
+    # No Zerodha session — but on the adapter backend there is not meant to
+    # be one. common_lib builds its client from broker.yaml, and the shim's
+    # set_access_token is a documented no-op because "authentication is the
+    # adapter's business". Returning None here failed the start endpoint's
+    # required-parameter check, so a paper strategy on Dhan could not be
+    # launched at all: the token it was being refused is one it would have
+    # thrown away.
+    #
+    # The "access:" prefix matters. initilise_basic() treats a bare token as
+    # a request_token and calls generate_session() with it; the prefix takes
+    # the set_access_token path instead, which the shim ignores.
+    if os.environ.get("BROKER_BACKEND", "adapter").lower() != "kite":
+        return "access:adapter"
+
     return None
 
 
