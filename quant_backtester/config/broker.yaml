@@ -7,7 +7,12 @@
 # Credentials are NEVER written here. Config names the environment variable
 # holding each secret; the value is read at runtime and fails loudly if unset.
 
-active: paper
+# The Indian paper account, because that is what this system trades. It was
+# `paper`, the US one, while the terminal ran paper_dhan -- so the Strategy
+# Lab's Order Activity showed QQQ and SPY from a book nothing was trading,
+# and the NSE orders the terminal actually placed appeared nowhere. Two
+# consoles, two different accounts, no indication either was partial.
+active: paper_dhan
 
 safety:
   live_trading: false
