@@ -153,7 +153,7 @@ class TestAllStrikesGeneration:
             }
         return instruments
 
-    @patch('flask_app.KiteConnect')
+    @patch('flask_app._broker_client')
     @patch('flask_app.INSTRUMENTS_MAP', new_callable=dict)
     def test_nifty_generates_correct_number_of_strikes(
         self, mock_map, mock_kite_class, client
@@ -194,7 +194,7 @@ class TestAllStrikesGeneration:
         assert data['atm_strike'] == atm
         assert data['spot_price'] == 25710.0
 
-    @patch('flask_app.KiteConnect')
+    @patch('flask_app._broker_client')
     @patch('flask_app.INSTRUMENTS_MAP', new_callable=dict)
     def test_sensex_uses_100_strike_gap(
         self, mock_map, mock_kite_class, client
@@ -234,7 +234,7 @@ class TestAllStrikesGeneration:
         data = json.loads(response.data)
         assert data['atm_strike'] == 83200  # 83150 rounds to 83200
 
-    @patch('flask_app.KiteConnect')
+    @patch('flask_app._broker_client')
     @patch('flask_app.INSTRUMENTS_MAP', new_callable=dict)
     def test_strikes_have_is_generated_flag(
         self, mock_map, mock_kite_class, client
@@ -270,7 +270,7 @@ class TestAllStrikesGeneration:
             assert strike['is_generated'] is True
             assert strike['qty'] == 0
 
-    @patch('flask_app.KiteConnect')
+    @patch('flask_app._broker_client')
     @patch('flask_app.INSTRUMENTS_MAP', new_callable=dict)
     def test_invalid_expiry_format_returns_400(
         self, mock_map, mock_kite_class, client
@@ -299,7 +299,7 @@ class TestAllStrikesGeneration:
         data = json.loads(response.data)
         assert 'expiry' in data['error'].lower() or 'format' in data['error'].lower()
 
-    @patch('flask_app.KiteConnect')
+    @patch('flask_app._broker_client')
     @patch('flask_app.INSTRUMENTS_MAP', new_callable=dict)
     def test_unknown_underlying_returns_400(
         self, mock_map, mock_kite_class, client

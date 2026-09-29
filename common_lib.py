@@ -4,8 +4,6 @@ import logging
 import math
 import threading
 from typing import Callable
-from kiteconnect import KiteTicker
-from kiteconnect import KiteConnect
 import json
 import datetime
 from datetime import timezone, timedelta
@@ -291,7 +289,7 @@ if os.path.exists(config_path) and not _safety_parser.has_option("safety", "live
 elif not live_trading_enabled:
     logging.warning(
         "[safety] live_trading = false — DRY-RUN MODE: all order placement is "
-        "simulated and logged, nothing is sent to Zerodha."
+        "simulated and logged, nothing reaches the broker."
     )
 
 
@@ -913,11 +911,13 @@ def _get_index_quote_cached(symbol: str) -> dict:
     # ticks that look like a huge, fake price jump. Re-resolve the token
     # specifically against Flattrade so it always matches the ticker that
     # will actually use it, independent of which broker served the price.
-    if os.environ.get("BROKER_BACKEND", "adapter").lower() != "kite":
-        flattrade_token = _resolve_flattrade_ticker_token(symbol)
-        if flattrade_token is not None:
-            quote_dict = dict(quote_dict)
-            quote_dict["instrument_token"] = flattrade_token
+    # Unconditional now. This was guarded on BROKER_BACKEND != "kite"; with
+    # Zerodha gone there is no other backend, and the ticker is always
+    # Flattrade's.
+    flattrade_token = _resolve_flattrade_ticker_token(symbol)
+    if flattrade_token is not None:
+        quote_dict = dict(quote_dict)
+        quote_dict["instrument_token"] = flattrade_token
 
     # Populate L1
     _index_quote_cache[symbol] = (now + _INDEX_QUOTE_L1_TTL, quote_dict)
@@ -1080,25 +1080,35 @@ already_updating_order = 0
 # Broker client.
 #
 # Historically this was KiteConnect directly, which required a Zerodha
-# subscription. It now reaches whichever broker config/broker.yaml selects
-# (Flattrade, Dhan, or the paper account) through the BrokerAdapter
-# abstraction — see quant_backtester/src/broker/legacy.py. The object below
-# presents the same method surface these modules already call, so nothing
-# downstream changes.
+# subscription. Zerodha has been removed entirely: this now reaches
+# whichever broker config/broker.yaml selects (Dhan, Flattrade, or a paper
+# account) through the BrokerAdapter abstraction — see
+# quant_backtester/src/broker/legacy.py. The object below presents the same
+# method surface these modules already call, so nothing downstream changed
+# when the vendor did.
 #
-# Set BROKER_BACKEND=kite to restore the original client.
+# The variable is still named `kite`. Renaming it would touch several
+# hundred call sites across twenty files to no functional end; what it
+# points at is what matters, and that is no longer Zerodha.
 # ---------------------------------------------------------------------------
 def _build_broker_client():
-    backend = os.environ.get("BROKER_BACKEND", "adapter").lower()
-    if backend == "kite":
-        return MonitoredKite(KiteConnect(api_key=api_key))
+    """The broker every strategy talks to.
+
+    Zerodha is gone. There is no longer a BROKER_BACKEND=kite path and no
+    KiteConnect fallback: which broker this reaches is decided by
+    broker.yaml, and BROKER_NAME picks a profile within it.
+
+    Failing here raises rather than substituting a client that cannot
+    authenticate. The old fallback made "no broker" and "wrong broker" look
+    identical until orders started failing.
+    """
     try:
         from quant_backtester.src.broker.legacy import build_legacy_client
 
-        # BROKER_NAME picks a specific configured broker; without it the
-        # one broker.yaml marks active is used. These are NSE strategies, so
-        # they default to the Indian paper account rather than the US one.
-        broker_name = os.environ.get("BROKER_NAME") or "flattrade"
+        # Without BROKER_NAME the profile broker.yaml marks active is used.
+        # These are NSE strategies, so they default to the Dhan paper
+        # account rather than the US one.
+        broker_name = os.environ.get("BROKER_NAME") or "paper_dhan"
         client = build_legacy_client(broker=broker_name)
         # Wrap it exactly as the Kite client was. MonitoredKite is a
         # transparent proxy, so this works over the shim too — without it,
@@ -1106,19 +1116,13 @@ def _build_broker_client():
         # the Broker API Monitor would report "never run" forever.
         client = MonitoredKite(client, account_id="main")
         logging.info(
-            "Broker client: %s via the adapter layer (BROKER_BACKEND=kite to override)",
+            "Broker client: %s via the adapter layer",
             broker_name,
         )
         return client
-    except Exception as exc:  # noqa: BLE001
-        # Never silently fall back to a client that cannot authenticate: say
-        # what happened, because "no broker" and "wrong broker" look identical
-        # once orders start failing.
-        logging.error(
-            "Could not build the adapter-backed broker client (%s); falling back "
-            "to KiteConnect, which needs a Zerodha access token.", exc,
-        )
-        return MonitoredKite(KiteConnect(api_key=api_key))
+    except Exception as exc:
+        logging.critical("Could not build the broker client: %s", exc)
+        raise
 
 
 kite = _build_broker_client()
@@ -5444,54 +5448,12 @@ def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
                     "WATCHDOG: Failed to re-subscribe tokens: %s", e
                 )
 
-    if os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
-        from twisted.internet import reactor, ssl
-        from autobahn.twisted.websocket import connectWS
+    # Ticks come from Flattrade. This had a BROKER_BACKEND=kite branch that
+    # built a KiteTicker; it is gone with the rest of Zerodha. Dhan places
+    # the orders and prices the book on request, but publishes no websocket
+    # this codebase implements, so streaming stays Flattrade's job --
+    # streaming and order execution were already separate concerns here.
 
-        is_reconnect = reactor.running  # True on watchdog-triggered reconnects
-
-        kws = KiteTicker(api_key, access_token)
-        kws.on_ticks = kws_on_ticks
-        kws.on_connect = _wrapped_on_connect
-        kws.on_order_update = kws_on_order_update
-        kws.on_noreconnect = _on_noreconnect_handler
-
-        if not is_reconnect:
-            # First time: start reactor in a new thread
-            kws.connect(threaded=True)
-        else:
-            # Reconnect: reactor already running, use it thread-safely
-            kws._create_connection(
-                kws.socket_url,
-                useragent=kws._user_agent()
-            )
-            context_factory = ssl.ClientContextFactory()
-            reactor.callFromThread(
-                connectWS, kws.factory,
-                contextFactory=context_factory,
-                timeout=kws.connect_timeout
-            )
-            logging.error(
-                "WATCHDOG: Scheduled new WebSocket connection on "
-                "existing reactor."
-            )
-        return
-
-    # Adapter-backed ticker (Flattrade's PiConnectWSAPI). It manages its own
-    # reconnects internally -- a retry loop, not Twisted's reactor -- so
-    # there is no separate "is this a reconnect" branch here: re-calling
-    # initialise_ticker() tears down any existing ticker and starts a fresh
-    # one, with subscriptions replayed from _subscribed_tokens exactly as
-    # the Kite path replays them after its own reconnect.
-    if kws is not None:
-        try:
-            kws.close()
-        except Exception as exc:  # noqa: BLE001 - tearing down a dead ticker must not block a fresh one
-            logging.warning("initialise_ticker: could not close the previous ticker: %s", exc)
-
-    # Flattrade allows exactly one live PiConnectWSAPI feed per client ID --
-    # confirmed live: two strategy processes each authenticating their own
-    # FlattradeTicker kicked each other's connection off every few seconds.
     # ticker_daemon.py holds the one real connection and fans ticks out over
     # a local socket; use it when running so this process shares rather than
     # competes. Falls back to a direct connection (the original, unchanged

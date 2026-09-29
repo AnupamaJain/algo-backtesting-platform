@@ -114,10 +114,16 @@ class TestSubscribeForTick:
 
 
 class TestInitialiseTicker:
-    """Tests for initialise_ticker storing callbacks."""
+    """initialise_ticker stores its callbacks so the watchdog can reconnect.
+
+    These patched common_lib.KiteTicker, which only ever needed to exist:
+    BROKER_BACKEND was never set to kite here, so the Flattrade path is what
+    actually ran even then. With Zerodha removed the symbol is gone, so they
+    patch the ticker the code genuinely builds.
+    """
 
     @patch('twisted.internet.reactor')
-    @patch('common_lib.KiteTicker')
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
     def test_stores_callbacks(self, mock_ticker_class, mock_reactor):
         """Test that initialise_ticker stores callbacks for watchdog reuse."""
         # Arrange
@@ -142,7 +148,7 @@ class TestInitialiseTicker:
         }
 
     @patch('twisted.internet.reactor')
-    @patch('common_lib.KiteTicker')
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
     def test_sets_noreconnect_handler(self, mock_ticker_class, mock_reactor):
         """Test that initialise_ticker sets on_noreconnect callback."""
         # Arrange
@@ -161,7 +167,7 @@ class TestInitialiseTicker:
         assert mock_kws.on_noreconnect == common_lib._on_noreconnect_handler
 
     @patch('twisted.internet.reactor')
-    @patch('common_lib.KiteTicker')
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
     def test_first_connect_starts_reactor(self, mock_ticker_class,
                                           mock_reactor):
         """Test that first call uses connect(threaded=True) to start reactor."""
@@ -182,7 +188,7 @@ class TestInitialiseTicker:
 
     @patch('autobahn.twisted.websocket.connectWS')
     @patch('twisted.internet.reactor')
-    @patch('common_lib.KiteTicker')
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
     def test_reconnect_uses_existing_reactor(self, mock_ticker_class,
                                              mock_reactor,
                                              mock_connect_ws):
@@ -209,7 +215,7 @@ class TestInitialiseTicker:
 
     @patch('autobahn.twisted.websocket.connectWS')
     @patch('twisted.internet.reactor')
-    @patch('common_lib.KiteTicker')
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
     def test_reconnect_wraps_on_connect_for_resubscribe(
         self, mock_ticker_class, mock_reactor, mock_connect_ws
     ):

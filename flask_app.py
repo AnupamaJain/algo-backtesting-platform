@@ -44,7 +44,6 @@ except ImportError as _security_import_error:
 # below rather than constructed here.
 from rate_limiter import limiter
 
-from kiteconnect import KiteConnect
 import instrument_cache
 from common_lib import IST, get_ist_now
 from kite_api_monitor import (
@@ -81,35 +80,29 @@ import configparser
 # ---------------------------------------------------------------------------
 # Broker client factory.
 #
-# Migrated off KiteConnect: these modules now reach whichever broker
-# config/broker.yaml selects (Flattrade, Dhan, or a paper account) through
-# the BrokerAdapter abstraction. The returned object presents the same method
-# surface the code already calls, so nothing below changes.
+# Zerodha has been removed. These modules reach whichever broker
+# config/broker.yaml selects (Dhan, Flattrade, or a paper account) through
+# the BrokerAdapter abstraction, which presents the same method surface the
+# code already called.
 #
-#   BROKER_BACKEND=kite   restores the original KiteConnect client
 #   BROKER_NAME=<name>    targets a specific configured broker
 # ---------------------------------------------------------------------------
 def _broker_client(api_key=None, account_id=None):
+    """The broker client. `api_key` is accepted and ignored.
+
+    It is kept in the signature because a dozen call sites still pass the
+    old Zerodha key positionally; the adapter takes its credentials from
+    broker.yaml and the token files that config names.
+
+    There is no fallback. The previous one substituted a KiteConnect client
+    when the adapter failed to build, which meant a misconfiguration
+    surfaced later as unexplained order failures rather than here.
+    """
     import os as _os
 
-    if _os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
-        from kiteconnect import KiteConnect as _KC
+    from quant_backtester.src.broker.legacy import build_legacy_client
 
-        return _KC(api_key=api_key)
-    try:
-        from quant_backtester.src.broker.legacy import build_legacy_client
-
-        return build_legacy_client(broker=_os.environ.get("BROKER_NAME") or "flattrade")
-    except Exception as _exc:  # noqa: BLE001
-        import logging as _logging
-
-        _logging.error(
-            "Adapter-backed broker client unavailable (%s); falling back to "
-            "KiteConnect, which needs a Zerodha access token.", _exc,
-        )
-        from kiteconnect import KiteConnect as _KC
-
-        return _KC(api_key=api_key)
+    return build_legacy_client(broker=_os.environ.get("BROKER_NAME") or "paper_dhan")
 
 
 # Base directory for config file
@@ -219,10 +212,8 @@ def _clear_login_failures(client_ip: str) -> None:
 redirect_url = "http://{host}:{port}/login".format(host=HOST, port=PORT)
 
 # Login url
-login_url = "https://kite.trade/connect/login?api_key={api_key}".format(api_key=kite_api_key)
 
 # Kite connect console url
-console_url = "https://developers.kite.trade/apps/{api_key}".format(api_key=kite_api_key)
 
 # App
 app = Flask(__name__)
@@ -744,32 +735,40 @@ def _safe_sync_instruments(kite: object) -> bool:  # type: ignore[type-arg]
 _startup_auto_sync_if_needed()
 
 # Templates
+# This used to be Zerodha's OAuth hand-off: a link to the Kite developer
+# console and one to kite.trade to mint an access token. Neither exists any
+# more. The adapter takes its credentials from config/broker.yaml and the
+# token files it names, so there is no browser step for the broker at all --
+# only the daily Dhan token, which has its own command.
 index_template = """
-    <div>Make sure your app with api_key - <b>{api_key}</b> has set redirect to <b>{redirect_url}</b>.</div>
-    <div>If not you can set it from your <a href="{console_url}">Kite Connect developer console here</a>.</div>
-    <a href="{login_url}"><h1>Login to generate access token.</h1></a>"""
+    <div>Broker: <b>{broker}</b></div>
+    <div>Authentication is handled by the adapter layer from
+         <code>config/broker.yaml</code> — there is no broker login here.</div>
+    <div>Dhan tokens last about a day and cannot be renewed programmatically
+         once expired. Refresh with
+         <code>python quant_backtester/dhan_token.py --totp</code>.</div>
+    <div><a href="/home"><h2>Open the dashboard</h2></a></div>"""
 
 
 def get_kite_client():
     """Returns a monitored kite client object.
 
     Returns:
-        MonitoredKite: A proxy around KiteConnect that records every API call
+        MonitoredKite: A proxy around the broker client that records every call
         to the shared API monitor store (visible at /api-monitor).
     """
-    kite = _broker_client(kite_api_key, account_id="main")
-    if "access_token" in session:
-        kite.set_access_token(session["access_token"])
-    return kite
+    # No access token is applied: the adapter owns authentication and its
+    # set_access_token is a no-op. Applying a stale Zerodha session token
+    # here was harmless only because of that.
+    return _broker_client(account_id="main")
 
 
 @app.route("/")
 def index():
+    import os as _os
+
     return index_template.format(
-        api_key=kite_api_key,
-        redirect_url=redirect_url,
-        console_url=console_url,
-        login_url=login_url
+        broker=_os.environ.get("BROKER_NAME") or "paper_dhan"
     )
 
 
@@ -801,7 +800,7 @@ def get_token_for_script(user_provided_token=None):
     return None
 
 
-def get_authenticated_kite_client(data: dict) -> KiteConnect:
+def get_authenticated_kite_client(data: dict):
     """Return an authenticated KiteConnect client using data or session.
     
     Tries request_token from data first (and persists to session), 
@@ -811,7 +810,7 @@ def get_authenticated_kite_client(data: dict) -> KiteConnect:
         data: Dictionary which may contain 'request_token'.
         
     Returns:
-        KiteConnect: An authenticated client.
+        An authenticated broker client.
         
     Raises:
         RuntimeError: If no authentication is available.
@@ -850,6 +849,23 @@ def get_authenticated_kite_client(data: dict) -> KiteConnect:
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """Zerodha's OAuth callback. Kept only to answer clearly.
+
+    Nothing redirects here any more. A bookmark or a stale Kite app
+    configuration still might, and a 404 would not explain why.
+    """
+    return (
+        "<h2>Zerodha login has been removed.</h2>"
+        "<p>This system trades through Dhan via the adapter layer. There is "
+        "no browser login for the broker: credentials come from "
+        "<code>config/broker.yaml</code> and the token files it names.</p>"
+        "<p>If the Dhan token has expired, run "
+        "<code>python quant_backtester/dhan_token.py --totp</code>.</p>"
+        "<p><a href='/home'>Open the dashboard</a></p>"
+    ), 410
+
+
+def _retired_kite_login():
     request_token = request.args.get("request_token") or request.form.get("request_token")
     logging.info("[LOGIN] /login called via %s. request_token present: %s", request.method, bool(request_token))
 
@@ -1088,7 +1104,7 @@ def gtt_monitor_status():
 def gtt_monitor_debug():
     """Return raw positions and GTTs as seen by the monitor, for debugging.
 
-    Builds its own KiteConnect instance (same as the scheduler) so this works
+    Builds its own broker client (same as the scheduler) so this works
     even when the Flask session kite object is stale.
     """
     from gtt_monitor import _build_kite_client

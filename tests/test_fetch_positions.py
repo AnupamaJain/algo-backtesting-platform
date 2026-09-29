@@ -106,7 +106,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_position_in_lookup_grouped_by_instrument_expiry(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -144,7 +144,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {"EXISTING": {}})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_position_not_in_lookup_uses_position_expiry_date(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -188,7 +188,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_position_not_in_lookup_uses_string_expiry(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -223,7 +223,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_zero_quantity_positions_filtered(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -254,7 +254,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_mixed_lookup_hit_and_miss_all_grouped_correctly(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -313,7 +313,7 @@ class TestFetchPositionsGrouping:
         assert "OTHERS" not in positions["NIFTY"]
 
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_cache_invalidated_when_missing_symbols(
         self, mock_kite_cls, mock_get_lookup, client
     ):
@@ -353,7 +353,7 @@ class TestFetchPositionsGrouping:
 
     @patch("flask_app.INSTRUMENTS_MAP", {})
     @patch("flask_app.get_instrument_lookup")
-    @patch("flask_app.KiteConnect")
+    @patch("flask_app._broker_client")
     def test_lot_size_defaults_to_1_when_not_in_lookup(
         self, mock_kite_cls, mock_get_lookup, client
     ):
