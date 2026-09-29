@@ -140,11 +140,24 @@ A Flask dashboard for NIFTY and SENSEX options on
 pip install -r requirements.txt
 cp configfile.ini.example configfile.ini   # then fill in your own keys
 python setup_wizard.py                     # guided configuration
-python flask_app.py                        # http://127.0.0.1:5000
+python flask_app.py                        # http://127.0.0.1:5010
 ```
 
-Starts in **dry-run mode**. Orders are simulated until you explicitly enable
-live trading.
+Starts in **dry-run mode** — the log says so on boot:
+
+```
+[safety] live_trading = false — DRY-RUN MODE: all order placement is
+simulated and logged, nothing is sent to Zerodha.
+```
+
+The guard sits on all three order paths (market, GTT and stop-loss), each
+returning before the broker call. Flip it in `configfile.ini` under
+`[safety]`, and read [DISCLAIMER.md](DISCLAIMER.md) first.
+
+A **Gatekeeper** login meets you at the door, separate from your broker
+account. Credentials live in `configfile.ini` under `[gatekeeper]`; the
+password is stored as a Werkzeug hash, so it cannot be read back out of the
+file — only replaced. `python setup_wizard.py` rewrites it.
 
 ---
 
