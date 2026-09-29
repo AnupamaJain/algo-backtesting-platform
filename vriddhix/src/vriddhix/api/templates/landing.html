@@ -19,7 +19,7 @@
         every time it was wrong.
       </p>
       <div class="cta-row">
-        <a class="btn btn-primary btn-lg" href="/signup">Create a free account</a>
+        <a class="btn btn-primary btn-lg" href="/signup" data-magnetic>Create a free account</a>
         <a class="btn btn-ghost btn-lg" href="/learn">See how it measures</a>
       </div>
       {% if coverage and coverage.bars %}
@@ -32,7 +32,7 @@
     </div>
 
     {% if ribbon and ribbon.bands %}
-    <figure class="ribbon-card">
+    <figure class="ribbon-card" data-tilt data-parallax="0.05">
       <figcaption class="ribbon-head">
         <span class="ribbon-title">Market regime, every session since {{ ribbon.first.year }}</span>
         <span class="faint num">{{ "{:,}".format(ribbon.sessions) }} sessions · {{ ribbon.changes }} changes</span>
@@ -142,7 +142,7 @@
     so a couple of index heavyweights cannot stand in for the whole group.
   </p>
 
-  <div class="rotation">
+  <div class="rotation" data-stagger>
     {% for quad, label, hint in [
         ('LEADING',   'Leading',   'strong and still improving'),
         ('IMPROVING', 'Improving', 'weak but turning up'),
@@ -302,7 +302,7 @@
       </div>
     </div>
 
-    <div class="res-stats">
+    <div class="res-stats" data-stagger>
       <div><b class="num" data-count="{{ results.total }}">{{ "{:,}".format(results.total) }}</b><span>resolved breakouts</span></div>
       <div><b class="num">{{ "%.0f"|format(results.hold_pct) }}%</b><span>held above the pivot</span></div>
       <div><b class="num">{{ "%.0f"|format(results.fail_pct) }}%</b><span>failed, and kept</span></div>
@@ -318,6 +318,54 @@
 </section>
 {% endif %}
 
+<!-- ══════════════ the application, recorded ══════════════ -->
+{#
+  Real screen recordings of this instance, not an edit. Muted, looping and
+  playsinline so they behave like motion rather than media: no controls to
+  fiddle with, nothing that hijacks the page with sound.
+
+  preload="none" and a poster on each: three autoplaying videos that all
+  fetch on load would cost more than everything else on this page combined,
+  and only one is visible at a time.
+#}
+{% if clips %}
+<section class="wrap">
+  <div class="sec-head">
+    <h2>Watch it run</h2>
+    <span class="sec-note">recorded from this instance · no edits</span>
+  </div>
+
+  <div class="reel rise">
+    <div class="reel-tabs" role="tablist" aria-label="Recordings">
+      {% for slug, title, note in clips %}
+      <button class="reel-tab{{ ' on' if loop.first }}" role="tab"
+              id="tab-{{ slug }}" aria-controls="clip-{{ slug }}"
+              aria-selected="{{ 'true' if loop.first else 'false' }}"
+              data-clip="{{ slug }}">
+        <b>{{ title }}</b><span>{{ note }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <div class="reel-stage" data-tilt>
+      {% for slug, title, note in clips %}
+      <figure class="clip{{ ' on' if loop.first }}" id="clip-{{ slug }}"
+              role="tabpanel" aria-labelledby="tab-{{ slug }}"
+              {{ 'hidden' if not loop.first }}>
+        <video muted loop playsinline preload="none"
+               poster="/static/video/{{ slug }}-poster.jpg"
+               aria-label="{{ title }} — {{ note }}">
+          <source src="/static/video/{{ slug }}.webm" type="video/webm">
+          <source src="/static/video/{{ slug }}.mp4" type="video/mp4">
+        </video>
+        <figcaption><b>{{ title }}</b> — {{ note }}</figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════ what people said ══════════════ -->
 {#
   Renders only from config/testimonials.yaml entries marked verified, which
@@ -327,7 +375,7 @@
 {% if testimonials %}
 <section class="wrap">
   <div class="sec-head"><h2>What people using it say</h2></div>
-  <div class="quotes">
+  <div class="quotes" data-stagger>
     {% for t in testimonials %}
     <figure class="quote rise">
       <blockquote>{{ t.quote }}</blockquote>
@@ -526,7 +574,7 @@
     believe they are real.
   </p>
 
-  <dl class="rules">
+  <dl class="rules" data-stagger>
     <div>
       <dt>There is one implementation of every rule</dt>
       <dd>
@@ -762,6 +810,229 @@
   nodes.forEach(function (n) { io.observe(n); });
 })();
 
+/* ---- motion ----------------------------------------------------------
+   Four effects, all spring-damped rather than eased, because a spring
+   settles the way a physical object does and a cubic-bezier does not.
+
+   Everything here is an enhancement over a page that is already complete
+   and readable: each effect only ever sets a transform, and the whole file
+   exits immediately under prefers-reduced-motion. Nothing below moves
+   anything a reader needs in order to understand the page.
+*/
+(function () {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  var frame = null;
+  var work = [];
+
+  /* Two effects can land on the same element -- the hero card both tilts and
+     drifts -- and if each assigns style.transform the second erases the
+     first. Every effect writes its own named piece here; one writer composes
+     them. Order matters: the translate has to come before the rotate, or the
+     card swings about a point it is no longer at. */
+  function part(el, name, value) {
+    var store = el.__motion || (el.__motion = {});
+    store[name] = value;
+    el.style.transform = (store.shift || "") + " " + (store.turn || "");
+  }
+  function loop() {
+    var alive = false;
+    for (var i = 0; i < work.length; i++) if (work[i]()) alive = true;
+    frame = alive ? requestAnimationFrame(loop) : null;
+  }
+  function wake() { if (!frame) frame = requestAnimationFrame(loop); }
+
+  /* --- 1. cards tilt toward the pointer.
+     Rotation is small on purpose: past about six degrees the text inside
+     starts to shear and the card reads as a gimmick rather than a surface. */
+  var TILT = 5.5;
+  [].forEach.call(document.querySelectorAll("[data-tilt]"), function (el) {
+    var rx = 0, ry = 0, tx = 0, ty = 0, lift = 0, want = 0;
+
+    el.addEventListener("pointermove", function (e) {
+      var r = el.getBoundingClientRect();
+      tx = ((e.clientY - r.top) / r.height - 0.5) * -2 * TILT;
+      ty = ((e.clientX - r.left) / r.width - 0.5) * 2 * TILT;
+      want = 1;
+      wake();
+    }, { passive: true });
+
+    el.addEventListener("pointerleave", function () {
+      tx = ty = 0; want = 0; wake();
+    }, { passive: true });
+
+    work.push(function () {
+      rx += (tx - rx) * 0.12;
+      ry += (ty - ry) * 0.12;
+      lift += (want - lift) * 0.12;
+      var done = Math.abs(tx - rx) < 0.01 && Math.abs(ty - ry) < 0.01
+              && Math.abs(want - lift) < 0.002;
+      if (done) { rx = tx; ry = ty; lift = want; }
+      part(el, "turn",
+        "perspective(1100px) rotateX(" + rx.toFixed(3) + "deg) rotateY("
+        + ry.toFixed(3) + "deg) translateZ(" + (lift * 10).toFixed(2) + "px)");
+      return !done;
+    });
+  });
+
+  /* --- 2. parallax on scroll.
+     Offsets are capped so nothing can drift out of its own section on a
+     long page or a short viewport. */
+  var layers = [].slice.call(document.querySelectorAll("[data-parallax]"));
+  if (layers.length) {
+    var pos = layers.map(function () { return 0; });
+    var aim = layers.map(function () { return 0; });
+
+    function measure() {
+      var vh = innerHeight;
+      layers.forEach(function (el, i) {
+        var r = el.getBoundingClientRect();
+        var through = (r.top + r.height / 2 - vh / 2) / vh;   // -1 … 1
+        var speed = parseFloat(el.dataset.parallax) || 0.1;
+        aim[i] = Math.max(-1, Math.min(1, through)) * speed * -100;
+      });
+      wake();
+    }
+    addEventListener("scroll", measure, { passive: true });
+    addEventListener("resize", measure);
+    measure();
+
+    work.push(function () {
+      var alive = false;
+      layers.forEach(function (el, i) {
+        pos[i] += (aim[i] - pos[i]) * 0.1;
+        if (Math.abs(aim[i] - pos[i]) > 0.05) alive = true;
+        else pos[i] = aim[i];
+        part(el, "shift", "translate3d(0," + pos[i].toFixed(2) + "px,0)");
+      });
+      return alive;
+    });
+  }
+
+  /* --- 3. staggered entrance.
+     The delay is applied per child rather than by a CSS nth-child rule so a
+     section can have any number of them, and it is capped: past about half
+     a second the last card reads as broken rather than as sequenced. */
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        [].forEach.call(entry.target.children, function (child, i) {
+          child.style.transitionDelay = Math.min(i * 60, 480) + "ms";
+          child.classList.add("in");
+        });
+        io.unobserve(entry.target);
+      });
+    }, { threshold: 0, rootMargin: "0px 0px -12% 0px" });
+
+    [].forEach.call(document.querySelectorAll("[data-stagger]"), function (el) {
+      [].forEach.call(el.children, function (c) { c.classList.add("stagger-item"); });
+      io.observe(el);
+    });
+  }
+
+  /* --- 4. the primary call to action leans toward the cursor.
+     Only within a short radius, and it never moves far enough that the
+     button is no longer under the pointer that is reaching for it. */
+  [].forEach.call(document.querySelectorAll("[data-magnetic]"), function (el) {
+    var x = 0, y = 0, ax = 0, ay = 0, R = 90, PULL = 0.28;
+
+    addEventListener("pointermove", function (e) {
+      var r = el.getBoundingClientRect();
+      var dx = e.clientX - (r.left + r.width / 2);
+      var dy = e.clientY - (r.top + r.height / 2);
+      if (Math.sqrt(dx * dx + dy * dy) < R + Math.max(r.width, r.height) / 2) {
+        ax = dx * PULL; ay = dy * PULL;
+      } else { ax = ay = 0; }
+      wake();
+    }, { passive: true });
+
+    work.push(function () {
+      x += (ax - x) * 0.16; y += (ay - y) * 0.16;
+      var done = Math.abs(ax - x) < 0.05 && Math.abs(ay - y) < 0.05;
+      if (done) { x = ax; y = ay; }
+      part(el, "shift", "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0)");
+      return !done;
+    });
+  });
+
+  wake();
+})();
+
+/* The recordings. Only one clip is visible, and it plays only while the
+   section is actually on screen -- three looping videos decoding behind a
+   reader who has scrolled past them is pure battery for nothing.
+
+   Playback is started from script rather than with an autoplay attribute so
+   the browser never fetches a video the reader does not reach: preload is
+   "none" until we ask. */
+(function () {
+  var reel = document.querySelector(".reel");
+  if (!reel) return;
+
+  var tabs  = [].slice.call(reel.querySelectorAll(".reel-tab"));
+  var clips = [].slice.call(reel.querySelectorAll(".clip"));
+  var onScreen = false;
+
+  function video(clip) { return clip.querySelector("video"); }
+
+  function play(clip) {
+    var v = video(clip);
+    if (!v || !onScreen) return;
+    // A rejected play() is normal -- a background tab, or a reader whose
+    // browser refuses autoplay. It is not worth reporting.
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  }
+
+  function show(slug) {
+    tabs.forEach(function (t) {
+      var on = t.dataset.clip === slug;
+      t.classList.toggle("on", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    clips.forEach(function (c) {
+      var on = c.id === "clip-" + slug;
+      c.hidden = !on;
+      var v = video(c);
+      if (!v) return;
+      if (on) { play(c); } else { v.pause(); }
+    });
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener("click", function () { show(t.dataset.clip); });
+  });
+
+  // Left/right arrows move between tabs, which is what a tablist owes a
+  // keyboard.
+  reel.querySelector(".reel-tabs").addEventListener("keydown", function (e) {
+    var i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    var next = e.key === "ArrowDown" || e.key === "ArrowRight" ? i + 1
+             : e.key === "ArrowUp"   || e.key === "ArrowLeft"  ? i - 1 : -1;
+    if (next < 0 || next >= tabs.length) return;
+    e.preventDefault();
+    tabs[next].focus();
+    show(tabs[next].dataset.clip);
+  });
+
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        onScreen = entry.isIntersecting;
+        var visible = clips.filter(function (c) { return !c.hidden; })[0];
+        if (!visible) return;
+        if (onScreen) play(visible);
+        else { var v = video(visible); if (v) v.pause(); }
+      });
+    }, { threshold: 0.25 }).observe(reel);
+  } else {
+    onScreen = true;
+    play(clips[0]);
+  }
+})();
+
 /* The regime panel polls rather than going stale behind the reader. The
    nightly job writes once a day, so this is not about frequency -- it is so
    a tab left open overnight is not quietly showing yesterday. */
@@ -846,7 +1117,7 @@
     "  vec3 bull = vec3(0.12,0.61,0.38);",
     "  vec3 c = vh < 0.5 ? mix(bear, mid, vh*2.0) : mix(mid, bull, (vh-0.5)*2.0);",
     "  float fade = 1.0 - clamp(abs(vz)*0.45, 0.0, 0.7);",
-    "  gl_FragColor = vec4(c, fade * (dark > 0.5 ? 0.80 : 0.62));",
+    "  gl_FragColor = vec4(c, fade * (dark > 0.5 ? 0.92 : 0.76));",
     "}"
   ].join("\n");
 
@@ -915,7 +1186,7 @@
 
   var pointer = 0, target = 0, t0 = performance.now(), raf = null;
   addEventListener("mousemove", function (e) {
-    target = (e.clientX / innerWidth - 0.5) * 0.5;
+    target = (e.clientX / innerWidth - 0.5) * 0.85;
   }, { passive: true });
 
   function size() {

@@ -123,6 +123,15 @@ nav.links a:hover, nav.links a.active { color: var(--text); }
   .brand .mark { display: none; }
 }
 
+/* Below about 400px even the surviving links do not fit alongside the CTA.
+   Sign in goes: the account page it leads to carries a link back to it, so
+   the path is still there, one tap further away. */
+@media (max-width: 400px) {
+  nav.links { gap: 11px; }
+  nav.links a[href="/login"] { display: none; }
+  nav.links .btn { padding: 7px 11px; font-size: .82rem; }
+}
+
 /* ---------- buttons ---------- */
 
 .btn {
@@ -931,3 +940,208 @@ html.js .rise.in { opacity: 1; transform: none; }
   display: grid; place-items: center; font-size: .78rem; font-weight: 650;
   background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
 }
+
+/* ---- recordings ---- */
+
+.reel {
+  display: grid; gap: 22px; margin-top: 20px; align-items: start;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+}
+@media (max-width: 860px) { .reel { grid-template-columns: minmax(0, 1fr); } }
+
+.reel-tabs { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 860px) {
+  /* Side by side on a phone would give each label about nine characters. */
+  .reel-tabs { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .reel-tab { flex: 0 0 76%; }
+}
+.reel-tab {
+  text-align: left; cursor: pointer; font-family: inherit;
+  padding: 13px 15px; border-radius: 11px; background: transparent;
+  border: 1px solid var(--border); color: var(--muted);
+  transition: background .2s, border-color .2s, color .2s;
+}
+.reel-tab b { display: block; font-size: .9rem; color: var(--text); }
+.reel-tab span { display: block; font-size: .78rem; margin-top: 3px; line-height: 1.5; }
+.reel-tab:hover { border-color: var(--muted); }
+.reel-tab.on {
+  background: var(--surface); border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.reel-stage { position: relative; }
+.clip { margin: 0; }
+.clip video {
+  display: block; width: 100%; height: auto; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+.clip figcaption { margin-top: 10px; font-size: .82rem; color: var(--muted); }
+.clip figcaption b { color: var(--text); }
+
+/* ---- staggered entrance ---- */
+
+/* Applied by script, so a reader whose browser does not run it sees the
+   finished state rather than an empty section -- the same reason the scroll
+   entrance is scoped to html.js. */
+html.js .stagger-item {
+  opacity: 0; transform: translateY(16px);
+  transition: opacity .5s ease, transform .55s cubic-bezier(.22,1,.28,1);
+}
+html.js .stagger-item.in { opacity: 1; transform: none; }
+
+/* Tilt and magnetism write to transform every frame, so anything carrying
+   them must not also be transitioning transform -- the two fight and the
+   result stutters. */
+[data-tilt], [data-magnetic] { will-change: transform; }
+[data-tilt] { transform-style: preserve-3d; }
+
+@media (prefers-reduced-motion: reduce) {
+  html.js .stagger-item { opacity: 1; transform: none; transition: none; }
+  [data-tilt], [data-magnetic], [data-parallax] { transform: none !important; }
+}
+
+/* ---- workspace ------------------------------------------------------- */
+
+/* Three columns that each scroll independently: filters stay put while the
+   list moves, and the detail panel does not drag the table with it. */
+.ws {
+  display: grid; gap: 0;
+  grid-template-columns: 260px minmax(0, 1fr) minmax(0, 380px);
+  height: calc(100vh - 62px);
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 1100px) {
+  .ws { grid-template-columns: 220px minmax(0, 1fr); }
+  .ws-detail { display: none; }
+}
+@media (max-width: 760px) {
+  /* Stacked, with its own scroll, because three panes in 390px is none. */
+  .ws { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .ws-side { border-right: 0; border-bottom: 1px solid var(--border); }
+}
+
+.ws-side {
+  border-right: 1px solid var(--border); overflow-y: auto;
+  background: var(--surface-2); padding: 18px 16px; min-width: 0;
+}
+.ws-block { margin-bottom: 26px; }
+.ws-h {
+  font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ws-mini {
+  font-family: inherit; font-size: .7rem; cursor: pointer; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 5px;
+  padding: 2px 7px; text-transform: none; letter-spacing: 0;
+}
+
+.ws-reg { display: flex; align-items: baseline; gap: 9px; margin-bottom: 10px; }
+.ws-reg b { font-size: 1.32rem; font-weight: 650; }
+.ws-reg span { font-size: .9rem; color: var(--muted); }
+.r-strong_bull b { color: var(--bull); }
+.r-bull b { color: var(--bull); }
+.r-neutral b { color: var(--muted); }
+.r-bear b, .r-strong_bear b { color: var(--bear); }
+
+.ws-kv { margin: 0; font-size: .8rem; }
+.ws-kv > div { display: flex; justify-content: space-between; padding: 3px 0; }
+.ws-kv dt { color: var(--faint); }
+.ws-kv dd { margin: 0; }
+.ws-pending {
+  font-size: .76rem; color: var(--muted); line-height: 1.55;
+  margin: 10px 0 0; padding-top: 9px; border-top: 1px solid var(--border);
+}
+
+.ws-f { display: block; margin-bottom: 15px; font-size: .8rem; }
+.ws-f > span {
+  display: flex; justify-content: space-between; color: var(--muted);
+  margin-bottom: 5px;
+}
+.ws-f select, .ws-f input[type="range"] { width: 100%; }
+.ws-f select {
+  font-family: inherit; font-size: .84rem; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface); color: var(--text);
+}
+.ws-count { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+.ws-count b { font-size: 1.05rem; color: var(--text); }
+
+.ws-wl { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; }
+.ws-chip {
+  font-family: inherit; font-size: .76rem; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  border-radius: 6px; padding: 4px 8px; color: var(--text);
+}
+.ws-chip:hover { border-color: var(--accent); }
+
+.ws-main { overflow: auto; min-width: 0; }
+.ws-tablewrap { min-width: 0; overflow-x: auto; }
+.ws-table { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 560px; }
+.ws-table th {
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+  text-align: left; font-size: .7rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--faint); font-weight: 600;
+  padding: 11px 14px; border-bottom: 1px solid var(--border); cursor: pointer;
+  white-space: nowrap;
+}
+.ws-table th:hover { color: var(--text); }
+.ws-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.ws-table .r, .ws-table th.r { text-align: right; }
+.ws-table tbody tr { cursor: pointer; }
+.ws-table tbody tr:hover { background: var(--surface-2); }
+.ws-table tbody tr.on { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.ws-empty { padding: 40px 16px; text-align: center; color: var(--muted); }
+.ws-add {
+  font-family: inherit; cursor: pointer; width: 24px; height: 24px;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); line-height: 1;
+}
+.ws-add:hover { border-color: var(--accent); color: var(--accent); }
+
+.ws-detail {
+  border-left: 1px solid var(--border); overflow-y: auto;
+  padding: 18px 18px 40px; min-width: 0;
+}
+.ws-detail-empty { color: var(--muted); font-size: .88rem; padding-top: 30px; }
+.ws-detail-empty p { margin: 0 0 8px; }
+.ws-dh { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ws-dh h2 { margin: 0; font-size: 1.15rem; }
+.ws-dh .faint { font-size: .8rem; }
+.ws-api { font-size: .74rem; color: var(--muted); text-decoration: none; }
+.ws-api:hover { color: var(--accent); }
+.ws-spark { display: block; width: 100%; height: 76px; margin: 14px 0 4px; }
+.ws-sec { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.ws-sec .ws-h b { color: var(--text); }
+
+.ws-comp-row {
+  display: grid; grid-template-columns: minmax(0,1fr) 72px 30px 34px;
+  gap: 8px; align-items: center; font-size: .78rem; padding: 4px 0;
+}
+.ws-bar { display: block; height: 5px; border-radius: 3px; background: var(--border); }
+.ws-bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.ws-comp-row .num { text-align: right; }
+
+.ws-mini-t { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.ws-mini-t th {
+  text-align: left; color: var(--faint); font-weight: 600; padding: 5px 0;
+  font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+}
+.ws-mini-t td { padding: 5px 0; border-top: 1px solid var(--border); }
+.ws-mini-t .r, .ws-mini-t th.r { text-align: right; }
+.pill { font-size: .68rem; padding: 2px 7px; border-radius: 20px; }
+.pill-ok  { background: rgba(47,158,107,.13); color: var(--bull); }
+.pill-bad { background: rgba(178,65,59,.13); color: var(--bear); }
+
+.ws-skel {
+  display: block; height: 42px; border-radius: 8px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+  background-size: 200% 100%; animation: ws-shimmer 1.3s linear infinite;
+}
+@keyframes ws-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ws-skel { animation: none; } }
+.ws-stale {
+  font-size: .74rem; color: var(--warn); margin: 10px 0 0;
+  padding: 6px 9px; border-radius: 6px; background: rgba(201,162,39,.1);
+}
+.pill-wait { background: var(--border); color: var(--muted); }

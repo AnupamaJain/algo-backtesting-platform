@@ -19,6 +19,7 @@ Then open:
 | | |
 |---|---|
 | http://127.0.0.1:8787/ | Landing — what it does, with live figures from the database |
+| http://127.0.0.1:8787/app | **The workspace** — scan, open any name, read what the engines recorded |
 | http://127.0.0.1:8787/learn | How each engine measures a chart, and the five quiet lies |
 | http://127.0.0.1:8787/login | Sign in |
 | http://127.0.0.1:8787/signup | Create an account |

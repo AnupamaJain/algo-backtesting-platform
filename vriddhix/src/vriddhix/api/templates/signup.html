@@ -185,7 +185,9 @@
           show("ok", "Account ready. No token was issued — this server has no "
                    + "signing key configured, so it is running in local mode.");
         }
-        setTimeout(function () { window.location.href = "/learn"; }, 1200);
+        // Into the application. Landing on /learn explained the engines
+        // and then left you with nothing to run them from.
+        setTimeout(function () { window.location.href = "/app"; }, 900);
       })
       .catch(function () { show("error", "Could not reach the server."); })
       .finally(function () {

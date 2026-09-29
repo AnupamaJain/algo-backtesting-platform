@@ -96,7 +96,7 @@ annually against 11.61%, while falling less far: a 24.8% worst drawdown
 against 36.3%. Both numbers are shown, because reporting only the
 favourable one is how a backtest becomes marketing.
 
-506 tests, including no-look-ahead and engine-purity suites.
+515 tests, including no-look-ahead and engine-purity suites.
 
 ---
 
@@ -202,7 +202,7 @@ Dependencies/               instrument dumps and live access tokens
 ├── vriddhix/            🔬 Pramana — pattern research (self-contained)
 │   ├── src/vriddhix/       domain · db · data · engines · services · jobs · api
 │   ├── docs/               10 design specifications
-│   ├── tests/              506 tests
+│   ├── tests/              515 tests
 │   └── RUNNING.md          start/stop, sign in, scheduling
 │
 ├── quant_backtester/    📊 strategy backtesting + broker adapters
@@ -223,7 +223,7 @@ Dependencies/               instrument dumps and live access tokens
 
 ```bash
 # Pramana
-cd vriddhix && PYTHONPATH=src python -m pytest -q     # 506 tests
+cd vriddhix && PYTHONPATH=src python -m pytest -q     # 515 tests
 
 # Backtester
 cd quant_backtester && python -m pytest -q

@@ -111,6 +111,22 @@ def _coverage(session) -> dict:
 #: Answers a reader actually searches for, in the words they use. Written to
 #: be true first: a question-and-answer block that exists only to carry terms
 #: reads as filler and is treated as such.
+#: Screen recordings of this application, captured from the running
+#: instance rather than assembled in an editor. They are muted, looping and
+#: decorative in the strict sense -- every number they show is also on the
+#: page as text, so nothing here is the only place a fact appears.
+APP_CLIPS = [
+    ("scanner", "Filtering 120 stored setups",
+     "The sliders run the same condition evaluator the backtester uses. "
+     "Nothing is fetched — these rows were written by a scan."),
+    ("deck", "Six screens, dragged",
+     "Each frame is a region of a page that renders from the database on "
+     "every request."),
+    ("tour", "The whole page, top to bottom",
+     "Regime history, sector rotation, the scanner, the equity curve and "
+     "the ledger — one pass, nothing sped up."),
+]
+
 LANDING_FAQ = [
     ("Is Pramana a free NSE stock screener?",
      "Yes. It scans NSE cash equities daily for volatility-contraction bases, "
@@ -356,6 +372,8 @@ APP_SCREENS = [
      "Five weighted components with hysteresis, or an explicit refusal."),
     ("rotation", "Sector rotation",
      "Equal-weight aggregation into four quadrants."),
+    ("equity",   "Ten years of ₹10 lakh",
+     "A stored backtest against buying the index and waiting."),
     ("evidence", "Breakout ledger",
      "Every outcome recorded, failures kept and counted."),
     ("api",      "Read API",
@@ -524,6 +542,7 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "screener": _screener_rows(session, prov.as_of),
             "rotation": _rotation(session, prov.as_of),
             "screens": APP_SCREENS,
+            "clips": APP_CLIPS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),
             "performance": _performance(session),
@@ -644,6 +663,37 @@ def _breakout_evidence(session) -> dict:
 
 def _num(value):
     return round(float(value), 2) if value is not None else None
+
+
+@router.get("/app", response_class=HTMLResponse)
+def workspace(request: Request, session: SessionDep, prov: ProvenanceDep):
+    """The application itself.
+
+    Signing in used to land on /learn, which explains how the engines work
+    and then leaves you there -- the product had 46 endpoints and no way to
+    use them without curl. This is that missing surface.
+
+    It is deliberately not gated. The account scopes watchlists and saved
+    screens; it does not unlock different numbers, and putting the scanner
+    behind a login would imply that it does.
+    """
+    return TEMPLATES.TemplateResponse(
+        request, "app.html",
+        {
+            **_seo(request, "/app", kind="WebApplication", extra={
+                "applicationCategory": "FinanceApplication",
+                "operatingSystem": "Web",
+                "description": (
+                    "Scan NSE equities for volatility-contraction bases, "
+                    "market structure and fair value gaps, and read what the "
+                    "engines recorded about any name."
+                ),
+            }),
+            "as_of": prov.as_of,
+            "is_stale": prov.is_stale,
+            "page": "app",
+        },
+    )
 
 
 @router.get("/vcp-breakout-failure-rate", response_class=HTMLResponse)

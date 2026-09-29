@@ -1035,3 +1035,92 @@ def test_a_missing_or_broken_file_is_not_an_error(tmp_path, monkeypatch):
     config.mkdir()
     (config / "testimonials.yaml").write_text("testimonials: [unclosed")
     assert pages._testimonials() == []
+
+
+# ---------------------------------------------------------------------------
+# The workspace
+# ---------------------------------------------------------------------------
+
+
+def test_the_workspace_renders(client):
+    """Signing in used to land on /learn, which explains how the engines work
+    and then leaves you there. This is the surface that was missing."""
+    r = client.get("/app")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+    body = r.text
+    assert 'id="ws-rows"' in body
+    assert "/static/app-workspace.js" in body
+
+
+def test_signing_in_lands_in_the_application(client):
+    """Not on the documentation. A product that sends you to its own manual
+    after sign-in has not been finished."""
+    for page in ("/signup", "/login"):
+        body = client.get(page).text
+        assert 'window.location.href = "/app"' in body
+        assert 'window.location.href = "/learn"' not in body
+
+
+def test_the_workspace_is_reachable_from_every_page(client):
+    for path in ("/", "/learn", "/signup"):
+        assert 'href="/app"' in client.get(path).text
+
+
+def test_the_workspace_says_so_when_it_cannot_run(client):
+    """It is filled by script, so without script it must say that rather than
+    render an empty frame forever."""
+    body = client.get("/app").text
+    assert "<noscript>" in body
+    assert "needs JavaScript" in body
+    # ...and point at the surface that needs nothing but a URL.
+    assert "/api/docs" in body
+
+
+def test_the_workspace_uses_only_the_documented_api(client):
+    """There is no private endpoint behind the sign-in. The account scopes
+    watchlists; it does not unlock different numbers, and a hidden endpoint
+    would mean the published API is not the whole story."""
+    import re
+
+    js = client.get("/static/app-workspace.js").text
+    spec = client.get("/api/openapi.json").json()
+    documented = set(spec["paths"])
+
+    for path in set(re.findall(r'get\("(/[^"?]+)', js)):
+        concrete = re.sub(r'" \+ symbol \+ "', "{symbol}", path)
+        template = re.sub(r"\{symbol\}", "{symbol}", concrete)
+        candidate = "/api/v1" + template
+        assert candidate in documented or any(
+            p.startswith("/api/v1" + template.split("{")[0]) for p in documented
+        ), f"{candidate} is not in the published API"
+
+
+def test_absence_is_never_rendered_as_zero_in_the_workspace(client):
+    """The same rule the engines keep. A missing relative strength is not a
+    relative strength of nothing."""
+    js = client.get("/static/app-workspace.js").text
+    assert 'if (v === null || v === undefined || v !== v) return "—";' in js
+
+
+def test_the_workspace_offers_the_failure_engine(client):
+    """Failed breakouts sit in the same menu as everything else, not behind a
+    toggle nobody finds."""
+    assert 'value="failed-breakouts"' in client.get("/app").text
+
+
+def test_sector_acronyms_survive_the_client_side_casing(client):
+    """sector_label() fixes this on the server; the workspace builds its rows
+    in the browser and needs the same list, or FMCG renders as Fmcg."""
+    js = client.get("/static/app-workspace.js").text
+    assert "ACRONYMS" in js
+    for code in ("IT", "FMCG", "PSU"):
+        assert f"{code}:1" in js
+
+
+def test_an_unresolved_breakout_is_not_painted_as_a_win(client):
+    """PENDING has not resolved. Colouring it like CONFIRMED would claim an
+    outcome the ledger has not recorded."""
+    js = client.get("/static/app-workspace.js").text
+    assert "pill-wait" in js
+    assert 'status === "CONFIRMED" ? "pill-ok"' in js

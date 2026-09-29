@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Workspace — Pramana{% endblock %}
+{% block description %}Scan NSE equities, open any name and read what the engines recorded about it.{% endblock %}
+
+{% block content %}
+<script defer src="/static/app-workspace.js"></script>
+{#
+  The workspace. Everything below is fetched from the same public API the
+  docs describe -- there is no private endpoint behind the sign-in, because
+  there is nothing here a reader should have to take on trust.
+
+  It is rendered as a shell and filled by script rather than server-rendered,
+  because the point of this page is that it responds to you: change a filter
+  and the list re-queries. The one thing that is server-rendered is the
+  refusal below, so a browser that runs no script says so plainly instead of
+  showing an empty frame forever.
+#}
+<div class="ws">
+  <aside class="ws-side">
+    <div class="ws-block">
+      <div class="ws-h">Market</div>
+      <div id="ws-regime" class="ws-regime">
+        <span class="ws-skel"></span>
+      </div>
+    </div>
+
+    <div class="ws-block">
+      <div class="ws-h">Scanner</div>
+      <label class="ws-f">
+        <span>Engine</span>
+        <select id="ws-engine">
+          <option value="vcp">VCP bases</option>
+          <option value="breakouts">Breakouts</option>
+          <option value="failed-breakouts">Failed breakouts</option>
+          <option value="smc">Market structure</option>
+          <option value="fvg">Fair value gaps</option>
+        </select>
+      </label>
+
+      <label class="ws-f" id="ws-score-wrap">
+        <span>Min score <b id="ws-score-v" class="num">60</b></span>
+        <input id="ws-score" type="range" min="0" max="100" value="60">
+      </label>
+
+      <label class="ws-f" id="ws-stage-wrap">
+        <span>Stage</span>
+        <select id="ws-stage">
+          <option value="">Any</option>
+          <option>FORMING</option>
+          <option>NEAR_PIVOT</option>
+          <option>CONFIRMED</option>
+          <option>BREAKOUT</option>
+        </select>
+      </label>
+
+      <label class="ws-f">
+        <span>Sector</span>
+        <select id="ws-sector"><option value="">Any</option></select>
+      </label>
+
+      <div class="ws-count"><b id="ws-n" class="num">—</b> <span>matching</span></div>
+    </div>
+
+    <div class="ws-block">
+      <div class="ws-h">Watchlist <button id="ws-wl-new" class="ws-mini">new</button></div>
+      <div id="ws-wl" class="ws-wl"><span class="faint">Sign in to keep a list.</span></div>
+    </div>
+  </aside>
+
+  <main class="ws-main">
+    <div class="ws-tablewrap">
+      <table class="ws-table">
+        <thead>
+          <tr>
+            <th data-sort="symbol">Symbol</th>
+            <th data-sort="sector">Sector</th>
+            <th data-sort="stage">Stage</th>
+            <th class="r" data-sort="score">Score</th>
+            <th class="r" data-sort="rs">RS</th>
+            <th class="r" data-sort="close">Close</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ws-rows">
+          <tr><td colspan="7" class="ws-empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <section class="ws-detail" id="ws-detail" aria-live="polite">
+    <div class="ws-detail-empty">
+      <p>Pick a row.</p>
+      <p class="faint">Its chart, every component of its score, the structure
+        the engines found and what happened to earlier breakouts on the same
+        name.</p>
+    </div>
+  </section>
+</div>
+
+<noscript>
+  <div class="wrap" style="padding-block:40px">
+    <div class="callout">
+      <strong>This page needs JavaScript.</strong>
+      The workspace queries the API as you change filters, so there is nothing
+      useful to render without it. Everything it shows is available directly
+      from <a href="/api/docs">the API</a>, which needs nothing but a URL.
+    </div>
+  </div>
+</noscript>
+{% endblock %}
