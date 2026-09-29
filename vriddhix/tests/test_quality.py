@@ -290,3 +290,80 @@ def test_a_bad_span_is_flagged_not_repaired():
     check_reverting_spikes(df, "ETF", threshold_pct=25.0)
 
     pd.testing.assert_series_equal(df["close"], before)
+
+
+# ---------------------------------------------------------------------------
+# Missing prices -- the check every comparison silently passes
+# ---------------------------------------------------------------------------
+
+
+def test_a_bar_with_a_missing_price_is_dropped():
+    """NaN defeats comparison-based validation.
+
+    `high < low` is False against NaN. So is `close <= 0`, and so is every
+    other structural test. A bar carrying NaN passes all of them and arrives
+    intact at the INSERT, where the database rejects it as NULL. yfinance
+    served exactly that for ABB on 2026-09-28.
+    """
+    import numpy as np
+
+    df = make_ohlcv(40, seed=21)
+    df.iloc[20, df.columns.get_loc("close")] = np.nan
+
+    clean, findings = check_ohlc_sanity(df, "ABB")
+
+    assert DataIssue.MISSING_PRICE in issues(findings)
+    assert len(clean) == len(df) - 1
+    assert not clean[["open", "high", "low", "close"]].isna().any().any()
+
+
+def test_a_missing_price_is_reported_once_not_three_times():
+    """A NaN close also makes the bar look structurally impossible and
+    non-positive. Reporting all three buries the actual cause."""
+    import numpy as np
+
+    df = make_ohlcv(40, seed=22)
+    df.iloc[10, df.columns.get_loc("low")] = np.nan
+
+    findings = [f for f in check_ohlc_sanity(df, "X")[1]
+                if f.bar_date == df.index[10].date()]
+
+    assert len(findings) == 1
+    assert findings[0].issue is DataIssue.MISSING_PRICE
+
+
+def test_the_finding_records_which_field_was_missing():
+    import numpy as np
+
+    df = make_ohlcv(30, seed=23)
+    df.iloc[5, df.columns.get_loc("close")] = np.nan
+
+    finding = next(f for f in check_ohlc_sanity(df, "X")[1]
+                   if f.issue is DataIssue.MISSING_PRICE)
+
+    assert finding.detail["close"] is None
+    assert finding.detail["open"] is not None
+
+
+def test_a_whole_column_of_nan_does_not_pass_as_a_frame():
+    import numpy as np
+
+    df = make_ohlcv(30, seed=24)
+    df["close"] = np.nan
+
+    clean, findings = check_ohlc_sanity(df, "X")
+
+    assert len(clean) == 0
+    assert len(findings) == 30
+
+
+def test_good_bars_survive_a_neighbouring_nan():
+    import numpy as np
+
+    df = make_ohlcv(30, seed=25)
+    df.iloc[15, df.columns.get_loc("high")] = np.nan
+
+    clean, _ = check_ohlc_sanity(df, "X")
+
+    assert len(clean) == 29
+    assert df.index[14] in clean.index and df.index[16] in clean.index

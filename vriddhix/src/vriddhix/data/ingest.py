@@ -263,7 +263,23 @@ def ingest_universe(
     as_of: date | None = None,
     compute_features: bool = True,
 ) -> IngestReport:
-    """Ingest many symbols. One failure does not stop the rest."""
+    """Ingest many symbols. One failure does not stop the rest.
+
+    Each symbol is committed on its own, for two reasons.
+
+    Failure isolation: catching the exception is not enough, because a
+    database error leaves the session in a failed transaction and every
+    symbol after it dies on PendingRollbackError rather than being attempted.
+    A single NaN close in ABB's bars took down all 212 symbols that way, and
+    the log recorded 212 failures for one bad bar.
+
+    Lock hold time: one transaction spanning the whole universe holds SQLite's
+    single write lock for the entire run. The server writes too -- every login
+    stamps last_login_at -- so a long ingest and an ordinary sign-in collide,
+    and 115 symbols were lost to "database is locked" even with WAL enabled.
+    Committing per symbol bounds the lock to one symbol's work, and means a
+    run that dies halfway keeps what it already fetched.
+    """
     report = IngestReport(started_at=datetime.now())
 
     for symbol in symbols:
@@ -272,7 +288,9 @@ def ingest_universe(
                 session, symbol, provider, cfg,
                 start=start, end=end, as_of=as_of, compute_features=compute_features,
             )
+            session.commit()
         except Exception as exc:  # noqa: BLE001 - one symbol must not stop the run
+            session.rollback()
             logger.exception("unhandled error ingesting %s", symbol)
             result = SymbolResult(symbol=symbol, ok=False, error=f"{type(exc).__name__}: {exc}")
         report.results.append(result)

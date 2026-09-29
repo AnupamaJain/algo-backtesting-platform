@@ -54,8 +54,32 @@ def check_ohlc_sanity(df: pd.DataFrame, symbol: str) -> tuple[pd.DataFrame, list
     A bar where ``high < low`` or the close sits outside the range is not a
     market event -- it is corruption, and it produces a negative true range
     that poisons ATR for the next fourteen bars.
+
+    A missing price is checked first and separately, because every comparison
+    against NaN evaluates False: ``high < low`` is False, ``close <= 0`` is
+    False, and a bar carrying NaN therefore passes every structural test
+    below it and arrives intact at the INSERT. yfinance served exactly that
+    for ABB on 2026-09-28, and it took down an entire 212-symbol ingest.
     """
     findings: list[QualityFinding] = []
+
+    prices = df[["open", "high", "low", "close"]]
+    missing = prices.isna().any(axis=1)
+
+    for ts in df.index[missing]:
+        row = df.loc[ts]
+        findings.append(
+            QualityFinding(
+                issue=DataIssue.MISSING_PRICE,
+                severity=Severity.ERROR,
+                symbol=symbol,
+                bar_date=ts.date(),
+                detail={
+                    field: (None if pd.isna(row[field]) else float(row[field]))
+                    for field in ("open", "high", "low", "close")
+                },
+            )
+        )
 
     impossible = (
         (df["high"] < df["low"])
@@ -63,6 +87,9 @@ def check_ohlc_sanity(df: pd.DataFrame, symbol: str) -> tuple[pd.DataFrame, list
         | (df["low"] > df[["open", "close"]].min(axis=1))
     )
     negative = (df[["open", "high", "low", "close"]] <= 0).any(axis=1)
+
+    impossible = impossible & ~missing
+    negative = negative & ~missing
 
     for ts in df.index[impossible]:
         row = df.loc[ts]
@@ -88,7 +115,7 @@ def check_ohlc_sanity(df: pd.DataFrame, symbol: str) -> tuple[pd.DataFrame, list
             )
         )
 
-    return df[~(impossible | negative)], findings
+    return df[~(impossible | negative | missing)], findings
 
 
 def check_zero_volume(df: pd.DataFrame, symbol: str, severity: Severity = Severity.WARN) -> list[QualityFinding]:

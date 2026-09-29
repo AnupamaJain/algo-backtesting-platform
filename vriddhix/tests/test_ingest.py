@@ -189,3 +189,59 @@ def test_report_summarises_the_run(session, seeded, cfg, provider):
     assert report.bars_written == 600
     assert "2/2 symbols" in report.summary()
     assert report.finished_at is not None
+
+
+def test_one_symbol_failing_does_not_take_down_the_rest(session, cfg, monkeypatch):
+    """Catching the exception is not enough.
+
+    A database error leaves the session in a failed transaction, so every
+    symbol after the bad one dies on PendingRollbackError rather than being
+    attempted. One NaN close in ABB's bars produced 212 failures in a
+    212-symbol run, and the report blamed all 212.
+    """
+    from vriddhix.data import ingest as ingest_module
+
+    calls: list[str] = []
+
+    def explode_on_the_first(session, symbol, provider, cfg, **kwargs):
+        calls.append(symbol)
+        if symbol == "BAD":
+            # What a NaN close actually raises, at the point it raises it.
+            from sqlalchemy.exc import IntegrityError
+
+            raise IntegrityError("INSERT", {}, Exception("NOT NULL constraint failed"))
+        return ingest_module.SymbolResult(symbol=symbol, ok=True, bars_written=5)
+
+    monkeypatch.setattr(ingest_module, "ingest_symbol", explode_on_the_first)
+
+    report = ingest_module.ingest_universe(
+        session, ["BAD", "GOOD1", "GOOD2"], provider=None, cfg=cfg,
+    )
+
+    assert calls == ["BAD", "GOOD1", "GOOD2"], "the run stopped at the bad symbol"
+    assert len(report.failed) == 1
+    assert {r.symbol for r in report.results if r.ok} == {"GOOD1", "GOOD2"}
+
+
+def test_the_session_is_usable_after_a_symbol_fails(session, cfg, monkeypatch):
+    """The caller commits after the run; a poisoned session makes that throw
+    and loses every symbol that did succeed."""
+    from sqlalchemy import select
+
+    from vriddhix.data import ingest as ingest_module
+    from vriddhix.db.models import Stock
+
+    def explode(session, symbol, provider, cfg, **kwargs):
+        if symbol == "BAD":
+            from sqlalchemy.exc import IntegrityError
+
+            raise IntegrityError("INSERT", {}, Exception("NOT NULL"))
+        return ingest_module.SymbolResult(symbol=symbol, ok=True)
+
+    monkeypatch.setattr(ingest_module, "ingest_symbol", explode)
+    ingest_module.ingest_universe(session, ["BAD", "GOOD"], provider=None, cfg=cfg)
+
+    # The session still works -- no PendingRollbackError.
+    session.add(Stock(symbol="AFTER", name="After", exchange="NSE"))
+    session.flush()
+    assert session.scalar(select(Stock.symbol).where(Stock.symbol == "AFTER")) == "AFTER"

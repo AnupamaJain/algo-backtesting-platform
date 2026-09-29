@@ -55,7 +55,11 @@ def _configure_sqlite(dbapi_connection, _record) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA busy_timeout=5000")
+    # Five seconds is not enough when a universe-wide ingest and an
+    # ordinary sign-in want the write lock at the same time; that cost
+    # 115 symbols in one run. WAL keeps readers out of the way, but
+    # SQLite still allows only one writer.
+    cursor.execute("PRAGMA busy_timeout=30000")
     cursor.close()
 
 
