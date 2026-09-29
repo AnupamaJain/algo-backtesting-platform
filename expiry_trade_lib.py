@@ -19,7 +19,6 @@ from typing import Optional, Dict, List, Any, Tuple
 from collections import defaultdict
 
 import pandas as pd
-from kiteconnect import KiteConnect, KiteTicker
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class ExpiryTradeSystem:
     candles, and computes Stochastic RSI and support/resistance.
 
     Attributes:
-        kite: Authenticated KiteConnect instance.
+        kite: An authenticated broker client.
         is_active: Whether the ticker is running.
         active_index: 'NIFTY' or 'SENSEX' if expiry today, else None.
         expiry_substring: Common symbol prefix for today's expiry.
@@ -60,12 +59,12 @@ class ExpiryTradeSystem:
         "SENSEX": "BFO",
     }
 
-    def __init__(self, kite: KiteConnect) -> None:
+    def __init__(self, kite) -> None:
         """
         Initialize the Expiry Trade System.
 
         Args:
-            kite: An authenticated KiteConnect client instance.
+            kite: An authenticated broker client.
         """
         self.kite = kite
         self._is_active = False
@@ -292,19 +291,29 @@ class ExpiryTradeSystem:
         logger.info("Expiry Trade System stopped.")
 
     def _start_ticker(self) -> None:
-        """Set up and start KiteTicker in a background thread."""
-        api_key = self.kite.api_key
-        access_token = self.kite.access_token
+        """Start the tick feed in a background thread.
 
-        self._kws = KiteTicker(api_key, access_token)
-        self._kws.on_ticks = self._on_ticks
-        self._kws.on_connect = self._on_connect
-        self._kws.on_close = self._on_close
-        self._kws.on_error = self._on_error
+        This built a KiteTicker from self.kite.api_key and .access_token,
+        neither of which exists on the adapter client. Ticks come from
+        Flattrade -- the only streaming client implemented here -- and
+        common_lib already owns that connection, including the shared-daemon
+        path that stops several strategies each opening their own feed
+        against an account that permits one.
+        """
+        import common_lib
+
+        common_lib.initialise_ticker(
+            self._on_ticks, self._on_connect, lambda *_: None
+        )
+        self._kws = common_lib.kws
+        if self._kws is not None:
+            # on_close/on_error are this class's own; initialise_ticker does
+            # not set them because its other callers do not have them.
+            self._kws.on_close = self._on_close
+            self._kws.on_error = self._on_error
 
         self._is_active = True
-        self._kws.connect(threaded=True)
-        logger.info("KiteTicker started for token %s", self._spot_instrument_token)
+        logger.info("Tick feed started for token %s", self._spot_instrument_token)
 
     def _on_connect(self, ws: Any, response: Any) -> None:
         """Subscribe to spot index on successful connect."""

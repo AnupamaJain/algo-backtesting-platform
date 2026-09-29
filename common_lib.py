@@ -13,7 +13,10 @@ import sys
 from random import randint
 import functools
 from requests.exceptions import ReadTimeout, ConnectionError as RequestsConnectionError, SSLError
-from kiteconnect import exceptions as kite_exceptions
+from quant_backtester.src.broker.exceptions import (
+    BrokerUnavailable,
+    RateLimited,
+)
 import greeks_lib as mibian
 
 try:
@@ -100,10 +103,14 @@ def retry_with_backoff(
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
+                # Zerodha's DataException and NetworkException were here.
+                # The adapter's equivalents are BrokerUnavailable (the broker
+                # is unreachable or returned nonsense) and RateLimited, which
+                # is exactly what Dhan does under a busy loop and is the most
+                # retryable error of the lot.
                 except (ReadTimeout, RequestsConnectionError, SSLError, TimeoutError,
                         ConnectionError, OSError,
-                        kite_exceptions.DataException,
-                        kite_exceptions.NetworkException) as e:
+                        BrokerUnavailable, RateLimited) as e:
                     last_exception = e
                     if attempt < max_retries:
                         # Calculate delay with exponential backoff
@@ -4531,7 +4538,7 @@ def place_duo_order(symbol, typeOfProduct = "NRML", exceptNFBNFLocal = False):
         print(orders)
         time.sleep(3)
     
-    except (kite_exceptions.NetworkException, kite_exceptions.DataException) as e:
+    except (BrokerUnavailable, RateLimited) as e:
         logging.warning(f"Transient error in place_duo_order: {e}. Retrying after 5s delay...")
         already_executing_order = 0
         time.sleep(5)
