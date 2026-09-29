@@ -660,7 +660,7 @@ def _startup_auto_sync_if_needed() -> None:
         prior recovery path) sits at 0 rows until someone logs in AND the
         first login's own auto-sync (see /api/establish_session) completes.
       - A server restart mid-day, after backup-restore already ran, where a
-        still-valid Kite token is on file (instrument_cache.get_kite_token())
+        the instruments table needs populating
         from an earlier login — previously nothing re-triggered a sync until
         the user manually clicked "Sync Instruments" or re-logged in.
 
@@ -672,30 +672,25 @@ def _startup_auto_sync_if_needed() -> None:
     try:
         if not instrument_cache.needs_sync():
             return
-        stored_token = instrument_cache.get_kite_token()
-        if not stored_token:
-            logging.info(
-                "[startup] instruments table needs sync but no stored Kite "
-                "token is available yet — will sync automatically on first login."
-            )
-            return
-
+        # This used to require a stored Zerodha token and return without
+        # one, "will sync automatically on first login". There is no login
+        # to wait for any more, so the sync never ran: the instruments table
+        # sat at ten rows and every option-chain lookup came back empty.
         def _run_sync() -> None:
             try:
-                kite = _broker_client(kite_api_key, account_id="main")
-                kite.set_access_token(stored_token)
+                kite = _broker_client(account_id="main")
                 if _safe_sync_instruments(kite):
                     logging.info("[startup] background instrument sync completed successfully")
                 else:
                     logging.warning(
                         "[startup] background instrument sync did not complete — "
-                        "stored token may be expired; will retry on next login."
+                        "the broker token may be expired; see dhan_token.py --check."
                     )
             except Exception:  # noqa: BLE001
                 logging.exception("[startup] background instrument sync failed")
 
         threading.Thread(target=_run_sync, name="startup-instrument-sync", daemon=True).start()
-        logging.info("[startup] instruments table empty — background sync started using stored token")
+        logging.info("[startup] instruments table needs sync — background sync started")
     except Exception as exc:  # noqa: BLE001
         logging.error("[startup] auto-sync check failed: %s", exc)
 
@@ -1785,9 +1780,14 @@ def sync_session_token():
                                  "config/broker.yaml and the token files it names."}), 503
 
     try:
-        instrument_cache.save_kite_token(session["access_token"])
-        logging.info("Session token manually synced to server-side DB via /api/sync_session_token")
-        return jsonify({"saved": True, "message": "Token saved. Headless /api/* calls will now work."})
+        # Nothing to sync. This stored a Zerodha access token so headless
+        # /api/* calls could reuse a browser session; the adapter
+        # authenticates itself and there is no such token.
+        return jsonify({
+            "saved": False,
+            "message": "No session token is needed — the broker adapter "
+                       "authenticates from config/broker.yaml.",
+        })
     except Exception as sync_exc:
         logging.error("Failed to sync session token: %s", sync_exc)
         return jsonify({"error": str(sync_exc)}), 500
@@ -2421,10 +2421,6 @@ def _set_kite_session(access_token: str):
     """
     session["access_token"] = access_token
     session.permanent = True
-    try:
-        instrument_cache.save_kite_token(access_token)
-    except Exception as e:
-        logging.error(f"Failed to auto-save Kite token to DB: {e}")
 
     # Authenticate the shared common_lib.kite singleton. Modules that call
     # common_lib.kite / common_lib.get_nifty_current_quote() directly
@@ -2440,12 +2436,12 @@ def _set_kite_session(access_token: str):
 
 
 def _get_restored_kite_token() -> Optional[str]:
-    """Attempt to restore the Kite access_token from the server-side DB."""
-    try:
-        return instrument_cache.get_kite_token()
-    except Exception as e:
-        logging.error(f"Failed to retrieve Kite token from DB: {e}")
-        return None
+    """Always None: there is no stored broker token to restore.
+
+    This read a Zerodha access token out of instruments.db. Callers treat
+    None as "no stored session", which is now simply the truth.
+    """
+    return None
 
 
 # ============================================================================

@@ -391,20 +391,12 @@ def _job_early_exit_required() -> None:
 
         logger.info("EARLY_EXIT_REQUIRED: expiry detected for %s — checking positions", today_str)
 
-        import instrument_cache
-
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("EARLY_EXIT_REQUIRED: no access token — cannot check positions")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("EARLY_EXIT_REQUIRED: api_key not found in configfile.ini")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # The Zerodha token and api_key lookups that used to open this
+        # job are gone. Both skipped the whole job when they found
+        # nothing, which after Zerodha's removal was every run -- the
+        # log said "no access token" and nobody reads a warning that
+        # fires on schedule. The adapter authenticates itself.
+        kite = _broker_client()
         positions_data = kite.positions()
         net_positions: list[dict] = positions_data.get("net", [])
 
@@ -497,20 +489,12 @@ def _job_daily_pnl_summary() -> None:
     """
     logger.info("Running DAILY_PNL_SUMMARY job")
     try:
-        import instrument_cache
-
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("DAILY_PNL_SUMMARY: no access token — skipping")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("DAILY_PNL_SUMMARY: api_key not found in configfile.ini")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # The Zerodha token and api_key lookups that used to open this
+        # job are gone. Both skipped the whole job when they found
+        # nothing, which after Zerodha's removal was every run -- the
+        # log said "no access token" and nobody reads a warning that
+        # fires on schedule. The adapter authenticates itself.
+        kite = _broker_client()
 
         positions_data = kite.positions()
         net_positions: list[dict] = positions_data.get("net", [])
@@ -616,18 +600,9 @@ def _job_reconcile_journal() -> None:
         import instrument_cache
         from trade_journal import reconcile_with_zerodha
 
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("RECONCILE_JOURNAL: no access token — skipping")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("RECONCILE_JOURNAL: api_key not found in configfile.ini")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # Zerodha token and api_key gates removed: both skipped the job
+        # outright, which after Zerodha's removal meant every run.
+        kite = _broker_client()
 
         result = reconcile_with_zerodha(kite, date.today())
         logger.info(
@@ -804,18 +779,9 @@ def _job_nifty_margin_check() -> None:
             get_nifty_positions_summary,
         )
 
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("NIFTY_MARGIN_CHECK: no access token — skipping")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("NIFTY_MARGIN_CHECK: api_key missing in configfile.ini — skipping")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # Zerodha token and api_key gates removed: both skipped the job
+        # outright, which after Zerodha's removal meant every run.
+        kite = _broker_client()
 
         # Determine next NIFTY expiry and how many trading days away it is
         all_nifty_instruments = get_all_nifty_instruments(kite)
@@ -932,18 +898,9 @@ def _job_nifty_delta_check() -> None:
             get_nifty_positions_summary,
         )
 
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("NIFTY_DELTA_CHECK: no access token — skipping")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("NIFTY_DELTA_CHECK: api_key missing in configfile.ini — skipping")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # Zerodha token and api_key gates removed: both skipped the job
+        # outright, which after Zerodha's removal meant every run.
+        kite = _broker_client()
 
         all_nifty_instruments = get_all_nifty_instruments(kite)
         next_expiry_str: Optional[str] = get_next_expiry_date(all_nifty_instruments)
@@ -1083,18 +1040,9 @@ def _job_nifty_itm_loss_check() -> None:
             get_nifty_positions_summary,
         )
 
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("NIFTY_ITM_LOSS_CHECK: no access token — skipping")
-            return
-
-        api_key = _read_api_key()
-        if not api_key:
-            logger.error("NIFTY_ITM_LOSS_CHECK: api_key missing in configfile.ini — skipping")
-            return
-
-        kite = _broker_client(api_key)
-        kite.set_access_token(access_token)
+        # Zerodha token and api_key gates removed: both skipped the job
+        # outright, which after Zerodha's removal meant every run.
+        kite = _broker_client()
 
         all_nifty_instruments = get_all_nifty_instruments(kite)
         next_expiry_str: Optional[str] = get_next_expiry_date(all_nifty_instruments)

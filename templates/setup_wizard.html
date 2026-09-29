@@ -111,12 +111,29 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <fieldset>
-                <legend>Zerodha Kite Connect</legend>
-                <label for="api_key">API Key</label>
-                <input type="text" id="api_key" name="api_key" value="{{ form.get('api_key','') }}" required autocomplete="off">
-                <div class="hint">From <a href="https://developers.kite.trade/apps" target="_blank" style="color:#818cf8">developers.kite.trade/apps</a> — a Kite Connect app subscription is required.</div>
-                <label for="api_secret">API Secret</label>
-                <input type="password" id="api_secret" name="api_secret" required autocomplete="off">
+                <legend>Dhan</legend>
+                <label for="dhan_client_id">Client ID</label>
+                <input type="text" id="dhan_client_id" name="dhan_client_id" value="{{ form.get('dhan_client_id','') }}" autocomplete="off">
+                <div class="hint">Your Dhan client id. Tokens last about a day and
+                    are minted with <code>python quant_backtester/dhan_token.py --totp</code>,
+                    which needs the PIN and TOTP seed below.</div>
+                <label for="dhan_pin">PIN</label>
+                <input type="password" id="dhan_pin" name="dhan_pin" autocomplete="off">
+                <label for="dhan_totp">TOTP secret</label>
+                <input type="password" id="dhan_totp" name="dhan_totp" autocomplete="off">
+            </fieldset>
+
+            <fieldset>
+                <legend>Flattrade <span style="font-weight:400;opacity:.7">— optional, supplies the live tick feed</span></legend>
+                <label for="ft_client_id">Client ID</label>
+                <input type="text" id="ft_client_id" name="ft_client_id" value="{{ form.get('ft_client_id','') }}" autocomplete="off">
+                <label for="ft_api_key">API Key</label>
+                <input type="text" id="ft_api_key" name="ft_api_key" value="{{ form.get('ft_api_key','') }}" autocomplete="off">
+                <label for="ft_api_secret">API Secret</label>
+                <input type="password" id="ft_api_secret" name="ft_api_secret" autocomplete="off">
+                <div class="hint">Dhan places the orders. Streaming quotes come from
+                    Flattrade, which is the only websocket this platform implements —
+                    leave blank to run on request-time prices only.</div>
             </fieldset>
 
             <fieldset>

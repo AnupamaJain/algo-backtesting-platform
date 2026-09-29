@@ -152,7 +152,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="upload-section">
                     <i class="fas fa-file-csv fa-3x" style="margin-bottom: 15px; color: var(--text-secondary);"></i>
-                    <p style="margin-bottom: 10px; color: var(--text-secondary);">Upload Zerodha Tradebook CSV to analyze expiries</p>
+                    <p style="margin-bottom: 10px; color: var(--text-secondary);">Upload a broker tradebook CSV (Zerodha export format) to analyze expiries</p>
                     <p id="fileNameDisplay" style="margin-bottom: 20px; font-weight: 600; color: var(--accent-blue);"></p>
                     <input type="file" name="file" accept=".csv" required style="display: none;" id="fileInput" onchange="showFileName()">
                     <button type="button" class="btn" onclick="document.getElementById('fileInput').click()">Select CSV File</button>

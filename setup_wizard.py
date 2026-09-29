@@ -160,12 +160,29 @@ def _write_config(form: dict) -> None:
     if os.path.exists(_EXAMPLE_PATH):
         parser.read(_EXAMPLE_PATH)
 
-    for section in ("kite_login_details", "gatekeeper", "safety", "option_details", "others"):
+    for section in ("dhan", "flattrade", "gatekeeper", "safety", "option_details", "others"):
         if not parser.has_section(section):
             parser.add_section(section)
 
-    parser.set("kite_login_details", "api_key", form.get("api_key", "").strip())
-    parser.set("kite_login_details", "api_secret", form.get("api_secret", "").strip())
+    # Zerodha's api_key/api_secret were written here and were the only broker
+    # the wizard offered. The platform no longer has a Zerodha path, so a
+    # fresh install could only enter credentials it could not use.
+    def _set_if_given(section: str, key: str, field: str) -> None:
+        """Only overwrite when the form actually carried a value.
+
+        The wizard can be re-run to change one thing, and a blank box should
+        not wipe a working credential.
+        """
+        value = form.get(field, "").strip()
+        if value:
+            parser.set(section, key, value)
+
+    _set_if_given("dhan", "client_id", "dhan_client_id")
+    _set_if_given("dhan", "pin", "dhan_pin")
+    _set_if_given("dhan", "totp", "dhan_totp")
+    _set_if_given("flattrade", "client_id", "ft_client_id")
+    _set_if_given("flattrade", "api_key", "ft_api_key")
+    _set_if_given("flattrade", "api_secret", "ft_api_secret")
     parser.set("gatekeeper", "username", form.get("username", "").strip())
     parser.set("gatekeeper", "password", generate_password_hash(form.get("password", "")))
 

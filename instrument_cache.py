@@ -10,6 +10,32 @@ used as a last-resort restore on startup if the live table is found empty.
 """
 
 import sqlite3
+
+
+def _parse_timestamp(raw: bytes):
+    """Tolerant DATETIME converter.
+
+    Connections here open with PARSE_DECLTYPES, and sqlite3's built-in
+    timestamp converter splits on a space -- it expects SQLite's own
+    "YYYY-MM-DD HH:MM:SS". This module writes datetime.isoformat(), which
+    uses a "T" and carries an offset, so every read of sync_history raised
+    "not enough values to unpack" and /admin/instruments returned 500 as
+    soon as there was any sync history to show.
+
+    Falls back to the raw string rather than raising: a stats page should
+    not fail over a value it only ever prints.
+    """
+    from datetime import datetime
+
+    text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return text
+
+
+sqlite3.register_converter("DATETIME", _parse_timestamp)
+sqlite3.register_converter("TIMESTAMP", _parse_timestamp)
 import os
 import logging
 import datetime
@@ -175,14 +201,11 @@ def init_db() -> None:
         finally:
             _sync_lock.release()
 
-    # Session token table for headless API access
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS kite_session_tokens (
-            id        INTEGER PRIMARY KEY,
-            token     TEXT NOT NULL,
-            saved_at  DATETIME NOT NULL
-        )
-    """)
+    # kite_session_tokens lived here: a single-row store for a Zerodha
+    # access token, so headless /api/* calls could reuse a browser login.
+    # Zerodha is gone and the adapter authenticates from broker.yaml, so
+    # there is no token to keep. Existing databases keep the table; nothing
+    # reads or writes it.
 
     # NSE market holidays cache (populated during instrument sync)
     cursor.execute(_HOLIDAYS_DDL)
@@ -1110,76 +1133,8 @@ def get_db_stats() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Public: save_kite_token / get_kite_token  (headless API session)
-# ---------------------------------------------------------------------------
 
 
-def save_kite_token(access_token: str) -> None:
-    """Persist the Kite access_token so headless /api/* calls can reuse it.
-
-    Replaces any previously saved token (single-row table).  Called from
-    flask_app.py whenever a successful Kite OAuth login completes.
-
-    Args:
-        access_token: The Zerodha Kite access token to persist.
-    """
-    init_db()
-    now_iso = get_ist_now().isoformat()
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM kite_session_tokens")
-        cursor.execute(
-            "INSERT INTO kite_session_tokens (token, saved_at) VALUES (?, ?)",
-            (access_token, now_iso),
-        )
-        conn.commit()
-        logger.info("Kite session token saved to DB at %s", now_iso)
-    except sqlite3.Error as exc:
-        conn.rollback()
-        logger.error("Failed to save Kite session token: %s", exc)
-        raise
-    finally:
-        conn.close()
-
-
-def get_kite_token() -> Optional[str]:
-    """Return the most recently persisted Kite access_token, or None.
-
-    Every caller of this function uses it the same way: check truthiness,
-    then pass it to `kite.set_access_token(token)`. The adapter-backed
-    client authenticates itself at construction and treats
-    set_access_token() as a no-op, so it never needs a real Kite token here
-    -- but a dozen call sites all still gated on this returning non-empty,
-    which meant every one of them silently skipped its real work forever
-    once Kite was migrated out. Rather than restructure each call site
-    individually (some do, some don't also read api_key first -- a source
-    of exactly the kind of order-dependent bug this project has hit
-    several times today), the decision is made once, here: when the
-    adapter backend is active, return a sentinel that satisfies the gate
-    without pretending to be a real Kite session token.
-
-    Returns:
-        The stored access token string, the adapter sentinel, or None if
-        neither applies.
-    """
-    import os
-
-    if os.environ.get("BROKER_BACKEND", "adapter").lower() != "kite":
-        return "adapter-authenticated"  # sentinel; set_access_token() ignores it
-
-    init_db()
-    conn = get_db_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT token FROM kite_session_tokens ORDER BY id DESC LIMIT 1")
-        row = cursor.fetchone()
-        return row["token"] if row else None
-    except sqlite3.Error as exc:
-        logger.error("Failed to retrieve Kite session token: %s", exc)
-        return None
-    finally:
-        conn.close()
 
 
 # ---------------------------------------------------------------------------

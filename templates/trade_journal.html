@@ -715,7 +715,7 @@
                 <input type="date" id="endDate">
             </div>
             <button class="btn btn-primary" onclick="loadData()">Apply</button>
-            <button class="btn btn-outline" id="syncBtn" onclick="syncFromZerodha()" title="Pull today's Zerodha fills and add any manual trades missing from the journal">⟳ Sync Zerodha</button>
+            <button class="btn btn-outline" id="syncBtn" onclick="syncFromBroker()" title="Pull today's broker fills and add any manual trades missing from the journal">⟳ Sync Broker</button>
         </div>
     </div>
 
@@ -1176,9 +1176,9 @@
         }
 
         // ============================================================================
-        // Zerodha Sync
+        // Broker sync
         // ============================================================================
-        async function syncFromZerodha() {
+        async function syncFromBroker() {
             const btn = document.getElementById('syncBtn');
             btn.disabled = true;
             btn.textContent = '⟳ Syncing…';
@@ -1189,7 +1189,7 @@
                     showSyncToast(`Sync failed: ${data.error}`, true);
                 } else {
                     const msg = data.added > 0
-                        ? `✓ Added ${data.added} trade${data.added !== 1 ? 's' : ''} from Zerodha (${data.skipped} already present)`
+                        ? `✓ Added ${data.added} trade${data.added !== 1 ? 's' : ''} from the broker (${data.skipped} already present)`
                         : `✓ Already up to date — ${data.skipped} trade${data.skipped !== 1 ? 's' : ''} already recorded`;
                     showSyncToast(msg, false);
                     if (data.added > 0) loadData();
@@ -1198,7 +1198,7 @@
                 showSyncToast(`Sync error: ${err.message}`, true);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '⟳ Sync Zerodha';
+                btn.textContent = '⟳ Sync Broker';
             }
         }
 
@@ -1900,7 +1900,7 @@
             badge.style.background = '#1e2a3a';
             badge.style.color = '#8b98b5';
             if (!posSyncVisible) togglePositionSync();
-            document.getElementById('positionSyncContent').innerHTML = '<span style="color:#8b98b5;">Running validation against Zerodha live positions…</span>';
+            document.getElementById('positionSyncContent').innerHTML = '<span style="color:#8b98b5;">Running validation against live broker positions…</span>';
             try {
                 const resp = await fetch('/api/trade_journal/position_validation/run', { method: 'POST' });
                 const data = await resp.json();
@@ -1952,7 +1952,7 @@
 
             if (discrepancies.length) {
                 html += `<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                    <span style="font-weight:600; color:#f39c12;">Data Gaps — Zerodha has positions with no open leg in journal:</span>
+                    <span style="font-weight:600; color:#f39c12;">Data Gaps — the broker has positions with no open leg in journal:</span>
                     <button id="injectAllBtn" onclick="injectAll()"
                         style="font-size:11px; padding:3px 12px; background:#1a3a1a; color:#6fcf97; border:1px solid #2a4a2a; border-radius:4px; cursor:pointer;">
                         ⚡ Inject All
@@ -1961,7 +1961,7 @@
                 html += `<table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px;">
                     <thead><tr style="color:#5a6a7a; border-bottom:1px solid #2a3550;">
                         <th style="text-align:left; padding:6px 8px;">Symbol</th>
-                        <th style="text-align:right; padding:6px 8px;">Zerodha Qty</th>
+                        <th style="text-align:right; padding:6px 8px;">Broker Qty</th>
                         <th style="text-align:right; padding:6px 8px;">Journal Qty</th>
                         <th style="text-align:right; padding:6px 8px;">Avg Price</th>
                         <th style="text-align:center; padding:6px 8px;">Action</th>
@@ -1986,13 +1986,13 @@
 
             if (phantoms.length) {
                 html += `<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                    <span style="font-weight:600; color:#e74c3c;">Phantom Positions — Journal has open legs Zerodha doesn't:</span>
+                    <span style="font-weight:600; color:#e74c3c;">Phantom Positions — Journal has open legs the broker doesn't:</span>
                     <button id="closeAllPhantomBtn" onclick="closeAllPhantoms()"
                         style="font-size:11px; padding:3px 12px; background:#3a1a1a; color:#e74c3c; border:1px solid #4a2a2a; border-radius:4px; cursor:pointer;">
                         ✕ Close All Phantoms
                     </button>
                 </div>`;
-                html += `<div style="font-size:11px; color:#8b98b5; margin-bottom:8px;">These open legs exist in the journal but Zerodha shows the position as flat. Either the close leg was not recorded, or the data is stale. Use "Close Phantom" to inject the matching close leg (then Rebuild Cache).</div>`;
+                html += `<div style="font-size:11px; color:#8b98b5; margin-bottom:8px;">These open legs exist in the journal but the broker shows the position as flat. Either the close leg was not recorded, or the data is stale. Use "Close Phantom" to inject the matching close leg (then Rebuild Cache).</div>`;
                 html += `<table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px;">
                     <thead><tr style="color:#5a6a7a; border-bottom:1px solid #2a3550;">
                         <th style="text-align:left; padding:6px 8px;">Symbol</th>
@@ -2017,7 +2017,7 @@
             }
 
             if (matched.length && !discrepancies.length && !phantoms.length) {
-                html += `<div style="color:#6fcf97; font-size:13px;">All ${matched.length} open positions match Zerodha. ✓</div>`;
+                html += `<div style="color:#6fcf97; font-size:13px;">All ${matched.length} open positions match the broker. ✓</div>`;
             }
 
             content.innerHTML = html;
@@ -2089,7 +2089,7 @@
                         price: avgPrice,
                         quantity: Math.abs(p.journal_qty),
                         trade_date: today,
-                        note: 'Phantom close — position closed in Zerodha but close leg missing from journal',
+                        note: 'Phantom close — position closed at the broker but close leg missing from journal',
                     });
                     result.success ? ok++ : fail++;
                 } catch (e) { fail++; }
@@ -2121,7 +2121,7 @@
         }
 
         function openClosePhantomModal(phantom) {
-            // Phantom: journal has an open leg, Zerodha is flat.
+            // Phantom: journal has an open leg, the broker is flat.
             // Inject the CLOSING leg (opposite direction) at today's date.
             // Price = weighted average of the open legs so net P&L = zero.
             const closeDirection = phantom.transaction_type === 'SELL' ? 'BUY' : 'SELL';
@@ -2137,7 +2137,7 @@
             document.getElementById('cfQuantity').value = Math.abs(phantom.journal_qty);
             document.getElementById('cfPrice').value = avgPrice.toFixed(2);
             document.getElementById('cfTradeDate').value = today;
-            document.getElementById('cfNote').value = 'Phantom close — position closed in Zerodha but close leg missing from journal';
+            document.getElementById('cfNote').value = 'Phantom close — position closed at the broker but close leg missing from journal';
             document.getElementById('cfMessage').style.display = 'none';
             document.getElementById('carryForwardModal').style.display = 'flex';
             window.ModalManager && window.ModalManager.push(closeCarryForwardModal);

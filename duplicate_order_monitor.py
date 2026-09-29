@@ -322,17 +322,8 @@ def _build_kite_client_from_db() -> Optional[Any]:
     # See gtt_monitor._build_kite_client() for why this is gated: only the
     # raw Kite backend needs a stored token, since the adapter-backed shim
     # authenticates itself at construction.
-    import os as _os
-
-    if _os.environ.get("BROKER_BACKEND", "adapter").lower() == "kite":
-        import instrument_cache
-
-        access_token: Optional[str] = instrument_cache.get_kite_token()
-        if not access_token:
-            logger.warning("_build_kite_client_from_db: no stored access token")
-            return None
-        kite.set_access_token(access_token)
-
+    # A BROKER_BACKEND=kite branch here fetched a stored Zerodha token and
+    # applied it. That backend no longer exists, so the branch was dead.
     return kite
 
 
