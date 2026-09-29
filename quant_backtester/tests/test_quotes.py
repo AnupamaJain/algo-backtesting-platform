@@ -4,7 +4,7 @@ The point of the adapter abstraction is that one broker failing is
 survivable. These tests drive that directly.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -171,3 +171,77 @@ def test_the_dhan_fallback_does_not_inherit_flattrades_token_file(monkeypatch):
     assert seen_token_files == [None], (
         f"DhanAuth must not receive Flattrade's token_file, got {seen_token_files}"
     )
+
+
+_NOW = datetime(2026, 9, 29, 11, 0, tzinfo=timezone.utc)
+
+
+def test_the_shim_prices_a_book_in_one_call():
+    """DhanAdapter.get_quotes batches; the shim used to loop past it.
+
+    Its docstring says a per-symbol loop "turns marking a 20-symbol book into
+    a 20-second stall" on a one-request-per-second feed. Nothing called it:
+    every strategy reaches the broker through LegacyBrokerShim.quote(), which
+    asked one symbol at a time. Marking a book produced a burst of rate-limit
+    retries and a single served quote.
+    """
+    from quant_backtester.src.broker.legacy import LegacyBrokerShim
+    from quant_backtester.src.broker.models import UnifiedQuote
+
+    calls = {"single": 0, "batched": 0}
+
+    class Batching:
+        name = "dhan"
+
+        def get_quote(self, symbol):
+            calls["single"] += 1
+            return UnifiedQuote(symbol=symbol, last_price=100.0, timestamp=_NOW)
+
+        def get_quotes(self, symbols):
+            calls["batched"] += 1
+            return {s: UnifiedQuote(symbol=s, last_price=100.0, timestamp=_NOW) for s in symbols}
+
+    shim = LegacyBrokerShim(Batching())
+    out = shim.quote([f"NSE:SYM{i}-EQ" for i in range(20)])
+
+    assert len(out) == 20
+    assert calls["batched"] == 1, "the book was not priced in one request"
+    assert calls["single"] == 0, "fell back to per-symbol despite get_quotes"
+
+
+def test_a_failed_batch_still_prices_what_it_can():
+    """A batch endpoint having a bad day must not blank the whole book."""
+    from quant_backtester.src.broker.legacy import LegacyBrokerShim
+    from quant_backtester.src.broker.models import UnifiedQuote
+
+    class BrokenBatch:
+        name = "dhan"
+
+        def get_quote(self, symbol):
+            if symbol == "BAD-EQ":
+                raise RuntimeError("no such instrument")
+            return UnifiedQuote(symbol=symbol, last_price=50.0, timestamp=_NOW)
+
+        def get_quotes(self, symbols):
+            raise RuntimeError("batch endpoint down")
+
+    out = LegacyBrokerShim(BrokenBatch()).quote(
+        ["NSE:GOOD-EQ", "NSE:BAD-EQ", "NSE:ALSOGOOD-EQ"]
+    )
+
+    assert set(out) == {"NSE:GOOD-EQ", "NSE:ALSOGOOD-EQ"}
+
+
+def test_an_adapter_without_batching_still_works():
+    """Flattrade and the paper broker have no get_quotes."""
+    from quant_backtester.src.broker.legacy import LegacyBrokerShim
+    from quant_backtester.src.broker.models import UnifiedQuote
+
+    class NoBatch:
+        name = "flattrade"
+
+        def get_quote(self, symbol):
+            return UnifiedQuote(symbol=symbol, last_price=10.0, timestamp=_NOW)
+
+    out = LegacyBrokerShim(NoBatch()).quote(["NSE:A-EQ", "NSE:B-EQ"])
+    assert len(out) == 2

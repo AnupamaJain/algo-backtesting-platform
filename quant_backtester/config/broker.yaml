@@ -109,9 +109,25 @@ brokers:
     #   * Flattrade's automated login is unattended (see flattrade_token.py).
     # Dhan remains the fallback: it covers the same NSE instruments, so
     # either can price the book on its own.
+    # Execution is Dhan: this is the Dhan paper account, orders resolve
+    # against Dhan's scrip master and the book is the Dhan one.
+    #
+    # Quotes are a separate question and Flattrade wins it on measurement,
+    # not preference. Pointed at Dhan, this profile logged 17 rate-limit
+    # retries for one served quote: its feed allows roughly one request a
+    # second and token generation once every two minutes, where Flattrade
+    # does neither. test_every_indian_path_prefers_flattrade exists to catch
+    # this being flipped, and caught exactly that.
     quote_source: flattrade
     quote_fallbacks: [dhan]
     flattrade_token_file: state/flattrade_token.json
+    dhan_token_file: state/dhan_token.json
+    # This profile had no TTL at all, where paper has 15s and paper_india 5s,
+    # so every poll of every symbol went to the feed. Against Dhan's roughly
+    # one request a second that produced 17 rate-limit retries for a single
+    # served quote. 5s is the same figure paper_india uses and is well inside
+    # the dashboard's own refresh interval.
+    quote_ttl_seconds: 5
     max_quote_age_seconds: 900
     exchange: NSE
     # Matches the cached Indian history in data_india/. The "-EQ" series

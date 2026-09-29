@@ -183,9 +183,40 @@ class LegacyBrokerShim:
     # -- market data --------------------------------------------------
 
     def quote(self, instruments) -> dict:
-        out: dict = {}
-        for key in _as_list(instruments):
-            _, symbol = _split(key, self._default_exchange)
+        """Price a list of instruments in as few calls as the adapter allows.
+
+        This looped and called get_quote once per symbol. DhanAdapter has
+        implemented get_quotes as a single batched request for some time --
+        its docstring even says the per-symbol loop "turns marking a
+        20-symbol book into a 20-second stall" on a one-request-per-second
+        feed -- but nothing called it, because the shim every strategy goes
+        through asked one symbol at a time. Marking a book produced a burst
+        of rate-limit retries and one served quote.
+        """
+        keys = _as_list(instruments)
+        wanted: list[tuple[str, str]] = [
+            (key, _split(key, self._default_exchange)[1]) for key in keys
+        ]
+
+        batched = getattr(self._adapter, "get_quotes", None)
+        if batched is not None and len(wanted) > 1:
+            try:
+                quotes = batched([symbol for _, symbol in wanted])
+            except Exception as exc:  # noqa: BLE001 - fall back to one at a time
+                logger.warning("batched quote failed (%s); falling back per symbol", exc)
+            else:
+                out = {
+                    key: _quote_to_dict(quotes[symbol])
+                    for key, symbol in wanted
+                    if symbol in quotes
+                }
+                missing = [key for key, symbol in wanted if symbol not in quotes]
+                if missing:
+                    logger.debug("no quote for %s", ", ".join(missing[:8]))
+                return out
+
+        out = {}
+        for key, symbol in wanted:
             try:
                 q = self._adapter.get_quote(symbol)
             except Exception as exc:  # noqa: BLE001 - one bad symbol must not kill a batch

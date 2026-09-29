@@ -11,6 +11,12 @@ VENV="$ROOT/venv"
 PORT=5010
 LOG="$ROOT/logs/flask_app.log"
 
+# Which broker the strategies reach. paper_dhan is simulated money against
+# real Dhan prices -- no order can leave the building, and the vendor is Dhan
+# rather than Zerodha. common_lib reads this; without it the strategies
+# default to Flattrade.
+export BROKER_NAME="${BROKER_NAME:-paper_dhan}"
+
 # Same shared secret the research platform reads. Absent, /sso does not exist.
 if [ -f "$ROOT/vriddhix/state/sso.env" ]; then
   set -a; . "$ROOT/vriddhix/state/sso.env"; set +a
@@ -30,6 +36,7 @@ case "${1:-start}" in
       sleep 1
       if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/app_login" 2>/dev/null; then
         echo "✓ terminal is up — http://127.0.0.1:$PORT"
+        echo "  broker: $BROKER_NAME"
         grep -m1 "live_trading" "$LOG" 2>/dev/null || true
         exit 0
       fi
@@ -44,6 +51,7 @@ case "${1:-start}" in
     if running; then
       echo "terminal: running (pid $(pgrep -f '[f]lask_app.py' | head -1)) — http://127.0.0.1:$PORT"
       grep -m1 "live_trading" "$LOG" 2>/dev/null || true
+      echo "broker  : ${BROKER_NAME:-flattrade}"
       if [ -f "$ROOT/vriddhix/state/sso.env" ]; then
         echo "sign-in : paired with the research platform"
       else
