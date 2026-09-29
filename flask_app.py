@@ -3224,6 +3224,92 @@ def get_stock_config():
         return jsonify({"error": str(e)}), 500
 
 
+# ---------------------------------------------------------------------------
+# Contract prefixes, derived from the broker's scrip master
+# ---------------------------------------------------------------------------
+
+#: Month letter used in NSE/BSE weekly symbols: 1-9 for Jan-Sep, then O, N, D.
+_WEEKLY_MONTH_CODE = {
+    1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6",
+    7: "7", 8: "8", 9: "9", 10: "O", 11: "N", 12: "D",
+}
+
+
+def _contract_prefix(name: str, expiry, monthly: bool) -> str:
+    """Build the tradingsymbol prefix the strategies expect.
+
+    The exchanges write monthly and weekly contracts differently, and the
+    strategies append a strike and CE/PE to whatever they are handed:
+
+        monthly   NIFTY + 26 + SEP   -> NIFTY26SEP23000CE
+        weekly    NIFTY + 26 + O + 06 -> NIFTY26O0623000CE
+
+    Deriving it rather than storing it means a new expiry needs no code
+    change: whatever the broker publishes as tradable is what appears.
+    """
+    yy = f"{expiry.year % 100:02d}"
+    if monthly:
+        return f"{name}{yy}{expiry.strftime('%b').upper()}"
+    return f"{name}{yy}{_WEEKLY_MONTH_CODE[expiry.month]}{expiry.day:02d}"
+
+
+def _expiries_from_dhan(name: str, exchange: str) -> list[dict]:
+    """Live contract prefixes from Dhan's published scrip master.
+
+    The Kite path this replaces needed an authenticated Zerodha session, so
+    on the Dhan paper account the symbol field simply stayed empty. This
+    needs no session: the scrip master is a public CSV, cached locally.
+    """
+    from datetime import date as _date
+    from pathlib import Path as _Path
+
+    import pandas as pd
+
+    from quant_backtester.src.broker.dhan import DhanInstruments
+
+    # NFO options are listed under NSE in the master, BFO under BSE.
+    source_exchange = "BSE" if exchange.upper() == "BFO" else "NSE"
+    instruments = DhanInstruments(
+        _Path(os.path.dirname(os.path.abspath(__file__)))
+        / "quant_backtester" / "state"
+    )
+    # Index options are OPTIDX, single stocks OPTSTK. Ask for both rather
+    # than guessing from the name -- SENSEX is an index, RELIANCE is not.
+    frames = []
+    for kind in ("OPTIDX", "OPTSTK"):
+        try:
+            frame = instruments.option_chain(name, exchange=source_exchange, instrument=kind)
+        except Exception:  # noqa: BLE001 - a missing kind is not an error
+            continue
+        if len(frame):
+            frames.append(frame)
+    if not frames:
+        return []
+
+    chain = pd.concat(frames)
+    today = _date.today()
+    seen: dict[str, dict] = {}
+
+    for expiry_raw, group in chain.groupby(chain["SM_EXPIRY_DATE"].astype(str)):
+        try:
+            expiry = pd.to_datetime(expiry_raw).date()
+        except Exception:  # noqa: BLE001
+            continue
+        if expiry < today:
+            continue
+        monthly = str(group["EXPIRY_FLAG"].iloc[0]).strip().upper() == "M"
+        prefix = _contract_prefix(name, expiry, monthly)
+        seen.setdefault(prefix, {
+            "prefix": prefix,
+            "expiry_date": expiry.isoformat(),
+            "days_to_expiry": (expiry - today).days,
+            "monthly": monthly,
+            "source": "dhan",
+        })
+
+    return sorted(seen.values(), key=lambda row: row["days_to_expiry"])
+
+
 @app.route("/api/survivor/symbol_expiries")
 def get_symbol_expiries():
     """Get available symbol prefixes for an instrument, sorted by nearest expiry.
@@ -3249,10 +3335,22 @@ def get_symbol_expiries():
         return jsonify({"error": "name query parameter required"}), 400
 
     try:
+        # The broker's own scrip master first: it needs no session, and on
+        # the Dhan paper account there is no Zerodha token to have. This
+        # endpoint used to return an empty list with "authenticate first",
+        # which is why the symbol box had to be typed by hand.
+        try:
+            from_dhan = _expiries_from_dhan(name, exchange)
+        except Exception as exc:  # noqa: BLE001 - fall through to the session path
+            logging.warning("Dhan expiries for %s unavailable: %s", name, exc)
+            from_dhan = []
+        if from_dhan:
+            return jsonify({"expiries": from_dhan, "source": "dhan"})
+
         if "access_token" not in session:
             return jsonify({
                 "expiries": [],
-                "warning": "No session - authenticate first."
+                "warning": "No broker session and no scrip master for " + name,
             })
 
         kite_client = get_kite_client()
