@@ -312,6 +312,50 @@
     }).then(loadWatchlist).catch(function () {});
   }
 
+  // ---- the trading terminal -----------------------------------------------
+
+  /* One sign-in, two processes. The ticket is fetched on click rather than
+     on load: it lives about forty seconds, so one minted at page load would
+     be dead by the time anyone reached for it. */
+  function wireTerminal() {
+    if (!token()) return;
+    get("/auth/me").then(function (res) {
+      // /auth/me answers {user: {...}}, not the profile bare.
+      var me = res && res.user;
+      if (!me || !me.is_admin) return;      // not an operator: no such button
+      $("ws-terminal-block").hidden = false;
+    }).catch(function () {});
+  }
+
+  function openTerminal() {
+    var btn = $("ws-terminal"), err = $("ws-terminal-err");
+    err.hidden = true;
+    btn.disabled = true;
+    btn.textContent = "Opening…";
+
+    fetch(API + "/auth/handoff", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token() }
+    }).then(function (r) {
+      return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        var m = (res.d && res.d.error && res.d.error.message) ||
+                "The terminal is not paired with this server.";
+        err.textContent = m;
+        err.hidden = false;
+        return;
+      }
+      window.open(res.d.url, "_blank", "noopener");
+    }).catch(function () {
+      err.textContent = "Could not reach the server.";
+      err.hidden = false;
+    }).finally(function () {
+      btn.disabled = false;
+      btn.innerHTML = 'Open trading terminal <span aria-hidden="true">↗</span>';
+    });
+  }
+
   // ---- wiring -------------------------------------------------------------
 
   function debounce(fn, ms) {
@@ -355,8 +399,11 @@
     if (chip) openSymbol(chip.dataset.symbol);
   });
 
+  $("ws-terminal").addEventListener("click", openTerminal);
+
   loadMarket();
   loadSectors();
   loadWatchlist();
+  wireTerminal();
   query();
 })();

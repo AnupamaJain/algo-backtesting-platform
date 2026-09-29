@@ -6,6 +6,8 @@ import re
 import threading
 import time
 import hmac
+import base64
+import hashlib
 import tempfile
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -16,7 +18,7 @@ import glob
 from typing import Optional, List, Dict, Any
 
 from functools import wraps
-from flask import Flask, request, jsonify, session, render_template, render_template_string, redirect, url_for, send_from_directory
+from flask import Flask, request, jsonify, session, render_template, render_template_string, redirect, url_for, send_from_directory, abort
 from werkzeug.security import check_password_hash
 
 # CSRF protection. Imported defensively so the app still boots on a server
@@ -435,7 +437,12 @@ def enforce_auth():
             return jsonify({"error": "Setup required — open /setup in a browser"}), 503
         return redirect(url_for("setup_wizard.setup_page"))
 
-    if request.endpoint in ("app_login", "static", "login"):
+    # sso_entry carries its own credential -- a signed, single-use ticket --
+    # and does its own refusing. Sending it to the login form instead would
+    # mean the ticket could never be presented, which is exactly what
+    # happened: the handoff redirected to /app_login with the ticket still
+    # unspent in the next= parameter.
+    if request.endpoint in ("app_login", "static", "login", "sso_entry"):
         return
 
     # The Claude-Skills API blueprint enforces its own X-API-Key auth per route.
@@ -481,6 +488,103 @@ def app_login():
             error = "Invalid username or password"
 
     return render_template("app_login.html", error=error)
+
+# ---------------------------------------------------------------------------
+# Single sign-on from the research platform
+# ---------------------------------------------------------------------------
+
+# Tickets already spent. A ticket is good for one redirect: without this,
+# anyone who reads it out of browser history, a proxy log or a Referer header
+# could replay it for the rest of its short life.
+_SSO_SPENT: dict[str, float] = {}
+_SSO_SPENT_MAX = 512
+
+
+def _sso_secret():
+    """The shared secret, or None when the two apps are not paired.
+
+    Absent means the whole route is off. Pairing a public sign-up page to a
+    terminal that places real orders is a decision that has to be made on
+    purpose, on both sides, not inherited from a default.
+    """
+    return os.environ.get("PRAMANA_SSO_SECRET") or None
+
+
+def _sso_b64(segment: str) -> bytes:
+    return base64.urlsafe_b64decode(segment + "=" * (-len(segment) % 4))
+
+
+def _sso_verify(ticket: str, secret: str):
+    """Return the ticket's claims, or None if it is not admissible.
+
+    One return for every failure, deliberately: a caller that could tell a
+    bad signature from an expired one could use this endpoint to learn
+    things about the secret.
+    """
+    try:
+        header_b64, payload_b64, signature_b64 = ticket.split(".")
+    except ValueError:
+        return None
+
+    expected = hmac.new(secret.encode(), f"{header_b64}.{payload_b64}".encode(),
+                        hashlib.sha256).digest()
+    if not hmac.compare_digest(expected, _sso_b64(signature_b64)):
+        return None
+
+    try:
+        claims = json.loads(_sso_b64(payload_b64))
+    except (ValueError, TypeError):
+        return None
+
+    if claims.get("aud") != "terminal":
+        return None
+    if float(claims.get("exp", 0)) < time.time():
+        return None
+
+    jti = claims.get("jti")
+    if not jti or jti in _SSO_SPENT:
+        return None
+
+    # Bounded, and the oldest goes first. An unbounded dict here would be a
+    # slow memory leak that only shows up on a long-lived process.
+    if len(_SSO_SPENT) >= _SSO_SPENT_MAX:
+        for old in sorted(_SSO_SPENT, key=_SSO_SPENT.get)[:_SSO_SPENT_MAX // 4]:
+            _SSO_SPENT.pop(old, None)
+    _SSO_SPENT[jti] = time.time()
+
+    return claims
+
+
+@app.route("/sso")
+def sso_entry():
+    """Admit a reader who signed in on the research platform.
+
+    This exists so there is one sign-in rather than two. It does not widen
+    who may trade: the ticket is only issued to an account flagged as an
+    operator there, and this route refuses everything else. Signing up on the
+    landing page does not produce a ticket.
+    """
+    secret = _sso_secret()
+    client_ip = request.remote_addr or "unknown"
+
+    if not secret:
+        logging.warning("SSO attempt from %s but PRAMANA_SSO_SECRET is unset", client_ip)
+        abort(404)
+
+    claims = _sso_verify(request.args.get("ticket", ""), secret)
+    if claims is None:
+        logging.warning("Rejected SSO ticket from %s", client_ip)
+        return render_template(
+            "app_login.html",
+            error="That sign-in link is not valid any more. Sign in again.",
+        ), 403
+
+    session.permanent = True
+    session["app_authenticated"] = True
+    session["sso_subject"] = claims.get("sub")
+    logging.info("SSO admitted %s from %s", claims.get("sub"), client_ip)
+    return redirect(url_for("home_page"))
+
 
 @app.route("/app_logout")
 def app_logout():

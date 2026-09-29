@@ -61,6 +61,20 @@
       <div class="ws-count"><b id="ws-n" class="num">—</b> <span>matching</span></div>
     </div>
 
+    {# Operators only, and hidden until /auth/me says so. Rendering it for
+       everyone and refusing on click would advertise a terminal most
+       accounts cannot open. #}
+    <div class="ws-block" id="ws-terminal-block" hidden>
+      <div class="ws-h">Terminal</div>
+      <button id="ws-terminal" class="ws-terminal">
+        Open trading terminal <span aria-hidden="true">↗</span>
+      </button>
+      <p class="ws-terminal-note">
+        Live options dashboard. Separate process, currently in dry-run.
+      </p>
+      <p class="ws-terminal-err" id="ws-terminal-err" hidden></p>
+    </div>
+
     <div class="ws-block">
       <div class="ws-h">Watchlist <button id="ws-wl-new" class="ws-mini">new</button></div>
       <div id="ws-wl" class="ws-wl"><span class="faint">Sign in to keep a list.</span></div>

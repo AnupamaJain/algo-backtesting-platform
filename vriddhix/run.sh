@@ -19,6 +19,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV="$(cd "$ROOT/.." && pwd)/venv"
 PYTHON="$VENV/bin/python3"
+# The secret pairing this to the trading terminal, if the two have been
+# paired. Sourced rather than required: without it the handoff endpoint
+# refuses and the terminal's /sso route 404s, which is the correct state for
+# an install that has not opted into it.
+if [ -f "$ROOT/state/sso.env" ]; then
+  set -a; . "$ROOT/state/sso.env"; set +a
+fi
+
 HOST="${VRIDDHIX_HOST:-127.0.0.1}"
 PORT="${VRIDDHIX_PORT:-8787}"
 LOG="$ROOT/state/logs/serve.log"

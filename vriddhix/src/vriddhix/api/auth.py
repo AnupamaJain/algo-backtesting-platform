@@ -170,6 +170,62 @@ def issue_token(user: User, *, hours: int = 12) -> str:
     return f"{header}.{payload}.{_b64(signature)}"
 
 
+#: Where the trading terminal lives. It is a separate process on a separate
+#: port, so the handoff below is a redirect and not an internal call.
+TERMINAL_URL = os.getenv("PRAMANA_TERMINAL_URL", "http://127.0.0.1:5010")
+
+#: Seconds a handoff ticket stays valid. Long enough for one redirect and no
+#: longer -- it travels in a URL, so it lands in browser history, in any
+#: proxy log on the way, and in the Referer of whatever loads next.
+HANDOFF_TTL_SECONDS = 45
+
+
+def issue_handoff(user: User) -> str:
+    """A single-use ticket admitting this user to the trading terminal.
+
+    Signed with PRAMANA_SSO_SECRET, which is deliberately *not* the API JWT
+    secret. The API token is a twelve-hour bearer credential that clients
+    keep in localStorage; a ticket that opens a terminal able to place real
+    orders should not be the same string, and should not last as long.
+
+    Three refusals, all of which fail closed:
+
+      * no shared secret configured -> no handoff at all. Both processes have
+        to be deliberately told they are paired.
+      * the account is not an admin -> refused. Signup on the landing page is
+        open to anyone, so authentication alone cannot be what admits someone
+        to a live trading terminal. This is the line between the two.
+      * expired or replayed -> the terminal refuses it on the far side.
+    """
+    secret = os.getenv("PRAMANA_SSO_SECRET")
+    if not secret:
+        raise errors.ApiError(
+            "NOT_AVAILABLE", 503,
+            "PRAMANA_SSO_SECRET is not configured on this server, so the "
+            "trading terminal is not paired with this account system.",
+        )
+    if not user.is_admin:
+        raise errors.ApiError(
+            "FORBIDDEN", 403,
+            "This account is not an operator. The trading terminal places "
+            "real orders and is not opened by signing up.",
+        )
+
+    header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    now = datetime.now(timezone.utc)
+    payload = _b64(json.dumps({
+        "sub": user.email,
+        "name": user.display_name,
+        "aud": "terminal",
+        "jti": secrets.token_urlsafe(12),
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=HANDOFF_TTL_SECONDS)).timestamp()),
+    }).encode())
+    signing_input = f"{header}.{payload}".encode()
+    signature = hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
+    return f"{header}.{payload}.{_b64(signature)}"
+
+
 def _profile(user: User) -> dict:
     """What a client may know about its own account. No hash, ever."""
     return {
@@ -322,3 +378,19 @@ def _maybe_token(user: User) -> str | None:
             "account created but no token issued: VRIDDHIX_API_JWT_SECRET unset"
         )
         return None
+
+
+@router.post("/handoff")
+def handoff(user: UserDep) -> dict:
+    """Mint a ticket and say where to take it.
+
+    The terminal is a different process on a different port. Rather than
+    proxying it behind this one -- which would put a research tool in the
+    request path of an order book -- the reader is handed a short-lived
+    ticket and sent there directly.
+    """
+    ticket = issue_handoff(user)
+    return {
+        "url": f"{TERMINAL_URL}/sso?ticket={ticket}",
+        "expires_in": HANDOFF_TTL_SECONDS,
+    }

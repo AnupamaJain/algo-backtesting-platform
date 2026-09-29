@@ -60,6 +60,51 @@ only reset.
 
 ---
 
+## The trading terminal, from the same sign-in
+
+The options dashboard is a **separate process on port 5010** that can place
+real orders. Pramana cannot — it has no trading path at all. They are paired
+for sign-in only; pairing them does not merge them.
+
+```bash
+./run-terminal.sh start     # from the repository root
+./run-terminal.sh status    # running? paired? dry-run?
+```
+
+Signing in at `/login` and opening `/app` shows an **Open trading terminal**
+button — but only for an account flagged as an operator:
+
+```bash
+python3 -m vriddhix.cli operator you@example.com            # grant
+python3 -m vriddhix.cli operator you@example.com --revoke   # take it back
+```
+
+That flag is the whole point. Sign-up on the landing page is open to anyone,
+so *being signed in* cannot be what admits someone to a live order book. A
+non-operator never sees the button, and the endpoint behind it answers 403.
+
+Pairing needs a shared secret both processes read, in `state/sso.env`
+(gitignored, mode 600):
+
+```bash
+printf "export PRAMANA_SSO_SECRET='%s'\n" \
+  "$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')" \
+  > state/sso.env
+chmod 600 state/sso.env
+```
+
+Both launchers source it automatically. Without it the handoff endpoint
+answers 503 and the terminal's `/sso` route 404s — which is the right state
+for an install that has not opted in.
+
+It is deliberately **not** the API JWT secret. That one signs a twelve-hour
+bearer token clients keep in `localStorage`; this one signs a ticket that
+opens an order book. The ticket lasts 45 seconds, is single-use, and is
+refused on replay — it travels in a URL, so it lands in browser history, in
+any proxy log on the way, and in the `Referer` of whatever loads next.
+
+---
+
 ## Start, stop, check
 
 ```bash

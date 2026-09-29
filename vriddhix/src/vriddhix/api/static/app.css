@@ -1145,3 +1145,13 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
   padding: 6px 9px; border-radius: 6px; background: rgba(201,162,39,.1);
 }
 .pill-wait { background: var(--border); color: var(--muted); }
+
+.ws-terminal {
+  width: 100%; font-family: inherit; font-size: .84rem; cursor: pointer;
+  padding: 9px 12px; border-radius: 8px; color: var(--text);
+  border: 1px solid var(--accent); background: var(--surface);
+}
+.ws-terminal:hover { background: var(--accent); color: #fff; }
+.ws-terminal:disabled { opacity: .6; cursor: default; }
+.ws-terminal-note { font-size: .74rem; color: var(--faint); line-height: 1.5; margin: 7px 0 0; }
+.ws-terminal-err { font-size: .76rem; color: var(--bear); margin: 7px 0 0; line-height: 1.5; }

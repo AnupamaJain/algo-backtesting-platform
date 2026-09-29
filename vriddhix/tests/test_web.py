@@ -1124,3 +1124,115 @@ def test_an_unresolved_breakout_is_not_painted_as_a_win(client):
     js = client.get("/static/app-workspace.js").text
     assert "pill-wait" in js
     assert 'status === "CONFIRMED" ? "pill-ok"' in js
+
+
+# ---------------------------------------------------------------------------
+# Handoff to the trading terminal
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def operator(session):
+    from vriddhix.api.auth import hash_password
+    from vriddhix.db.models import User
+
+    user = User(email="op@test.invalid", display_name="Op", is_admin=True,
+                password_hash=hash_password("a long enough passphrase"))
+    session.add(user)
+    session.flush()
+    return user
+
+
+def test_a_handoff_needs_a_shared_secret(monkeypatch, session, operator):
+    """Absent, the two apps are not paired and no ticket exists.
+
+    Pairing a sign-up page that anyone can use to a terminal that places real
+    orders is a decision that has to be made on purpose, on both sides.
+    """
+    from vriddhix.api import auth, errors
+
+    monkeypatch.delenv("PRAMANA_SSO_SECRET", raising=False)
+    with pytest.raises(errors.ApiError) as caught:
+        auth.issue_handoff(operator)
+    assert caught.value.status_code == 503
+
+
+def test_only_an_operator_gets_a_ticket(monkeypatch, session):
+    """The line between reading research and opening an order book.
+
+    Signing up on the landing page is open to anyone, so authentication
+    cannot be what admits someone to the terminal.
+    """
+    from vriddhix.api import auth, errors
+    from vriddhix.db.models import User
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "s" * 40)
+    ordinary = User(email="reader@test.invalid", display_name="Reader",
+                    is_admin=False, password_hash=auth.hash_password("passphrase here"))
+    session.add(ordinary)
+    session.flush()
+
+    with pytest.raises(errors.ApiError) as caught:
+        auth.issue_handoff(ordinary)
+    assert caught.value.status_code == 403
+
+
+def test_a_ticket_is_short_lived_and_scoped(monkeypatch, session, operator):
+    """It travels in a URL, so it lands in history, in proxy logs and in the
+    Referer of whatever loads next. Minutes would be too long."""
+    import base64
+    import json
+    import time
+
+    from vriddhix.api import auth
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "s" * 40)
+    ticket = auth.issue_handoff(operator)
+
+    payload = json.loads(base64.urlsafe_b64decode(
+        ticket.split(".")[1] + "=" * (-len(ticket.split(".")[1]) % 4)))
+
+    assert payload["aud"] == "terminal"
+    assert payload["sub"] == operator.email
+    assert payload["jti"]
+    assert 0 < payload["exp"] - time.time() <= auth.HANDOFF_TTL_SECONDS + 1
+
+
+def test_a_ticket_is_not_the_api_token(monkeypatch, session, operator):
+    """Different secrets on purpose. The API token is a twelve-hour bearer
+    credential kept in localStorage; this opens a live order book."""
+    from vriddhix.api import auth
+
+    monkeypatch.setenv("VRIDDHIX_API_JWT_SECRET", "api" * 14)
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "sso" * 14)
+
+    assert auth.issue_handoff(operator) != auth.issue_token(operator)
+
+
+def test_a_ticket_signed_with_the_api_secret_is_not_admissible(monkeypatch, session, operator):
+    """If the two secrets were interchangeable, any leaked API token could be
+    reshaped into a terminal ticket."""
+    import hashlib
+    import hmac
+
+    from vriddhix.api import auth
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "sso" * 14)
+    ticket = auth.issue_handoff(operator)
+    header, payload, signature = ticket.split(".")
+
+    forged = hmac.new(("api" * 14).encode(),
+                      f"{header}.{payload}".encode(), hashlib.sha256).digest()
+    assert auth._b64(forged) != signature
+
+
+def test_the_terminal_button_is_hidden_until_the_account_is_checked(client):
+    """Rendering it for everyone and refusing on click would advertise a
+    terminal most accounts cannot open."""
+    body = client.get("/app").text
+    assert 'id="ws-terminal-block" hidden' in body
+
+    js = client.get("/static/app-workspace.js").text
+    assert "me.is_admin" in js
+    # ...and read from the right level: /auth/me answers {user: {...}}.
+    assert "res && res.user" in js

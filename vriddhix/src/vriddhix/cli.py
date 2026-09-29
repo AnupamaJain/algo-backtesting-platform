@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -395,6 +396,34 @@ def cmd_repair_regime(args) -> int:
         return 0 if not after else 2
 
 
+def cmd_operator(args) -> int:
+    """Grant or revoke operator status on an account.
+
+    An operator may hand itself from here to the trading terminal, which
+    places real orders. Sign-up on the landing page is open to anyone, so
+    this flag -- not the existence of an account -- is what separates someone
+    reading research from someone able to open an order book.
+    """
+    from .db.models import User
+
+    with session_scope() as session:
+        user = session.scalar(select(User).where(User.email == args.email))
+        if user is None:
+            print(f"no account for {args.email}", file=sys.stderr)
+            return 1
+
+        user.is_admin = not args.revoke
+        session.commit()
+        state = "revoked from" if args.revoke else "granted to"
+        print(f"operator {state} {user.email}")
+        if not args.revoke:
+            print("  they can now open the trading terminal from /app")
+            if not os.getenv("PRAMANA_SSO_SECRET"):
+                print("  note: PRAMANA_SSO_SECRET is unset, so the handoff is "
+                      "still closed on both sides", file=sys.stderr)
+    return 0
+
+
 def cmd_status(_args) -> int:
     with session_scope() as session:
         counts = {
@@ -543,6 +572,12 @@ def main(argv: list[str] | None = None) -> int:
         "revalidate", help="re-run quality rules over stored bars")
     revalidate.add_argument("symbols", nargs="*", help="default: every symbol")
     revalidate.set_defaults(func=cmd_revalidate)
+
+    operator = sub.add_parser(
+        "operator", help="grant or revoke trading-terminal access")
+    operator.add_argument("email")
+    operator.add_argument("--revoke", action="store_true")
+    operator.set_defaults(func=cmd_operator)
 
     repair = sub.add_parser(
         "repair-regime", help="rebuild the regime chain (dry run by default)")
