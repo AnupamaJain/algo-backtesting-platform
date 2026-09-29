@@ -11,7 +11,7 @@
 <script>document.documentElement.className += " js";</script>
 <title>{% block title %}Pramana{% endblock %}</title>
 <meta name="description" content="{% block description %}Pattern intelligence and quantitative research for Indian equities. A research instrument, not a prediction machine.{% endblock %}">
-<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="{{ asset('app.css') }}">
 <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
 
 {# One unambiguous URL per page. Without it, /?utm_source=x and / are two
@@ -61,11 +61,58 @@
       <a href="/app" class="{% if page == 'app' %}active{% endif %}">Workspace</a>
       <a href="/learn" class="secondary {% if page == 'learn' %}active{% endif %}">Learn</a>
       <a href="/api/docs" class="secondary">API</a>
-      <a href="/login" {% if page == 'login' %}class="active"{% endif %}>Sign in</a>
-      <a class="btn btn-primary" href="/signup">Create account</a>
+      {# Swapped by script once the token is checked. Server-rendered as the
+         signed-out state because the session is a bearer token in
+         localStorage -- this process has no way to know who you are while
+         rendering, and guessing would flash the wrong nav either way. #}
+      <span id="nav-out">
+        <a href="/login" {% if page == 'login' %}class="active"{% endif %}>Sign in</a>
+        <a class="btn btn-primary" href="/signup">Create account</a>
+      </span>
+      <span id="nav-in" hidden>
+        <span id="nav-who" class="nav-who"></span>
+        <button id="nav-signout" class="nav-signout">Sign out</button>
+      </span>
     </nav>
   </div>
 </header>
+
+{#
+  Who is signed in. The header used to read "Sign in / Create account" to
+  everyone, including people who had just signed in -- which made a correctly
+  hidden operator button look like a broken one.
+#}
+<script>
+(function () {
+  function token() {
+    try { return localStorage.getItem("vriddhix-token"); } catch (e) { return null; }
+  }
+  var t = token();
+  if (!t) return;
+
+  fetch("/api/v1/auth/me", { headers: { Authorization: "Bearer " + t } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (res) {
+      var me = res && res.user;
+      if (!me) {
+        // Expired or revoked. Drop it rather than leaving a dead token to
+        // fail every request from here on.
+        try { localStorage.removeItem("vriddhix-token"); } catch (e) {}
+        return;
+      }
+      document.getElementById("nav-out").hidden = true;
+      document.getElementById("nav-in").hidden = false;
+      document.getElementById("nav-who").textContent =
+        me.display_name || me.email;
+    })
+    .catch(function () {});
+
+  document.getElementById("nav-signout").addEventListener("click", function () {
+    try { localStorage.removeItem("vriddhix-token"); } catch (e) {}
+    location.href = "/";
+  });
+})();
+</script>
 
 {% block content %}{% endblock %}
 

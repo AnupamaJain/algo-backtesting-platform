@@ -13,6 +13,7 @@ the first thing to make the measurements untrustworthy.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 
@@ -44,6 +45,33 @@ from ..deps import ProvenanceDep, SessionDep
 logger = logging.getLogger(__name__)
 
 TEMPLATES = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+
+def asset(name: str) -> str:
+    """A URL for a static file that changes when the file does.
+
+    The stylesheet is served with an ETag and a Last-Modified but no
+    Cache-Control, so browsers fall back to heuristic caching -- roughly a
+    tenth of the file's age, which for a file first written weeks ago is
+    hours. The page then renders against a stylesheet that predates half of
+    it: the workspace arrived as an unstyled stack of rows on a machine that
+    had visited before, while a fresh browser saw it correctly.
+
+    Hashing the contents rather than stamping the mtime keeps the URL stable
+    when nothing changed, so a redeploy that does not touch the file does not
+    throw away a cache that is still good.
+    """
+    path = STATIC_DIR / name
+    try:
+        digest = hashlib.md5(path.read_bytes()).hexdigest()[:10]
+    except OSError:
+        return f"/static/{name}"
+    return f"/static/{name}?v={digest}"
+
+
+TEMPLATES.env.globals["asset"] = asset
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
 

@@ -3,7 +3,7 @@
 {% block description %}Scan NSE equities, open any name and read what the engines recorded about it.{% endblock %}
 
 {% block content %}
-<script defer src="/static/app-workspace.js"></script>
+<script defer src="{{ asset('app-workspace.js') }}"></script>
 {#
   The workspace. Everything below is fetched from the same public API the
   docs describe -- there is no private endpoint behind the sign-in, because

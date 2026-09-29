@@ -1236,3 +1236,60 @@ def test_the_terminal_button_is_hidden_until_the_account_is_checked(client):
     assert "me.is_admin" in js
     # ...and read from the right level: /auth/me answers {user: {...}}.
     assert "res && res.user" in js
+
+
+def test_static_assets_are_versioned_by_their_contents(client):
+    """A stylesheet served with an ETag but no Cache-Control is cached
+    heuristically -- roughly a tenth of the file's age, which for a file
+    first written weeks ago is hours. The workspace arrived as an unstyled
+    stack of rows on any browser that had visited before.
+    """
+    import re
+
+    body = client.get("/app").text
+    css = re.search(r'href="/static/app\.css\?v=([a-f0-9]{10})"', body)
+    js = re.search(r'src="/static/app-workspace\.js\?v=([a-f0-9]{10})"', body)
+    assert css, "the stylesheet is not cache-busted"
+    assert js, "the workspace script is not cache-busted"
+    assert css.group(1) != js.group(1), "two different files share a version"
+
+
+def test_the_asset_version_tracks_the_file(tmp_path, monkeypatch):
+    """Hashed, not stamped: a redeploy that does not touch the file must not
+    throw away a cache that is still good."""
+    from vriddhix.api.routers import pages
+
+    monkeypatch.setattr(pages, "STATIC_DIR", tmp_path)
+    target = tmp_path / "x.css"
+
+    target.write_text("a{}")
+    first = pages.asset("x.css")
+    assert pages.asset("x.css") == first        # unchanged file, same URL
+
+    target.write_text("b{}")
+    assert pages.asset("x.css") != first        # changed file, new URL
+
+
+def test_a_missing_asset_still_produces_a_usable_url(tmp_path, monkeypatch):
+    """Better a URL that 404s visibly than a template that raises."""
+    from vriddhix.api.routers import pages
+
+    monkeypatch.setattr(pages, "STATIC_DIR", tmp_path)
+    assert pages.asset("nope.css") == "/static/nope.css"
+
+
+def test_the_header_can_show_who_is_signed_in(client):
+    """It used to read "Sign in / Create account" to everyone, including
+    someone who had just signed in -- which made a correctly hidden operator
+    button look like a broken one."""
+    body = client.get("/").text
+    assert 'id="nav-in"' in body and 'id="nav-out"' in body
+    # Signed-out is what the server renders, because it cannot know.
+    assert 'id="nav-in" hidden' in body
+    assert "/api/v1/auth/me" in body
+
+
+def test_a_dead_token_is_discarded_rather_than_kept(client):
+    """Leaving an expired token in localStorage fails every request after it
+    and shows a signed-out header anyway."""
+    assert 'localStorage.removeItem("vriddhix-token")' in client.get("/").text
