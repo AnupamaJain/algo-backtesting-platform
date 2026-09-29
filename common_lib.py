@@ -1126,8 +1126,6 @@ def _build_broker_client():
 
 
 kite = _build_broker_client()
-website="https://kite.trade/connect/login?api_key="+api_key
-print(website) # This is link used to show the website to get access token
 print("-------------------------")
 
 # Persistence for script-generated orders

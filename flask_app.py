@@ -750,6 +750,27 @@ index_template = """
     <div><a href="/home"><h2>Open the dashboard</h2></a></div>"""
 
 
+def broker_available() -> bool:
+    """Whether a broker client can be built right now.
+
+    Six endpoints used to ask `"access_token" not in session` and refuse with
+    "Session expired. Please authenticate first." That was a Zerodha session
+    check. With Zerodha removed there is never such a token, so those
+    endpoints refused unconditionally -- among them /api/all_strikes, which
+    is how the Wave Extractor fills its symbol list, and the lot-size and
+    expiry lookups beside it.
+
+    The adapter authenticates itself from broker.yaml and the token files it
+    names. The honest question is whether that succeeds, so ask it.
+    """
+    try:
+        _broker_client(account_id="main")
+        return True
+    except Exception as exc:  # noqa: BLE001 - the caller reports, we only answer
+        logging.warning("broker_available: no broker client (%s)", exc)
+        return False
+
+
 def get_kite_client():
     """Returns a monitored kite client object.
 
@@ -1551,8 +1572,9 @@ def get_all_strikes():
     if not underlying or not expiry:
         return jsonify({"error": "Both 'underlying' and 'expiry' are required"}), 400
 
-    if "access_token" not in session:
-        return jsonify({"error": "Session expired. Please authenticate first."}), 401
+    if not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     try:
         kite = get_kite_client()
@@ -1728,8 +1750,8 @@ def session_status():
             logging.info("[SESSION_STATUS] Restoring access_token from DB.")
             session["access_token"] = saved_token
 
-    if "access_token" not in session:
-        logging.info("[SESSION_STATUS] No access_token in session.")
+    if not broker_available():
+        logging.info("[SESSION_STATUS] No broker client could be built.")
         return jsonify({"authenticated": False})
 
     authenticated, is_auth_failure = _probe_kite_session(session["access_token"])
@@ -1758,8 +1780,9 @@ def sync_session_token():
     Returns:
         JSON with 'saved': true on success, or an error message.
     """
-    if "access_token" not in session:
-        return jsonify({"error": "No Kite access_token in current session. Please log in via Kite first."}), 401
+    if not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     try:
         instrument_cache.save_kite_token(session["access_token"])
@@ -2874,8 +2897,9 @@ def wave_extractor_suggest_gaps():
     if not symbols:
         return jsonify({"error": "'symbols' must be a non-empty list"}), 400
 
-    if "access_token" not in session:
-        return jsonify({"error": "Session expired. Please authenticate first."}), 401
+    if not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     kite = get_kite_client()
     _cl.reload_wave_extractor_config()
@@ -3208,7 +3232,7 @@ def get_stock_config():
         return jsonify({"error": "stock_name query parameter required"}), 400
 
     try:
-        if "access_token" not in session:
+        if not broker_available():
             return jsonify({
                 "lot_size": 1,
                 "strike_gap": 50,
@@ -3669,8 +3693,9 @@ def get_nifty_positions():
     request_token = data.get("request_token")
     force_refresh: bool = bool(data.get("force_refresh", False))
 
-    if not request_token and "access_token" not in session:
-        return jsonify({"error": "Authentication required. Please connect Kite in the header."}), 401
+    if not request_token and not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     if force_refresh:
         invalidate_positions_cache()
@@ -3706,8 +3731,9 @@ def get_nifty_next_expiry_positions():
     request_token = data.get("request_token")
     force_refresh: bool = bool(data.get("force_refresh", False))
 
-    if not request_token and "access_token" not in session:
-        return jsonify({"error": "Authentication required. Please connect Kite in the header."}), 401
+    if not request_token and not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     if force_refresh:
         invalidate_positions_cache()
@@ -3791,8 +3817,9 @@ def get_sensex_positions():
     request_token = data.get("request_token")
     force_refresh: bool = bool(data.get("force_refresh", False))
 
-    if not request_token and "access_token" not in session:
-        return jsonify({"error": "Authentication required. Please connect Kite in the header."}), 401
+    if not request_token and not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     if force_refresh:
         invalidate_positions_cache()
@@ -3837,8 +3864,9 @@ def get_sensex_next_expiry_positions():
     request_token = data.get("request_token")
     force_refresh: bool = bool(data.get("force_refresh", False))
 
-    if not request_token and "access_token" not in session:
-        return jsonify({"error": "Authentication required. Please connect Kite in the header."}), 401
+    if not request_token and not broker_available():
+        return jsonify({"error": "No broker client available — check "
+                                 "config/broker.yaml and the token files it names."}), 503
 
     if force_refresh:
         invalidate_positions_cache()

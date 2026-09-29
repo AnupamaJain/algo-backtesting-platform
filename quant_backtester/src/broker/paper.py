@@ -267,6 +267,60 @@ class PaperBroker(BrokerAdapter):
             for symbol in symbols
         ]
 
+    def resolve_instrument(self, symbol: str) -> UnifiedInstrument:
+        """Configured universe first, then the broker's own derivative master.
+
+        The base class walks get_instruments(), which here is the `universe`
+        list in broker.yaml -- a couple of dozen cash symbols. Every Indian
+        strategy in this repository trades index options, so every one of
+        them was refused with "not tradable on this broker" before it could
+        place a simulated order.
+
+        Listing thousands of contracts in a config file is not the answer:
+        they expire weekly. This falls through to the scrip master the
+        derivative exchanges publish, which is where the real expiries and
+        strikes live, and which is already cached locally for the quote path.
+        """
+        from .exceptions import InstrumentNotFound
+
+        try:
+            return super().resolve_instrument(symbol)
+        except InstrumentNotFound:
+            pass
+
+        derived = self._resolve_derivative(symbol)
+        if derived is not None:
+            return derived
+
+        raise InstrumentNotFound(
+            f"{symbol} is not in the configured universe and no derivative "
+            f"master lists it", broker=self.name, symbol=symbol,
+        )
+
+    def _resolve_derivative(self, symbol: str) -> UnifiedInstrument | None:
+        """Look `symbol` up in Dhan's published scrip master.
+
+        Returns None rather than raising: the caller distinguishes "not a
+        derivative" from "lookup broke", and a paper account should not fail
+        an order because a master file could not be read.
+        """
+        from pathlib import Path
+
+        try:
+            from .dhan import DhanInstruments
+
+            state = Path(__file__).resolve().parents[2] / "state"
+            for exchange in ("NSE", "BSE"):
+                try:
+                    found = DhanInstruments(state).resolve(symbol, exchange=exchange)
+                except Exception:  # noqa: BLE001 - try the other exchange
+                    continue
+                if found is not None:
+                    return found
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("derivative lookup for %s failed: %s", symbol, exc)
+        return None
+
     # -- internals --------------------------------------------------------
 
     def _require_quote(self, symbol: str) -> UnifiedQuote:
