@@ -1385,3 +1385,153 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 .gb-verdict em { color: var(--text); font-style: italic; }
 .gb-foot { margin-top: 14px; font-size: .78rem; }
 .gb-foot code { font-size: .95em; }
+
+/* Survived and eliminated read differently at a glance: the point of the
+   pair is the size of the second list. */
+.gb-out { margin-top: -6px; }
+.gb-chip.gb-kept { border-color: color-mix(in srgb, var(--bull, #34d399) 40%, var(--line)); }
+.gb-chip.gb-kept i { color: var(--bull, #34d399); }
+.gb-chip.gb-gone {
+  color: var(--faint);
+  border-style: dashed;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--bear, #fb7185) 60%, transparent);
+}
+
+/* ── the bento: six unequal tiles, breathing ──────────────────────────
+   A different shape and a different motion from the screen stack, because
+   it answers a different question. The stack is depth and one card at a
+   time; this is the whole set at once, in tiles of unequal size because
+   the six things are not of equal weight.
+
+   The motion is a slow vertical drift, each tile on its own phase, so the
+   grid rises and settles rather than marching. It is decoration and it
+   knows it: --i staggers the delay, nothing moves more than 9px, and
+   prefers-reduced-motion stops it dead. */
+.bento-section { margin-top: 64px; }
+.bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(150px, auto);
+  gap: 14px;
+  margin-top: 24px;
+}
+.bento-wide  { grid-column: span 2; }
+.bento-tall  { grid-column: span 2; grid-row: span 2; }
+.bento-small { grid-column: span 1; }
+
+@media (max-width: 900px) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bento-wide, .bento-tall { grid-column: span 2; }
+  .bento-tall { grid-row: span 1; }
+  .bento-small { grid-column: span 1; }
+}
+@media (max-width: 560px) {
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bento-wide, .bento-tall, .bento-small { grid-column: span 1; }
+}
+
+.bento-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(420px 220px at 12% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    var(--panel);
+  text-decoration: none;
+  overflow: hidden;
+  animation: bento-drift 7s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -1.15s);
+  transition: border-color .18s, transform .18s;
+}
+.bento-tile:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  animation-play-state: paused;   /* stop under the cursor, so it can be read */
+  transform: translateY(-3px);
+  text-decoration: none;
+}
+@keyframes bento-drift {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+
+.bento-ico {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; margin-bottom: 6px;
+  border-radius: 8px;
+  background: var(--panel-2, #141a29);
+  border: 1px solid var(--line);
+  color: var(--accent);
+}
+.bento-ico .ico { width: 16px; height: 16px; }
+.bento-kicker {
+  font-size: .68rem; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--faint);
+}
+.bento-figure {
+  font-size: clamp(1.6rem, 3.4vw, 2.3rem); line-height: 1.05;
+  color: var(--text); font-weight: 600; letter-spacing: -.02em;
+}
+.bento-tall .bento-figure { font-size: clamp(2rem, 4.4vw, 3rem); }
+.bento-unit { font-size: .82rem; color: var(--accent); margin-bottom: 6px; }
+.bento-body { font-size: .85rem; color: var(--muted); line-height: 1.6; flex: 1; }
+.bento-cta {
+  margin-top: 10px; font-size: .78rem; font-weight: 600; color: var(--muted);
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.bento-tile:hover .bento-cta { color: var(--accent); }
+.bento-cta i { font-style: normal; transition: transform .18s; }
+.bento-tile:hover .bento-cta i { transform: translateX(3px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bento-tile { animation: none; }
+  .bento-tile:hover { transform: none; }
+}
+
+/* ── the terminal, drawn in 3D ────────────────────────────────────────
+   The screenshots are the content and the canvas is the presentation, so
+   both live in the markup: the fallback row is what a browser without
+   WebGL keeps, and what anyone who asked for reduced motion keeps. The
+   canvas only takes over once its textures have actually decoded, which
+   is what .gl-live marks -- swapping earlier would show an empty box for
+   as long as the images take. */
+.gl-section { margin-top: 64px; }
+.gl-stage {
+  position: relative;
+  margin-top: 24px;
+  min-height: clamp(280px, 40vw, 470px);
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(760px 380px at 50% 12%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 66%),
+    linear-gradient(to bottom, var(--panel), var(--bg));
+  overflow: hidden;
+}
+#gl-desk {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: none;
+  cursor: grab;
+}
+.gl-stage.gl-live #gl-desk { display: block; }
+.gl-stage.gl-live .gl-fallback { display: none; }
+
+.gl-fallback {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 14px;
+  padding: 18px;
+}
+.gl-fallback figure { margin: 0; }
+.gl-fallback img {
+  display: block; width: 100%; height: auto;
+  border-radius: 10px; border: 1px solid var(--line);
+}
+.gl-fallback figcaption {
+  margin-top: 8px; font-size: .8rem; color: var(--muted);
+}
+.gl-foot { margin-top: 12px; text-align: center; font-size: .78rem; }

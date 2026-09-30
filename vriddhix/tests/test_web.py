@@ -838,10 +838,16 @@ def test_the_webgl_surface_is_built_from_stored_regimes(client, session):
 
 def test_the_surface_is_dropped_rather_than_faked_when_history_is_thin(client):
     """With no regimes stored there is nothing to render, and inventing a
-    shape would be the one dishonest pixel on the page."""
+    shape would be the one dishonest pixel on the page.
+
+    Specific to the terrain, not to any canvas: the desk section draws the
+    terminal's own screenshots, which exist whether or not this database
+    has a regime history, and dropping those would hide real content to
+    satisfy a rule about fabricated content.
+    """
     body = client.get("/").text
     assert 'id="surface-data"' not in body
-    assert "<canvas" not in body
+    assert 'id="terrain"' not in body
 
 
 def test_no_page_presents_a_result_as_a_return(client):

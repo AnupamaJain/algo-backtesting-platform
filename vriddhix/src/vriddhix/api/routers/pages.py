@@ -442,6 +442,27 @@ BACKTEST_ROOT = Path(__file__).resolve().parents[5] / "quant_backtester"
 BACKTEST_WINDOWS = (("results", "10 years"), ("results_5y", "5 years"))
 
 
+#: Not strategies -- the funnel's own output, written alongside them.
+_NON_STRATEGY_DIRS = {"layer2", "layer3", "layer4", "intraday", "pead"}
+
+
+def _strategies_swept(folder: str) -> list[str]:
+    """Every strategy the sweep covered, survivors or not.
+
+    Without this the page could only show what survived, which is the half
+    that flatters: ten names look like a result until you know that
+    twenty-one went in.
+    """
+    base = BACKTEST_ROOT / folder
+    try:
+        return sorted(
+            child.name for child in base.iterdir()
+            if child.is_dir() and child.name not in _NON_STRATEGY_DIRS
+        )
+    except OSError:
+        return []
+
+
 def _read_window(folder: str) -> dict | None:
     """One window's funnel, survivors and portfolio comparison."""
     import csv
@@ -485,9 +506,15 @@ def _read_window(folder: str) -> dict | None:
     except OSError:
         pass
 
+    swept = _strategies_swept(folder)
+    kept = set(strategies)
+    eliminated = [name for name in swept if name not in kept]
+
     tested = manifest.get("num_configurations_tested") or 0
     survived = manifest.get("num_survivors") or 0
     return {
+        "swept": swept,
+        "eliminated": eliminated,
         "tested": tested,
         "survivors": survived,
         "survival_pct": (survived / tested * 100) if tested else 0.0,
@@ -527,6 +554,118 @@ def _global_results() -> dict | None:
             w["best"] and w["best"]["name"] == "Buy & Hold" for w in windows
         ),
     }
+
+
+#: The contract table the terminal trades against. Cross-read for the same
+#: reason BACKTEST_ROOT is: these are one product, and a figure about the
+#: terminal is worth more than a figure about the page describing it.
+INSTRUMENTS_DB = Path(__file__).resolve().parents[5] / "instruments.db"
+
+
+def _contract_count() -> int:
+    """How many instruments the terminal can currently resolve."""
+    import sqlite3
+
+    if not INSTRUMENTS_DB.exists():
+        return 0
+    try:
+        with sqlite3.connect(f"file:{INSTRUMENTS_DB}?mode=ro", uri=True) as conn:
+            return conn.execute("SELECT COUNT(*) FROM instruments").fetchone()[0]
+    except sqlite3.Error:
+        return 0
+
+
+def _use_cases(session) -> list[dict]:
+    """What the product is for, each tile carrying a number it can defend.
+
+    The screen stack above answers "what does it look like". This answers
+    "what would I do with it", which is a different question and wants a
+    different shape -- tiles of unequal size, because the six things are
+    not of equal weight, and a figure on each, because a use case with no
+    number attached is a brochure line.
+
+    Every figure is read live. A tile whose number cannot be produced is
+    dropped rather than shown with a dash: an empty box on a landing page
+    invites the reader to assume the worst, and here they would be right.
+    """
+    coverage = _coverage(session)
+    funnel = _global_results()
+    contracts = _contract_count()
+
+    tiles: list[dict] = []
+
+    if coverage.get("symbols") and coverage.get("bars"):
+        tiles.append({
+            "size": "wide", "icon": "search", "kicker": "Find the setup",
+            "figure": f"{coverage['bars']:,}",
+            "unit": "daily bars",
+            "body": (
+                f"{coverage['symbols']} NSE names over {coverage.get('years', 0)} years, "
+                "re-scanned every session for contraction bases, structure breaks "
+                "and gaps."
+            ),
+            "href": "/", "cta": "Open the scanner",
+        })
+
+    if funnel:
+        ten = funnel["windows"][0]
+        tiles.append({
+            "size": "tall", "icon": "chart", "kicker": "Find out if it ever worked",
+            "figure": f"{ten['survivors']:,}",
+            "unit": f"of {ten['tested']:,} survived",
+            "body": (
+                "Six gates, walk-forward, costs included, ending in a "
+                "false-discovery-rate correction. Most of what looks like an "
+                "edge does not reach the far end."
+            ),
+            "href": "/learn", "cta": "How the funnel works",
+        })
+
+    if coverage.get("patterns"):
+        tiles.append({
+            "size": "small", "icon": "alert", "kicker": "Watch it fail",
+            "figure": f"{coverage['patterns']:,}",
+            "unit": "patterns recorded",
+            "body": "Failures are kept, with their reason. No view drops them by default.",
+            "href": "/vcp-breakout-failure-rate", "cta": "The ledger",
+        })
+
+    if contracts:
+        tiles.append({
+            "size": "small", "icon": "target", "kicker": "Trade it on paper",
+            "figure": f"{contracts:,}",
+            "unit": "live contracts",
+            "body": (
+                "Simulated money against real prices, on the broker's own "
+                "contract master. Nothing reaches an exchange until you say so."
+            ),
+            "href": "/app", "cta": "The terminal",
+        })
+
+    if funnel and funnel["windows"][0]["best"]:
+        best = funnel["windows"][0]["best"]
+        tiles.append({
+            "size": "wide", "icon": "trend-up", "kicker": "Be told when you lost",
+            "figure": f"{best['annual']:+.1f}%",
+            "unit": f"a year — {best['name']}",
+            "body": (
+                "The comparison every backtest owes you. Over both windows the "
+                "survivors are beaten by buying the index and waiting, and the "
+                "page says so rather than showing the half that flatters."
+            ),
+            "href": "/learn#lies", "cta": "How this can still mislead you",
+        })
+
+    if coverage.get("scans"):
+        tiles.append({
+            "size": "small", "icon": "clipboard", "kicker": "Account for the fills",
+            "figure": f"{coverage['scans']:,}",
+            "unit": "sessions scanned",
+            "body": "FIFO pairing and per-strategy attribution over every execution.",
+            "href": "/app", "cta": "The journal",
+        })
+
+    return tiles
 
 
 def _regime_surface(session, points: int = 420) -> list[float]:
@@ -691,6 +830,7 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "rotation": _rotation(session, prov.as_of),
             "screens": APP_SCREENS,
             "global_results": _global_results(),
+            "use_cases": _use_cases(session),
             "clips": APP_CLIPS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),

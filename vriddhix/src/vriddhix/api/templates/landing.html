@@ -282,6 +282,72 @@
 </section>
 {% endif %}
 
+<!-- ══════════════ the terminal, in space ══════════════ -->
+<section class="wrap gl-section">
+  <div class="sec-head">
+    <h2>The desk itself</h2>
+    <span class="faint">real screens, drawn in 3D</span>
+  </div>
+  <p class="muted lead-narrow">
+    The research side finds the setup; this is where it gets traded. Paper
+    or live, against the broker's own contract master, with the Greeks and
+    the exposure on the same screen as the order.
+  </p>
+
+  <div class="gl-stage" id="gl-stage">
+    <canvas id="gl-desk" aria-hidden="true"></canvas>
+
+    {# The images are the content and the canvas is the presentation, so
+       they are in the markup either way: without WebGL this stays a row of
+       screenshots rather than becoming an empty box. #}
+    <div class="gl-fallback" id="gl-fallback">
+      {% for slug, title in [
+          ("term-home", "Every strategy, one launcher"),
+          ("term-wave", "Wave Extractor, grouped by expiry"),
+          ("term-journal", "Attribution over every fill")] %}
+      <figure>
+        <img src="{{ asset('screens/' ~ slug ~ '.png') }}" alt="Trading terminal — {{ title }}"
+             loading="lazy" draggable="false" data-gl-tex>
+        <figcaption>{{ title }}</figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+
+  <p class="faint gl-foot">
+    Move the pointer across the panels. Captured from this instance — the
+    same screens the stack above shows flat.
+  </p>
+</section>
+
+<!-- ══════════════ what you would do with it ══════════════ -->
+{% if use_cases %}
+<section class="wrap bento-section">
+  <div class="sec-head">
+    <h2>Six things this is for</h2>
+    <span class="faint">every figure read live</span>
+  </div>
+  <p class="muted lead-narrow">
+    The screens above answer what it looks like. These answer what you would
+    do with it — and each one carries the number it can defend rather than a
+    sentence about capability.
+  </p>
+
+  <div class="bento" id="bento">
+    {% for t in use_cases %}
+    <a class="bento-tile bento-{{ t.size }}" href="{{ t.href }}" style="--i: {{ loop.index0 }}">
+      <span class="bento-ico"><svg class="ico"><use href="#i-{{ t.icon }}"/></svg></span>
+      <span class="bento-kicker">{{ t.kicker }}</span>
+      <span class="bento-figure num">{{ t.figure }}</span>
+      <span class="bento-unit">{{ t.unit }}</span>
+      <span class="bento-body">{{ t.body }}</span>
+      <span class="bento-cta">{{ t.cta }} <i aria-hidden="true">→</i></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════ global backtest, both windows ══════════════ -->
 {% if global_results %}
 {% set g = global_results %}
@@ -325,11 +391,24 @@
       </ul>
 
       <div class="gb-strats">
-        <span class="gb-label">Strategies left</span>
-        {% for name, count in w.strategies[:5] %}
-        <span class="gb-chip">{{ name }} <i class="num">{{ count }}</i></span>
+        <span class="gb-label">
+          Survived — {{ w.strategies|length }} of {{ w.swept|length }} strategies
+        </span>
+        {% for name, count in w.strategies %}
+        <span class="gb-chip gb-kept">{{ name }} <i class="num">{{ count }}</i></span>
         {% endfor %}
       </div>
+
+      {% if w.eliminated %}
+      <div class="gb-strats gb-out">
+        <span class="gb-label">
+          Eliminated — every configuration rejected
+        </span>
+        {% for name in w.eliminated %}
+        <span class="gb-chip gb-gone">{{ name }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
 
       {% if w.portfolios %}
       <table class="gb-table">
@@ -364,6 +443,25 @@
       <p>Nothing cleared the funnel in both windows.</p>
       {% endif %}
     </div>
+    {% set flipped = [] %}
+    {% for name, _c in g.windows[0].strategies %}
+      {% if name in g.windows[1].eliminated %}{% set _ = flipped.append(name) %}{% endif %}
+    {% endfor %}
+    {% for name, _c in g.windows[1].strategies %}
+      {% if name in g.windows[0].eliminated %}{% set _ = flipped.append(name) %}{% endif %}
+    {% endfor %}
+    {% if flipped %}
+    <div>
+      <span class="gb-label">Survived one window, eliminated in the other</span>
+      <p>
+        {% for name in flipped %}<b>{{ name }}</b>{% if not loop.last %}, {% endif %}{% endfor %}.
+        Every configuration of these was rejected in the window they failed.
+        A strategy that clears a funnel over one period and is thrown out
+        whole over another has not been shown to work; it has been shown to
+        have had a good stretch.
+      </p>
+    </div>
+    {% endif %}
     {% if g.beaten_by_hold %}
     <div>
       <span class="gb-label">And the honest part</span>
@@ -1554,6 +1652,184 @@
   document.querySelectorAll("section.wrap > *").forEach(function (el) {
     el.classList.add("rise"); io.observe(el);
   });
+})();
+
+/* ── WebGL: the terminal's own screens as panels in depth ────────────────
+   Three real screenshots textured onto quads, tilted away from the reader
+   and drifting on their own phase, with the whole group leaning toward the
+   pointer. The images are in the markup as ordinary <img> and this reads
+   them as textures, so a browser without WebGL keeps a row of screenshots
+   instead of an empty canvas -- and so does anyone who asked for reduced
+   motion. */
+(function () {
+  var stage = document.getElementById("gl-stage");
+  var cv = document.getElementById("gl-desk");
+  var fallback = document.getElementById("gl-fallback");
+  if (!stage || !cv || !fallback) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  var imgs = Array.prototype.slice.call(fallback.querySelectorAll("img[data-gl-tex]"));
+  if (!imgs.length) return;
+
+  var gl = cv.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: false });
+  if (!gl) return;                       // the page is complete without it
+
+  var VS = [
+    "attribute vec2 p; uniform mat4 mvp; varying vec2 uv;",
+    "void main(){ uv = vec2(p.x + 0.5, 0.5 - p.y); gl_Position = mvp * vec4(p, 0.0, 1.0); }"
+  ].join("\n");
+  var FS = [
+    "precision mediump float; varying vec2 uv;",
+    "uniform sampler2D tex; uniform float dim;",
+    "void main(){",
+    "  vec4 c = texture2D(tex, uv);",
+    // a cool edge vignette, so a flat screenshot reads as a lit panel
+    "  float e = smoothstep(0.0, 0.10, uv.x) * smoothstep(0.0, 0.10, 1.0-uv.x)",
+    "          * smoothstep(0.0, 0.08, uv.y) * smoothstep(0.0, 0.08, 1.0-uv.y);",
+    "  gl_FragColor = vec4(c.rgb * dim, e);",
+    "}"
+  ].join("\n");
+
+  function compile(type, src) {
+    var sh = gl.createShader(type);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    return gl.getShaderParameter(sh, gl.COMPILE_STATUS) ? sh : null;
+  }
+  var vs = compile(gl.VERTEX_SHADER, VS), fs = compile(gl.FRAGMENT_SHADER, FS);
+  if (!vs || !fs) return;
+  var prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+  gl.useProgram(prog);
+
+  // A unit quad, 16:10 like the screenshots.
+  var W = 0.80, H = 0.50;
+  var quad = new Float32Array([-W,-H, W,-H, -W,H, -W,H, W,-H, W,H]);
+  var buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+  var aP = gl.getAttribLocation(prog, "p");
+  gl.enableVertexAttribArray(aP);
+  gl.vertexAttribPointer(aP, 2, gl.FLOAT, false, 0, 0);
+
+  var uMVP = gl.getUniformLocation(prog, "mvp");
+  var uDim = gl.getUniformLocation(prog, "dim");
+
+  // -- the smallest 4x4 library that does this job --------------------
+  function ident() { return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; }
+  function mul(a, b) {
+    var o = new Array(16);
+    for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) {
+      o[r*4+c] = a[r*4]*b[c] + a[r*4+1]*b[4+c] + a[r*4+2]*b[8+c] + a[r*4+3]*b[12+c];
+    }
+    return o;
+  }
+  function perspective(fovy, aspect, near, far) {
+    var f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0];
+  }
+  function translate(x, y, z) { var m = ident(); m[12]=x; m[13]=y; m[14]=z; return m; }
+  function rotY(a) { var c=Math.cos(a), s=Math.sin(a); var m=ident(); m[0]=c; m[2]=-s; m[8]=s; m[10]=c; return m; }
+  function rotX(a) { var c=Math.cos(a), s=Math.sin(a); var m=ident(); m[5]=c; m[6]=s; m[9]=-s; m[10]=c; return m; }
+
+  // -- textures, once each image has actually decoded -----------------
+  var panels = [];
+  imgs.forEach(function (img, i) {
+    function upload() {
+      var tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      // Screenshots are not powers of two; clamp and use a linear filter
+      // rather than asking for mipmaps that WebGL 1 will refuse.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      panels.push({ tex: tex, slot: i });
+      if (panels.length === imgs.length) start();
+    }
+    if (img.complete && img.naturalWidth) upload();
+    else img.addEventListener("load", upload, { once: true });
+  });
+
+  var running = false, raf = 0, t0 = 0;
+  var pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+
+  stage.addEventListener("pointermove", function (e) {
+    var r = stage.getBoundingClientRect();
+    pointer.tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    pointer.ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
+  });
+  stage.addEventListener("pointerleave", function () { pointer.tx = 0; pointer.ty = 0; });
+
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = stage.clientWidth, h = stage.clientHeight;
+    if (cv.width !== w * dpr || cv.height !== h * dpr) {
+      cv.width = w * dpr; cv.height = h * dpr;
+      gl.viewport(0, 0, cv.width, cv.height);
+    }
+    return w / Math.max(h, 1);
+  }
+
+  function frame(now) {
+    if (!running) return;
+    if (!t0) t0 = now;
+    var t = (now - t0) / 1000;
+
+    var aspect = resize();
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);
+
+    // ease toward the pointer rather than snapping to it
+    pointer.x += (pointer.tx - pointer.x) * 0.055;
+    pointer.y += (pointer.ty - pointer.y) * 0.055;
+
+    var proj = perspective(50 * Math.PI / 180, aspect, 0.1, 30);
+    var view = mul(mul(translate(0, 0, -3.15), rotX(pointer.y * 0.16)), rotY(-pointer.x * 0.30));
+
+    panels.forEach(function (panel) {
+      var i = panel.slot;
+      var spread = 1.05;
+      var x = (i - (panels.length - 1) / 2) * spread;
+      // each panel breathes on its own phase, and turns to face outward
+      var y = Math.sin(t * 0.55 + i * 1.7) * 0.075;
+      var z = Math.cos(t * 0.4 + i * 1.1) * 0.18 - Math.abs(x) * 0.28;
+      var yaw = -x * 0.34 + Math.sin(t * 0.3 + i) * 0.03;
+
+      var model = mul(translate(x, y, z), rotY(yaw));
+      gl.uniformMatrix4fv(uMVP, false, new Float32Array(mul(mul(proj, view), model)));
+      gl.uniform1f(uDim, 0.94 - Math.abs(x) * 0.10);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, panel.tex);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    });
+
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start() {
+    stage.classList.add("gl-live");   // hands the section over to the canvas
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting && !running) { running = true; t0 = 0; raf = requestAnimationFrame(frame); }
+          else if (!entry.isIntersecting && running) { running = false; cancelAnimationFrame(raf); }
+        });
+      }, { threshold: 0.15 }).observe(stage);
+    } else {
+      running = true; raf = requestAnimationFrame(frame);
+    }
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden && running) { running = false; cancelAnimationFrame(raf); }
+      else if (!document.hidden && !running) { running = true; t0 = 0; raf = requestAnimationFrame(frame); }
+    });
+  }
+  window.addEventListener("resize", resize);
 })();
 </script>
 {% endblock %}
