@@ -1762,18 +1762,17 @@ def session_status():
     if not broker_available():
         logging.info("[SESSION_STATUS] No broker client could be built.")
         return jsonify({"authenticated": False})
+    # This went on to probe a Kite session with session["access_token"] --
+    # which no longer exists, so it raised, the endpoint returned 500, and
+    # every header badge read "? Unknown". The honest answer is which broker
+    # profile is live and whether real money is switched on.
+    import common_lib
 
-    authenticated, is_auth_failure = _probe_kite_session(session["access_token"])
-
-    if not authenticated and is_auth_failure:
-        # Definitive auth rejection from Kite — clear the token so the UI
-        # shows the connect button. Network failures leave the token intact
-        # so the next poll retries automatically when connectivity recovers.
-        logging.warning("[SESSION_STATUS] Clearing session token after auth failure.")
-        session.pop("access_token", None)
-        session.pop("request_token", None)
-
-    return jsonify({"authenticated": authenticated})
+    return jsonify({
+        "authenticated": True,
+        "broker": os.environ.get("BROKER_NAME") or "paper_dhan",
+        "live_trading": common_lib.is_live_trading_enabled(),
+    })
 
 
 @app.route("/api/sync_session_token", methods=["GET"])

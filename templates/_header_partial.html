@@ -435,17 +435,16 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var badge = document.getElementById('app-header-session-badge');
-        var btn = document.getElementById('app-header-connect-btn');
-        if (!btn) return; // Zerodha connect button was removed with Zerodha
+        var btn = document.getElementById('app-header-connect-btn'); // gone with Zerodha; guarded below
         if (!badge) return;
         if (data.authenticated) {
-          badge.textContent = '🟢 Connected';
+          badge.textContent = '🟢 ' + (data.broker || 'Connected') + (data.live_trading ? ' · LIVE' : ' · paper');
           badge.className = 'connected';
-          btn.style.display = 'none';
+          if (btn) btn.style.display = 'none';
         } else {
-          badge.textContent = '⚠ Disconnected';
+          badge.textContent = '⚠ No broker';
           badge.className = 'disconnected';
-          btn.style.display = 'inline-block';
+          if (btn) btn.style.display = 'inline-block';
         }
       })
       .catch(function() {
