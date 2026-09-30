@@ -16,6 +16,7 @@ Primary entry points:
 
 import hashlib
 import logging
+import re
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -315,7 +316,10 @@ def _is_option_symbol(tradingsymbol: str) -> bool:
     Returns:
         True if the symbol ends in "CE" or "PE".
     """
-    return tradingsymbol.strip().upper().endswith(("CE", "PE"))
+    # The strike separates a contract from a stock: RELIANCE ends in "CE"
+    # and would otherwise be netted into a guard that is options-only by
+    # design, against option positions on the same underlying.
+    return bool(re.search(r"\d(CE|PE)$", tradingsymbol.strip().upper()))
 
 
 _UNDERLYING_SORT_ORDER: list[str] = ["NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "BANKEX"]

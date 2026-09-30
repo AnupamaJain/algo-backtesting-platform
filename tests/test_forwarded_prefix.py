@@ -126,3 +126,40 @@ def test_tradable_symbols_rejects_a_malformed_underlying(client):
     with client.session_transaction() as sess:
         sess["app_authenticated"] = True
     assert client.get("/api/tradable_symbols?name=../../etc/passwd").status_code == 400
+
+
+def test_expiries_survive_an_empty_instrument_cache(client):
+    """The Delta Limits table and the testbed must still list expiries.
+
+    The instrument cache is filled by a broker sync that needs a live
+    session; without one it holds no F&O rows and every underlying returned
+    [], leaving the table with nothing but its three Default rows.
+    """
+    import flask_app
+
+    with client.session_transaction() as sess:
+        sess["app_authenticated"] = True
+
+    for underlying in ("NIFTY", "BANKNIFTY", "SENSEX"):
+        dates = flask_app.upcoming_expiries(underlying, 2)
+        assert dates, f"no expiries for {underlying} from either source"
+        assert dates == sorted(dates), "nearest expiry must come first"
+
+    body = client.get("/api/delta_config").get_json()
+    for underlying in ("NIFTY", "BANKNIFTY", "SENSEX"):
+        assert body["upcoming_expiries"][underlying], underlying
+
+
+def test_an_equity_is_never_mistaken_for_an_option():
+    """RELIANCE ends in "CE".
+
+    The position guard is options-only by design, so a stock landing in it
+    would be netted against option positions on the same underlying.
+    """
+    from position_guard.detector import _is_option_symbol
+
+    assert not _is_option_symbol("RELIANCE")
+    assert not _is_option_symbol("GOLDBEES-EQ")
+    assert _is_option_symbol("NIFTY26O0623800CE")
+    assert _is_option_symbol("RELIANCE24DEC2900CE")
+    assert _is_option_symbol("SENSEX2620583200PE")

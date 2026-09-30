@@ -2461,13 +2461,12 @@ def delta_config():
                 with open(config_path, "r") as f:
                     current_config = json.load(f)
 
-            from instrument_cache import get_upcoming_expiries
-            upcoming_expiries: dict[str, list[str]] = {
-                underlying: get_upcoming_expiries(underlying, 2)
+            expiries_by_underlying: dict[str, list[str]] = {
+                underlying: upcoming_expiries(underlying, 2)
                 for underlying in ("NIFTY", "BANKNIFTY", "SENSEX")
             }
 
-            return jsonify({"config": current_config, "upcoming_expiries": upcoming_expiries})
+            return jsonify({"config": current_config, "upcoming_expiries": expiries_by_underlying})
         except Exception as e:
             logging.error(f"Error reading delta config: {e}")
             return jsonify({"error": str(e)}), 500
@@ -2655,6 +2654,41 @@ def wave_extractor_live_positions():
         return jsonify({"positions": {}, "error": str(exc)})
 
 
+def upcoming_expiries(underlying: str, count: int = 2) -> list[str]:
+    """Upcoming expiry dates for an underlying, from whichever source can answer.
+
+    The instrument cache is filled by a broker sync that needs a live
+    session. When that has not run -- or ran against an adapter that
+    returns only cash instruments -- it holds no F&O rows at all and every
+    underlying comes back empty, which left the Delta Limits table showing
+    nothing but its Default rows and the Amplitude Testbed with an empty
+    expiry dropdown.
+
+    Dhan's published scrip master is a cached CSV that needs no session, so
+    it answers in exactly the case the cache cannot.
+
+    Args:
+        underlying: NIFTY, BANKNIFTY or SENSEX.
+        count: How many upcoming expiries to return.
+
+    Returns:
+        Expiry dates as YYYY-MM-DD, nearest first. Empty only when neither
+        source knows the underlying.
+    """
+    dates = instrument_cache.get_upcoming_expiries(underlying, count)
+    if dates:
+        return dates
+
+    exchange = "BFO" if underlying == "SENSEX" else "NFO"
+    try:
+        return [row["expiry_date"] for row in _expiries_from_dhan(underlying, exchange)[:count]]
+    except Exception as exc:  # noqa: BLE001 - an empty list is the honest answer
+        logging.warning(
+            "upcoming_expiries: no expiries for %s from either source: %s", underlying, exc
+        )
+        return []
+
+
 @app.route("/api/wave_extractor/amplitude_expiries", methods=["GET"])
 def wave_extractor_amplitude_expiries():
     """Return upcoming expiry dates for the given underlying (testbed dropdown).
@@ -2668,7 +2702,7 @@ def wave_extractor_amplitude_expiries():
     underlying = request.args.get("underlying", "")
     if underlying not in ("NIFTY", "BANKNIFTY", "SENSEX"):
         return jsonify({"error": "Invalid underlying", "expiries": []}), 400
-    expiries = instrument_cache.get_upcoming_expiries(underlying, count=12)
+    expiries = upcoming_expiries(underlying, count=12)
     return jsonify({"expiries": expiries})
 
 

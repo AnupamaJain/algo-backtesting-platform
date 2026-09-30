@@ -1759,12 +1759,22 @@
                     minInput.placeholder = String(defaultMin);
                     maxInput.placeholder = String(defaultMax);
 
-                    const serverMin = savedCfg?.min !== undefined ? String(savedCfg.min) : '';
+                    // A blank per-expiry box means "inherit Default", which is
+                    // the documented behaviour. The Default row has nothing to
+                    // inherit from -- it IS the fallback -- so blank there just
+                    // reads as unset, and the numbers sat greyed out in the
+                    // placeholder waiting to be retyped before they could be
+                    // saved. Show them as real values.
+                    const serverMin = savedCfg?.min !== undefined
+                        ? String(savedCfg.min)
+                        : (isDefault ? String(defaultMin) : '');
                     if (minInput.dataset.serverVal !== serverMin) {
                         minInput.value = serverMin;
                         minInput.dataset.serverVal = serverMin;
                     }
-                    const serverMax = savedCfg?.max !== undefined ? String(savedCfg.max) : '';
+                    const serverMax = savedCfg?.max !== undefined
+                        ? String(savedCfg.max)
+                        : (isDefault ? String(defaultMax) : '');
                     if (maxInput.dataset.serverVal !== serverMax) {
                         maxInput.value = serverMax;
                         maxInput.dataset.serverVal = serverMax;
