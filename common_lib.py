@@ -2067,9 +2067,30 @@ def update_on_tick_function(function):
 
 
 def initilise(request_token_passed, symbol_passed, quantity_passed, buy_gap_passed, sell_gap_passed, multiplier_scale_passed, exchange_passed ="NFO"):
-    global request_token
-    global symbol 
-    global quantity 
+    """Connect to the broker, then prepare one symbol.
+
+    Split in two so that a process running several symbols can connect once
+    and prepare each instrument in turn: `initilise_basic` is the
+    connection, `initilise_symbol` is everything about the instrument. See
+    symbol_context.py. Single-symbol callers are unaffected -- this still
+    does both, in the same order, with the same arguments.
+    """
+    initilise_basic(request_token_passed)
+    initilise_symbol(
+        symbol_passed, quantity_passed, buy_gap_passed, sell_gap_passed,
+        multiplier_scale_passed, exchange_passed,
+    )
+
+
+def initilise_symbol(symbol_passed, quantity_passed, buy_gap_passed, sell_gap_passed, multiplier_scale_passed, exchange_passed="NFO"):
+    """Prepare one instrument, assuming the broker connection already exists.
+
+    Every global touched here is per-symbol and is listed in
+    symbol_context.PER_SYMBOL, so a multi-symbol runner can swap one
+    instrument's state out and another's in around a call to this.
+    """
+    global symbol
+    global quantity
 
     global buy_quantity
     global sell_quantity
@@ -2081,13 +2102,8 @@ def initilise(request_token_passed, symbol_passed, quantity_passed, buy_gap_pass
     global current_positions
     global symbol_type
     global multiplier_scale
-    global kws
     global exchange
     global instrument_token
-
-
-    initilise_basic(request_token_passed)
-
 
     symbol = symbol_passed
     quantity = quantity_passed
