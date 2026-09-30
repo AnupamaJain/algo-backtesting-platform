@@ -20,6 +20,10 @@ const ALLOWED_LAYERS = ["layer1", "layer2", "layer3", "layer4", "pead", "all"] a
 type Layer = (typeof ALLOWED_LAYERS)[number];
 
 const SYMBOL_PATTERN = /^[A-Z0-9.\-]{1,12}$/;
+// Strategy names are registry identifiers: letters and digits only. main.py
+// rejects anything not in strategy_grid.yaml with the list of valid names,
+// so this only has to keep the argument shaped like an identifier.
+const STRATEGY_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,39}$/;
 const MAX_RUN_MS = 15 * 60 * 1000;
 
 function resolvePython(): string {
@@ -35,6 +39,8 @@ export async function POST(request: Request) {
     topN?: number;
     generateSignals?: boolean;
     universe?: string;
+    /** Comma-separated subset of the strategy grid. Omitted = all. */
+    strategies?: string;
   };
   try {
     body = await request.json();
@@ -71,6 +77,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid symbol list" }, { status: 400 });
     }
     args.push("--symbols", symbols.join(","));
+  }
+
+  if (body.strategies) {
+    const strategies = body.strategies
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (strategies.length === 0 || !strategies.every((s) => STRATEGY_PATTERN.test(s))) {
+      return NextResponse.json({ error: "invalid strategy list" }, { status: 400 });
+    }
+    args.push("--strategies", strategies.join(","));
   }
 
   if (body.topN !== undefined) {

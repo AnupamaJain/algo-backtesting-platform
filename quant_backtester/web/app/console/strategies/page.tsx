@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { Card, CardHead, EmptyState, Explain, Pill, Stat, Table, Td, Th } from "@/components/ui";
 import { getUltraRobust } from "@/lib/artifacts";
+import { readConfiguredStrategies } from "@/lib/config-io";
+import { universeFrom } from "@/lib/universes";
+import RunPanel from "@/components/RunPanel";
+import UniverseSwitcher from "@/components/UniverseSwitcher";
 import { safeBrokerState } from "@/lib/broker";
 import { FAMILY_LABELS, getInventory, type OpsModule } from "@/lib/ops";
 import { count, ratio, sharpeTone } from "@/lib/format";
@@ -47,13 +51,25 @@ function statusPill(module: OpsModule) {
   return <span title={why}><Pill tone="slate">Never run</Pill></span>;
 }
 
-export default async function StrategiesPage() {
-  const [inventory, ultra, brokerState] = await Promise.all([
+export default async function StrategiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const universe = universeFrom(params);
+  const backtest = typeof params.backtest === "string" ? params.backtest : undefined;
+
+  const [inventory, ultra, brokerState, configured] = await Promise.all([
     getInventory(),
     getUltraRobust(),
     // Whether the broker requirement these modules declare is actually met.
     safeBrokerState(),
+    readConfiguredStrategies(),
   ]);
+  const strategyNames = configured.map((c) => c.name);
+  const hrefFor = (name: string) =>
+    `/console/strategies?universe=${universe.id}&backtest=${encodeURIComponent(name)}#backtest`;
 
   const brokerReady = Boolean(brokerState?.broker?.name);
   const brokerName = brokerState?.broker?.name ?? "";
@@ -224,6 +240,26 @@ export default async function StrategiesPage() {
         Research — backtester library
       </h2>
 
+      <div id="backtest" className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">
+          Market
+        </span>
+        <UniverseSwitcher active={universe.id} />
+      </div>
+
+      <div className="mb-6">
+        <RunPanel
+          layer="layer2"
+          label={backtest ? `Backtest ${backtest} on ${universe.label}` : `Backtest on ${universe.label}`}
+          hint={`Walk-forward backtest and the six-gate funnel, on ${universe.market} priced by ${universe.provider}. Pick one strategy, or leave it on the full grid.`}
+          showSymbols
+          showGenerateSignals
+          universe={universe.id}
+          strategyChoices={strategyNames}
+          initialStrategy={backtest}
+        />
+      </div>
+
       <Card className="mb-6">
         <CardHead
           title="Swept by the validation pipeline"
@@ -244,6 +280,7 @@ export default async function StrategiesPage() {
               <Th>Parameters</Th>
               <Th>Class</Th>
               <Th>Status</Th>
+              <Th></Th>
             </tr>
           </thead>
           <tbody>
@@ -261,6 +298,19 @@ export default async function StrategiesPage() {
                 </Td>
                 <Td className="mono text-[11px] text-slate-400">{module.entry}</Td>
                 <Td>{statusPill(module)}</Td>
+                <Td>
+                  {/* The grid is keyed by the registry identifier, which the
+                      inventory carries as `entry`; `name` is the display
+                      label ("RSI Reversion" vs RSIReversion). */}
+                  {strategyNames.includes(module.entry) ? (
+                    <Link
+                      href={hrefFor(module.entry)}
+                      className="whitespace-nowrap rounded-md border border-cyan-500/40 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-500/10"
+                    >
+                      Backtest ↗
+                    </Link>
+                  ) : null}
+                </Td>
               </tr>
             ))}
           </tbody>

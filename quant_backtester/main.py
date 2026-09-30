@@ -67,15 +67,27 @@ from quant_backtester.src.robustness import (
 from quant_backtester.src.pead import PEADConfig, pead_portfolio_returns, exposure_stats
 from quant_backtester.src.events import EarningsCalendar
 
-def scope_outputs_to_universe(universe_config) -> None:
+def scope_outputs_to_universe(universe_config, strategies: str | None = None) -> None:
     """Point every layer's output at this universe's own results tree.
 
     Layers 2-4 read each other's artifacts by path. Without scoping, running
     an Indian universe would happily load the survivor list from a previous US
     run and "evaluate" QQQ against NSE prices — which is exactly what happened
     before this existed. Silent, and wrong in a way no error surfaces.
+
+    A run narrowed with --strategies gets its own subtree under
+    strategies/<names>/. The first single-strategy run overwrote the full
+    grid's layer2 artifacts for India, turning "8,027 tested, 0 survived"
+    into "1,840 tested, 3 survived" on the funnel page -- a different
+    experiment quietly wearing the baseline's name. The two are not
+    comparable: the multiple-comparison gate is priced on how many
+    configurations were tried, so a narrower grid clears it more easily.
     """
     root = universe_config.data.results_dir
+    if strategies:
+        names = [n.strip() for n in strategies.split(",") if n.strip()]
+        root = f"{root}/strategies/{'+'.join(names)}"
+        Path(root).mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("QB_RESULTS_DIR", root)
     os.environ["QB_RESULTS_DIR"] = root
     os.environ["QB_LAYER2_DIR"] = f"{root}/layer2"
@@ -212,10 +224,42 @@ def load_selected(layer3_dir: Path, layer2_dir: Path, top_n: int | None) -> pd.D
 # ==========================================================================
 
 
+def apply_strategy_filter(grid_config, args):
+    """Narrow the grid to the strategies named on the command line.
+
+    Without this, layer 1 and layer 2 always ran every strategy in
+    strategy_grid.yaml -- there was no way to backtest one idea on its own,
+    which is the first thing anyone wants to do from a console. The whole
+    grid remains the default, so nothing that called this before changes.
+
+    Unknown names are an error rather than a silent no-op: a typo that
+    quietly ran nothing would look exactly like a strategy that produced no
+    signals.
+    """
+    import dataclasses
+
+    wanted = getattr(args, "strategies", None)
+    if not wanted:
+        return grid_config
+
+    requested = [name.strip() for name in wanted.split(",") if name.strip()]
+    known = set(grid_config.strategies)
+    unknown = [name for name in requested if name not in known]
+    if unknown:
+        raise SystemExit(
+            f"Unknown strategy: {', '.join(unknown)}. "
+            f"Available: {', '.join(sorted(known))}"
+        )
+
+    filtered = {name: grid_config.strategies[name] for name in requested}
+    logger.info("Strategy filter: %s", ", ".join(requested))
+    return dataclasses.replace(grid_config, strategies=filtered)
+
+
 def run_layer1(args) -> None:
     universe_config = load_universe_config(args.universe_config)
-    scope_outputs_to_universe(universe_config)
-    grid_config = load_strategy_grid_config(args.grid_config)
+    scope_outputs_to_universe(universe_config, getattr(args, "strategies", None))
+    grid_config = apply_strategy_filter(load_strategy_grid_config(args.grid_config), args)
     symbols = resolve_symbols(args, universe_config)
 
     data_manager = HistoricalDataManager(universe_config.data)
@@ -227,8 +271,8 @@ def run_layer1(args) -> None:
 
 def run_layer2(args) -> None:
     universe_config = load_universe_config(args.universe_config)
-    scope_outputs_to_universe(universe_config)
-    grid_config = load_strategy_grid_config(args.grid_config)
+    scope_outputs_to_universe(universe_config, getattr(args, "strategies", None))
+    grid_config = apply_strategy_filter(load_strategy_grid_config(args.grid_config), args)
     backtest_config = load_backtest_config(args.backtest_config)
     symbols = resolve_symbols(args, universe_config)
 
@@ -682,6 +726,10 @@ def parse_args() -> argparse.Namespace:
         help="Which layer to run.",
     )
     parser.add_argument("--symbols", default=None, help="Comma-separated symbol subset")
+    parser.add_argument(
+        "--strategies", default=None,
+        help="Comma-separated subset of strategy_grid.yaml to run (default: all).",
+    )
     parser.add_argument("--top-n", type=int, default=None, help="Exploratory fallback size")
     parser.add_argument(
         "--generate-signals",

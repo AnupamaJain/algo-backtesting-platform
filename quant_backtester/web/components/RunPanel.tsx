@@ -22,7 +22,18 @@ export type RunOptions = {
   showGenerateSignals?: boolean;
   /** Which market to run against. Omitting it runs the default universe. */
   universe?: string;
+  /** Offer a strategy picker built from these names. */
+  strategyChoices?: string[];
+  /** Pre-select one of strategyChoices (from ?backtest=). */
+  initialStrategy?: string;
 };
+
+/** "Funnel complete: 3/1840 configurations survived all 6 stages" -> numbers.
+ *  The log is the source of truth; this only lifts one line out of it. */
+function funnelSummary(log: string): { survived: number; tested: number } | null {
+  const m = /Funnel complete: (\d+)\/(\d+) configurations survived/.exec(log);
+  return m ? { survived: Number(m[1]), tested: Number(m[2]) } : null;
+}
 
 export default function RunPanel({
   layer,
@@ -32,9 +43,12 @@ export default function RunPanel({
   showTopN = false,
   showGenerateSignals = false,
   universe,
+  strategyChoices,
+  initialStrategy,
 }: RunOptions) {
   const router = useRouter();
   const [symbols, setSymbols] = useState("");
+  const [strategy, setStrategy] = useState(initialStrategy ?? "");
   const [topN, setTopN] = useState("15");
   const [generateSignals, setGenerateSignals] = useState(true);
   const [running, setRunning] = useState(false);
@@ -59,6 +73,7 @@ export default function RunPanel({
           topN: showTopN ? Number(topN) : undefined,
           generateSignals: showGenerateSignals ? generateSignals : undefined,
           universe,
+          strategies: strategyChoices && strategy ? strategy : undefined,
         }),
       });
       const data = await response.json();
@@ -83,6 +98,25 @@ export default function RunPanel({
         </div>
 
         <div className="flex flex-wrap items-end gap-3">
+          {strategyChoices ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={`strategy-${layer}`} className="text-[10.5px] font-medium text-slate-400">
+                Strategy
+              </label>
+              <select
+                id={`strategy-${layer}`}
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value)}
+                className="mono w-56 rounded-lg border border-[var(--color-line)] bg-[var(--color-panel2)] px-3 py-2 text-[12px] text-slate-200"
+              >
+                <option value="">All strategies (full grid)</option>
+                {strategyChoices.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           {showSymbols ? (
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`symbols-${layer}`} className="text-[10.5px] font-medium text-slate-400">
@@ -156,6 +190,24 @@ export default function RunPanel({
             <span className="text-[11px] text-slate-500">
               {(result.durationMs / 1000).toFixed(1)}s
             </span>
+            {(() => {
+              const f = result.ok ? funnelSummary(result.stdout + result.stderr) : null;
+              return f ? (
+                <span className="mono text-[11px] text-slate-300">
+                  {f.survived.toLocaleString()} of {f.tested.toLocaleString()} configurations survived all six gates
+                </span>
+              ) : null;
+            })()}
+          </div>
+          {result.ok && strategyChoices && strategy ? (
+            <p className="mt-2 max-w-3xl text-[11px] leading-relaxed text-slate-500">
+              Narrowing to one strategy lowers the multiple-comparison bar: the last gate is
+              priced on how many configurations were tried, so a survivor found this way was
+              tested against fewer alternatives than one from the full grid. Results are kept
+              apart from the full-grid baseline for that reason.
+            </p>
+          ) : null}
+          <div className="hidden">
             <button
               onClick={() => setShowLog((v) => !v)}
               className="text-[11px] font-medium text-cyan-400 underline-offset-2 hover:underline"
