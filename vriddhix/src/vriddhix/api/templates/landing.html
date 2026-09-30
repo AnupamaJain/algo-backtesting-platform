@@ -4,6 +4,7 @@
 {% block content %}
 
 <!-- ══════════════ hero ══════════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></symbol></svg>
 <section class="hero-wrap">
   {% if surface %}
   <canvas id="terrain" class="terrain" aria-hidden="true"></canvas>
@@ -839,14 +840,29 @@
     Each stage reads only what the stage before it produced, which is what
     makes any number traceable back to a bar.
   </p>
-  <ol class="pipeline">
-    <li><span class="step num">01</span><b>Data</b><span>NSE daily bars, validated. Nothing silently dropped or repaired.</span></li>
-    <li><span class="step num">02</span><b>Features</b><span>EMA, ATR, returns, 52-week extremes, relative volume — strictly causal.</span></li>
-    <li><span class="step num">03</span><b>Detection</b><span>VCP contractions, BOS and CHoCH, order blocks, fair value gaps.</span></li>
-    <li><span class="step num">04</span><b>Context</b><span>Market regime, breadth, relative strength, sector rotation.</span></li>
-    <li><span class="step num">05</span><b>Scoring</b><span>Weighted components — every one stored, every one shown.</span></li>
-    <li><span class="step num">06</span><b>Tracking</b><span>The breakout ledger: confirmed, failed, and why.</span></li>
-    <li><span class="step num">07</span><b>Backtest</b><span>The same detector replayed, with costs and survivorship stated.</span></li>
+  <ol class="lineage" id="lineage" data-track>
+    <span class="lineage-spine" aria-hidden="true"><i id="lineage-fill"></i></span>
+    {% for n, name, note in [
+      ("01", "Data",      "NSE daily bars, validated. Nothing silently dropped or repaired."),
+      ("02", "Features",  "EMA, ATR, returns, 52-week extremes, relative volume — strictly causal."),
+      ("03", "Detection", "VCP contractions, BOS and CHoCH, order blocks, fair value gaps."),
+      ("04", "Context",   "Market regime, breadth, relative strength, sector rotation."),
+      ("05", "Scoring",   "Weighted components — every one stored, every one shown."),
+      ("06", "Tracking",  "The breakout ledger: confirmed, failed, and why."),
+      ("07", "Backtest",  "The same detector replayed, with costs and survivorship stated.")] %}
+    <li class="lineage-step">
+      <span class="lineage-dot num" aria-hidden="true">{{ n }}</span>
+      <div class="lineage-body">
+        <b>{{ name }}</b>
+        <span>{{ note }}</span>
+      </div>
+      {% if not loop.last %}
+      <span class="lineage-arrow" aria-hidden="true">
+        reads only this <svg class="ico"><use href="#i-arrow-down"/></svg>
+      </span>
+      {% endif %}
+    </li>
+    {% endfor %}
   </ol>
 </section>
 
@@ -2084,6 +2100,51 @@
     document.hidden ? stop() : start();
   });
   window.addEventListener("resize", layout);
+})();
+
+/* ── lineage: the spine fills as you read it ──────────────────────────
+   The point of the section is that each stage reads only what the one
+   before it produced, so the visual is a single line travelling in one
+   direction and lighting each stage as it arrives. Tied to scroll rather
+   than to a timer: the reader sets the pace, and the fill is a position
+   in the argument rather than a countdown they have to keep up with.
+
+   The steps are an ordered list and are readable without any of this. */
+(function () {
+  var root = document.getElementById("lineage");
+  var fill = document.getElementById("lineage-fill");
+  if (!root || !fill) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.classList.add("lineage-done");
+    return;
+  }
+
+  var steps = Array.prototype.slice.call(root.querySelectorAll(".lineage-step"));
+  var ticking = false;
+
+  function update() {
+    ticking = false;
+    var box = root.getBoundingClientRect();
+    var mark = window.innerHeight * 0.62;          // where "read" is
+    var progress = (mark - box.top) / Math.max(box.height, 1);
+    progress = Math.max(0, Math.min(1, progress));
+    fill.style.transform = "scaleY(" + progress + ")";
+
+    steps.forEach(function (step) {
+      var r = step.getBoundingClientRect();
+      step.classList.toggle("on", r.top + r.height * 0.45 <= mark);
+    });
+  }
+
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  update();
 })();
 </script>
 {% endblock %}

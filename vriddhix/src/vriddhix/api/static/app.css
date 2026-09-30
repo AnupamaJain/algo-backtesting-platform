@@ -1584,3 +1584,46 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 .flow-fallback b { display: block; color: var(--text); font-size: .85rem; }
 .flow-fallback .num { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; }
 .flow-fallback i { color: var(--muted); font-size: .76rem; font-style: normal; }
+
+/* ── lineage: one direction, tracked ──────────────────────────────── */
+.lineage { list-style: none; margin: 26px 0 0; padding: 0 0 0 46px; position: relative; }
+.lineage-spine {
+  position: absolute; left: 17px; top: 10px; bottom: 10px; width: 2px;
+  background: var(--line); border-radius: 2px; overflow: hidden;
+}
+.lineage-spine i {
+  display: block; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, var(--accent), color-mix(in srgb, var(--accent) 45%, #6366f1));
+  transform-origin: top; transform: scaleY(0);
+  transition: transform .18s linear;
+}
+.lineage-step { position: relative; padding: 0 0 26px; }
+.lineage-step:last-child { padding-bottom: 0; }
+.lineage-dot {
+  position: absolute; left: -46px; top: -2px;
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: .72rem; font-weight: 700;
+  color: var(--faint);
+  background: var(--panel); border: 2px solid var(--line);
+  transition: color .3s, border-color .3s, background .3s, transform .3s;
+}
+.lineage-step.on .lineage-dot,
+.lineage-done .lineage-dot {
+  color: var(--accent-ink, #0a0d16); background: var(--accent);
+  border-color: var(--accent); transform: scale(1.06);
+}
+.lineage-body b { display: block; color: var(--text); font-size: .98rem; margin-bottom: 2px; }
+.lineage-body span { color: var(--muted); font-size: .88rem; line-height: 1.6; }
+.lineage-step { opacity: .45; transition: opacity .35s; }
+.lineage-step.on, .lineage-done .lineage-step { opacity: 1; }
+.lineage-arrow {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 8px; font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--faint);
+}
+.lineage-arrow .ico { width: 13px; height: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  .lineage-step { opacity: 1; }
+  .lineage-spine i { transform: scaleY(1); }
+}
