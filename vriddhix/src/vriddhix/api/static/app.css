@@ -1775,3 +1775,62 @@ html:not(.js) .type-word, .type-in.typed .type-word { opacity: 1; }
 .refuse-card:hover .refuse-shot img { transform: scale(1.04); opacity: 1; }
 .refuse-card { overflow: hidden; }
 .refuse-ico { display: none; }
+
+/* ── the terminal, every screen ──────────────────────────────────── */
+.term-section { margin-top: 64px; }
+.term-demo { margin: 24px 0 0; position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--panel); }
+.term-demo video { display: block; width: 100%; height: auto; }
+.term-demo figcaption { padding: 10px 14px; font-size: .78rem; border-top: 1px solid var(--line); }
+.term-play {
+  position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 20px; border-radius: 999px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(6px);
+  color: var(--text); font: inherit; font-size: .88rem; font-weight: 600;
+  transition: opacity .25s, transform .25s, background .2s;
+}
+.term-play:hover { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); transform: translate(-50%, -50%) scale(1.04); }
+.term-play.gone { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(.92); }
+
+.term-grid {
+  display: grid; gap: 14px; margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+.term-tile { margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); transition: border-color .2s, transform .25s, box-shadow .25s; }
+.term-shot { display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--panel-2, #141a29); border-bottom: 1px solid var(--line); }
+.term-shot img {
+  width: 100%; height: 100%; object-fit: cover; object-position: top left; display: block;
+  /* Hovering pans down the shot rather than zooming it: a screenshot
+     scaled up is just a blurrier screenshot, where panning reveals the
+     part of the page the caption is talking about. */
+  transition: object-position .6s cubic-bezier(.2,.7,.3,1), opacity .25s;
+  opacity: .92;
+}
+.term-tile:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px -22px rgba(0,0,0,.9);
+}
+.term-tile:hover .term-shot img { object-position: bottom left; opacity: 1; }
+.term-tile figcaption { padding: 11px 13px; }
+.term-tile figcaption b { display: block; color: var(--text); font-size: .86rem; margin-bottom: 2px; }
+.term-tile figcaption span { color: var(--muted); font-size: .76rem; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) {
+  .term-tile, .term-shot img { transition: none; }
+  .term-tile:hover { transform: none; }
+  .term-tile:hover .term-shot img { object-position: top left; }
+}
+
+/* ── hover, everywhere it helps ───────────────────────────────────
+   Not decoration for its own sake: each of these answers "is this
+   thing clickable" before the reader has to find out by clicking. */
+.module-card, .post-list a, .bento-tile, .scard, .quote { transition: border-color .2s, transform .2s, box-shadow .2s; }
+.matrix-table tbody tr { transition: background .15s; }
+.matrix-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.gb-table tbody tr { transition: background .15s; }
+.gb-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.refuse-card { transition: border-color .2s, transform .25s; }
+.refuse-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); transform: translateY(-2px); }
+.lineage-step:hover .lineage-dot { border-color: var(--accent); }

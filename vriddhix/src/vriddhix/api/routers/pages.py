@@ -391,6 +391,28 @@ def _rotation(session, as_of) -> list[dict]:
     return sorted(out, key=lambda r: (order.get(r["quadrant"], 9), r["rank"] or 99))
 
 
+#: Every page of the trading terminal, captured at 2x from the running
+#: instance through the same sign-in and gateway a reader would use. The
+#: whole surface rather than a flattering subset: a product shown in three
+#: screens is a product with three screens worth showing.
+TERMINAL_SCREENS = [
+    ("t-home",        "Launcher",       "Twelve strategies with live state, paper or real."),
+    ("t-wave",        "Wave Extractor", "Linked buy/sell pairs, grouped by expiry."),
+    ("t-survivor",    "Survivor",       "Single-leg index selling with delta rebalancing."),
+    ("t-expiry",      "Expiry Trade",   "Stochastic RSI on three-minute candles."),
+    ("t-earlyexit",   "Early Exit",     "Pre-market GTT exits at theoretical fair value."),
+    ("t-covered",     "Covered Calls",  "OTM calls written against held equity."),
+    ("t-positions",   "NIFTY positions","Live options positions with Greeks and margin."),
+    ("t-sensex",      "SENSEX positions","The same book on the BSE side."),
+    ("t-guard",       "Position Guard", "Unreviewed long exposure across orders and GTTs."),
+    ("t-duplicates",  "Duplicate orders","Same intent inside a price band, caught before it fills."),
+    ("t-journal",     "Trade journal",  "FIFO pairing and per-strategy attribution."),
+    ("t-tradebook",   "Tradebook",      "Expiry and margin analysis from the broker's own file."),
+    ("t-apimon",      "API monitor",    "Every broker call, its latency and its rate limit."),
+    ("t-instruments", "Instrument cache","124,280 contracts, resolvable without a session."),
+]
+
+
 #: Real screens, captured from this application rather than drawn. Each one
 #: is a region of a page that actually renders from the database, taken at
 #: 2x from the running instance -- the terminal and Lab shots go through
@@ -936,6 +958,29 @@ def _testimonials(preview: bool = False) -> list[dict]:
     return out
 
 
+def _landing_testimonials(request: Request) -> list[dict]:
+    """Verified quotes if there are any; otherwise the marked samples.
+
+    Asked for, so that the section can be seen in place while real ones
+    are being collected. The samples are safe to show only because of how
+    they are shown: the names are visibly placeholders, every card carries
+    a "sample" tag, and the section header says "sample entries, not
+    testimonials" -- so nothing here is a claim about a real person's
+    experience, which is the thing that would be both dishonest and, on a
+    financial product in India, inside SEBI's advertising rules.
+
+    The moment testimonials.yaml holds a verified entry, that entry
+    replaces all of this and the tags disappear. Delete
+    testimonials.yaml.example to turn the fallback off entirely.
+    """
+    real = _testimonials()
+    if real:
+        return real
+    if request.query_params.get("preview") == "none":
+        return []
+    return _testimonials(preview=True)
+
+
 def _performance(session) -> dict:
     """The backtested equity curve, against buying the index and waiting."""
     from ...services.performance import performance_panel
@@ -981,14 +1026,13 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "screens": APP_SCREENS,
             "global_results": _global_results(),
             "use_cases": _use_cases(session),
+            "terminal_screens": TERMINAL_SCREENS,
             "contract_count": _contract_count(),
             "clips": APP_CLIPS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),
             "performance": _performance(session),
-            "testimonials": _testimonials(
-                preview=request.query_params.get("preview") == "testimonials"
-            ),
+            "testimonials": _landing_testimonials(request),
             "faq": LANDING_FAQ,
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),

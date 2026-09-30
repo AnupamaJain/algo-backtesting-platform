@@ -350,6 +350,53 @@
   </p>
 </section>
 
+<!-- ══════════════ the terminal, every screen ══════════════ -->
+{% if terminal_screens %}
+<section class="wrap term-section">
+  <div class="sec-head">
+    <h2>The trading terminal, all of it</h2>
+    <span class="faint">recorded and captured from this instance</span>
+  </div>
+  <p class="muted lead-narrow">
+    Fourteen screens, which is the whole surface rather than a flattering
+    subset. The clip below is one unedited pass through it — signing in,
+    picking a contract from the broker's own master, and reading the book.
+  </p>
+
+  <figure class="term-demo">
+    <video id="term-video" poster="{{ asset('video/terminal-poster.jpg') }}"
+           muted loop playsinline preload="none"
+           aria-label="A pass through the trading terminal, recorded from this instance">
+      <source src="{{ asset('video/terminal.webm') }}" type="video/webm">
+      <source src="{{ asset('video/terminal.mp4') }}" type="video/mp4">
+    </video>
+    <button class="term-play" id="term-play" aria-label="Play the terminal walkthrough">
+      <span aria-hidden="true">▶</span> Watch it run
+    </button>
+    <figcaption class="faint">
+      34 seconds, nothing sped up, no cuts. Paper mode — the badge in the
+      header says so throughout.
+    </figcaption>
+  </figure>
+
+  <div class="term-grid">
+    {% for slug, title, note in terminal_screens %}
+    <figure class="term-tile" style="--d: {{ loop.index0 * 40 }}ms">
+      <span class="term-shot">
+        <img src="{{ asset('screens/' ~ slug ~ '.png') }}"
+             alt="Trading terminal — {{ title }}: {{ note }}"
+             loading="lazy" draggable="false">
+      </span>
+      <figcaption>
+        <b>{{ title }}</b>
+        <span>{{ note }}</span>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════ what you would do with it ══════════════ -->
 {% if use_cases %}
 <section class="wrap bento-section">
@@ -650,7 +697,9 @@
   <div class="sec-head">
     <h2>What people using it say</h2>
     {% if testimonials[0].sample %}
-    <span class="sec-note sample-note">preview — sample entries, not testimonials</span>
+    <span class="sec-note sample-note">
+      sample entries — placeholders for layout, not testimonials
+    </span>
     {% endif %}
   </div>
 
@@ -2386,6 +2435,50 @@
   } else if (!reduce) { play(); }
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) stop();
+  });
+})();
+
+/* ── the terminal clip ───────────────────────────────────────────────
+   preload="none" and a poster: fourteen screenshots are already on this
+   page and a third of a megabyte of video should not be fetched for a
+   reader who never scrolls this far. It starts when it is on screen and
+   stops when it is not, and the button is there for anyone whose browser
+   refuses autoplay -- which is most of them on a phone. */
+(function () {
+  var video = document.getElementById("term-video");
+  var button = document.getElementById("term-play");
+  if (!video) return;
+
+  var wanted = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function play() {
+    var attempt = video.play();
+    if (attempt && attempt.catch) attempt.catch(function () { /* blocked; the button remains */ });
+  }
+
+  if (button) {
+    button.addEventListener("click", function () {
+      if (video.paused) { play(); button.classList.add("gone"); }
+      else { video.pause(); button.classList.remove("gone"); }
+    });
+  }
+  video.addEventListener("playing", function () {
+    if (button) button.classList.add("gone");
+  });
+  video.addEventListener("pause", function () {
+    if (button) button.classList.remove("gone");
+  });
+
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { if (wanted) play(); }
+        else if (!video.paused) video.pause();
+      });
+    }, { threshold: 0.4 }).observe(video);
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden && !video.paused) video.pause();
   });
 })();
 </script>

@@ -877,13 +877,30 @@ def test_no_page_presents_a_result_as_a_return(client):
             assert not re.search(pattern, body), f"{path} matches {pattern!r}"
 
 
-def test_no_testimonials_are_fabricated(client):
+def test_no_quote_can_be_mistaken_for_a_real_one(client):
     """Invented quotes on a financial product are deceptive, and in India
-    they are SEBI's business."""
-    body = client.get("/").text.lower()
-    for tell in ("testimonial", "★★★★★", "5-star", "trusted by thousands",
-                 "loved by traders", "join 10,000"):
-        assert tell not in body
+    they are SEBI's business.
+
+    Sample entries may stand in while real ones are collected, but only on
+    terms that make them unmistakable: every card tagged, the section
+    labelled, and the names visibly placeholders. What is never allowed is
+    an unmarked quote, or the social-proof furniture that implies a crowd
+    nobody counted.
+    """
+    body = client.get("/").text
+    lowered = body.lower()
+
+    for tell in ("★★★★★", "5-star", "trusted by thousands",
+                 "loved by traders", "join 10,000", "rated #1"):
+        assert tell not in lowered, f"unearned social proof: {tell}"
+
+    from vriddhix.api.routers.pages import _testimonials
+
+    if 'class="quote' in body and not _testimonials():
+        # Standing in: it has to say so, on every card.
+        assert "sample entries" in lowered
+        assert body.count("sample-tag") == body.count('<figure class="quote')
+
 
 
 def test_nothing_is_hidden_from_a_browser_that_cannot_reveal_it(client):
@@ -1039,10 +1056,20 @@ def test_the_shipped_file_contains_nothing_invented():
     assert _testimonials() == []
 
 
-def test_the_section_is_absent_rather_than_empty(client):
+def test_the_section_is_absent_or_visibly_a_placeholder(client):
+    """With nothing verified, the section either does not appear or appears
+    marked. What it must never do is appear looking finished."""
+    from vriddhix.api.routers.pages import _testimonials
+
     body = client.get("/").text
-    assert "What people using it say" not in body
-    assert 'class="quotes"' not in body
+    if _testimonials():
+        return                      # real quotes; nothing to prove here
+
+    if "What people using it say" in body:
+        assert "sample entries" in body.lower()
+        assert "sample-tag" in body
+    else:
+        assert 'class="quotes' not in body
 
 
 def test_a_missing_or_broken_file_is_not_an_error(tmp_path, monkeypatch):
@@ -1725,13 +1752,19 @@ def test_the_comparison_figures_are_in_the_html_not_only_in_script(client):
     assert re.search(r"₹[\d,]{7,}", body), "no rendered currency figure"
 
 
-def test_sample_testimonials_never_reach_the_live_page(client):
-    """The preview exists so the carousel can be seen working. It must not
-    be reachable by accident, and its entries must be marked on every card
-    -- a screenshot of one card has to carry the mark too."""
+def test_samples_are_marked_wherever_they_appear(client):
+    """They may stand in for real quotes, but never silently.
+
+    Every card carries a tag rather than the section carrying one notice:
+    a screenshot of a single card has to be self-describing, because that
+    is how a card travels.
+    """
     live = client.get("/").text
-    assert "sample-tag" not in live
-    assert "quotes-sample" not in live
+    if "sample-tag" in live:
+        assert live.count("sample-tag") == live.count('<figure class="quote')
+        assert "not testimonials" in live or "sample entries" in live.lower()
+        # And it must be possible to turn off.
+        assert 'class="quote' not in client.get("/?preview=none").text
 
     preview = client.get("/?preview=testimonials").text
     from vriddhix.api.routers.pages import PROJECT_ROOT
@@ -1771,3 +1804,44 @@ def test_the_post_shows_survivorship_rather_than_describing_it(client):
     body = client.get("/blog/what-survives-two-windows").text
     assert "matrix-table" in body
     assert "matrix-all" in body, "nothing marked as surviving everywhere"
+
+
+def test_the_whole_terminal_is_shown_not_a_flattering_subset(client):
+    """A product shown in three screens is a product with three screens
+    worth showing."""
+    from vriddhix.api.routers.pages import TERMINAL_SCREENS
+
+    assert len(TERMINAL_SCREENS) >= 14
+
+    # Unescaped once: Jinja writes an apostrophe as &#39; and html.escape
+    # produces &#x27;, so comparing escaped forms compares two spellings of
+    # the same character.
+    from html import unescape
+
+    body = unescape(client.get("/").text)
+    for slug, title, note in TERMINAL_SCREENS:
+        shot = client.get(f"/static/screens/{slug}.png")
+        assert shot.status_code == 200, f"{slug}.png missing"
+        assert len(shot.content) > 8000, f"{slug}.png looks empty"
+        assert title in body, title
+        assert note in body, note
+
+
+def test_the_terminal_clip_is_real_and_cheap_to_ignore(client):
+    """A third of a megabyte should not be fetched for a reader who never
+    scrolls to it, and a clip of a product should be that product."""
+    body = client.get("/").text
+    assert 'id="term-video"' in body
+    assert 'preload="none"' in body, "the clip downloads before it is wanted"
+    assert "poster=" in body, "no poster, so the box is empty until it loads"
+
+    for name, kind in (("terminal.mp4", "video/mp4"),
+                       ("terminal.webm", "video/webm"),
+                       ("terminal-poster.jpg", "image/jpeg")):
+        asset = client.get(f"/static/video/{name}")
+        assert asset.status_code == 200, name
+        assert asset.headers["content-type"].startswith(kind.split("/")[0])
+        assert len(asset.content) > 20_000, f"{name} looks empty"
+
+    # Autoplay is blocked on most phones; the button has to exist.
+    assert 'id="term-play"' in body
