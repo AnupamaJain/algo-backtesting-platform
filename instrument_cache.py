@@ -1521,6 +1521,22 @@ def get_sensex_bfo_instruments() -> Dict[int, Dict[str, Any]]:
     return result
 
 
+def _as_iso(value) -> Optional[str]:
+    """An expiry as YYYY-MM-DD, whatever sqlite handed back.
+
+    The instruments table declares `expiry DATE` and the shared connection
+    enables PARSE_DECLTYPES, so sqlite3 returns date objects -- while every
+    function here documents a string and every caller treats it as one.
+    With an empty table nobody ever saw the difference; with a full one it
+    turned up twice in an hour, as "Tue, 06 Oct 2026 00:00:00 GMT" in the
+    expiry dropdowns and as "strptime() argument 1 must be str, not
+    datetime.date" from the amplitude table.
+    """
+    if value is None:
+        return None
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+
 def get_upcoming_expiries(underlying_name: str, count: int = 2) -> list[str]:
     """Return the next N upcoming expiry dates for a given underlying.
 
@@ -1564,11 +1580,7 @@ def get_upcoming_expiries(underlying_name: str, count: int = 2) -> list[str]:
         # straight into JSON, where a date serialises as "Tue, 06 Oct 2026
         # 00:00:00 GMT" and every expiry dropdown in the product filled up
         # with HTTP timestamps.
-        return [
-            row["expiry"].isoformat() if hasattr(row["expiry"], "isoformat")
-            else str(row["expiry"])
-            for row in rows
-        ]
+        return [_as_iso(row["expiry"]) for row in rows]
     except Exception as exc:
         logger.warning("get_upcoming_expiries(%s): %s", underlying_name, exc)
         return []
@@ -1699,7 +1711,7 @@ def get_next_expiry(underlying_name: str, expiry: str) -> Optional[str]:
         )
         row = cursor.fetchone()
         conn.close()
-        return row["expiry"] if row else None
+        return _as_iso(row["expiry"]) if row else None
     except Exception as exc:
         logger.warning("get_next_expiry(%s, %s): %s", underlying_name, expiry, exc)
         return None

@@ -87,3 +87,32 @@ def test_expiries_keep_their_documented_format():
     for value in dates:
         assert isinstance(value, str), f"{value!r} is not a string"
         assert len(value) == 10 and value[4] == "-" and value[7] == "-", value
+
+
+def test_every_expiry_reader_returns_a_string():
+    """One helper, because this bug arrived twice in an hour.
+
+    The table declares `expiry DATE` and the connection parses types, so
+    sqlite returns date objects while every function here documents a
+    string. With an empty table nobody saw it; with a full one it showed up
+    as "Tue, 06 Oct 2026 00:00:00 GMT" in the expiry dropdowns and as
+    "strptime() argument 1 must be str, not datetime.date" from the
+    amplitude table.
+    """
+    upcoming = ic.get_upcoming_expiries("NIFTY", 2)
+    if not upcoming:
+        pytest.skip("no NIFTY contracts in the local cache")
+
+    for value in upcoming:
+        assert isinstance(value, str), f"{value!r} is not a string"
+
+    nxt = ic.get_next_expiry("NIFTY", upcoming[0])
+    assert nxt is None or isinstance(nxt, str), f"{nxt!r} is not a string"
+
+
+def test_the_iso_helper_takes_either_shape():
+    import datetime as _dt
+
+    assert ic._as_iso(_dt.date(2026, 10, 6)) == "2026-10-06"
+    assert ic._as_iso("2026-10-06") == "2026-10-06"
+    assert ic._as_iso(None) is None
