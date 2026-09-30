@@ -94,7 +94,7 @@
       Launch
       <span id="launch-broker" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface-2);color:var(--muted)">…</span>
       <span id="launch-mode" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px"></span>
-      <a href="/lab-strategies" id="launch-lab" style="margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none">Backtest these in the Strategy Lab ↗</a>
+      <a href="{{ root }}/lab-strategies" id="launch-lab" style="margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none">Backtest these in the Strategy Lab ↗</a>
     </div>
     <div id="launch-grid" class="card-grid">
       <div class="card-desc" style="padding:12px">Loading strategies…</div>
@@ -105,27 +105,27 @@
   <div class="category-section">
     <div class="category-label">Positions &amp; Monitoring</div>
     <div class="card-grid">
-      <a href="/positions" class="module-card">
+      <a href="{{ root }}/positions" class="module-card">
         <div class="card-icon">📊</div>
         <div class="card-name">NIFTY Positions</div>
         <div class="card-desc">Live NIFTY options positions with greeks and IV</div>
       </a>
-      <a href="/sensex_positions" class="module-card">
+      <a href="{{ root }}/sensex_positions" class="module-card">
         <div class="card-icon">📈</div>
         <div class="card-name">SENSEX Positions</div>
         <div class="card-desc">Live SENSEX options positions with greeks and IV</div>
       </a>
-      <a href="/api-monitor" class="module-card">
+      <a href="{{ root }}/api-monitor" class="module-card">
         <div class="card-icon">🔍</div>
         <div class="card-name">API Monitor</div>
         <div class="card-desc">Broker API call metrics and rate limit tracking</div>
       </a>
-      <a href="/duplicate-orders" class="module-card">
+      <a href="{{ root }}/duplicate-orders" class="module-card">
         <div class="card-icon">⚠️</div>
         <div class="card-name">Duplicate Orders</div>
         <div class="card-desc">Detect and cancel duplicate algo orders within 2% price</div>
       </a>
-      <a href="/position-guard" class="module-card">
+      <a href="{{ root }}/position-guard" class="module-card">
         <div class="card-icon">🛡️</div>
         <div class="card-name">Position Guard</div>
         <div class="card-desc">Symbols with unreviewed long exposure across position, orders &amp; GTTs</div>
@@ -137,22 +137,22 @@
   <div class="category-section">
     <div class="category-label">Trading Strategies</div>
     <div class="card-grid">
-      <a href="/wave-extractor" class="module-card">
+      <a href="{{ root }}/wave-extractor" class="module-card">
         <div class="card-icon">🌊</div>
         <div class="card-name">Wave Extractor</div>
         <div class="card-desc">Gap trading automation and order management</div>
       </a>
-      <a href="/survivor" class="module-card">
+      <a href="{{ root }}/survivor" class="module-card">
         <div class="card-icon">🎯</div>
         <div class="card-name">Survivor</div>
         <div class="card-desc">Stock single-leg strategy for BANKNIFTY</div>
       </a>
-      <a href="/expiry_trade" class="module-card">
+      <a href="{{ root }}/expiry_trade" class="module-card">
         <div class="card-icon">📅</div>
         <div class="card-name">Expiry Trade</div>
         <div class="card-desc">Expiry day strategy with Stoch RSI signals</div>
       </a>
-      <a href="/covered_calls/" class="module-card">
+      <a href="{{ root }}/covered_calls/" class="module-card">
         <div class="card-icon">☂️</div>
         <div class="card-name">Covered Calls</div>
         <div class="card-desc">Sell OTM CE options against held equity to earn premium</div>
@@ -164,12 +164,12 @@
   <div class="category-section">
     <div class="category-label">Exit Management</div>
     <div class="card-grid">
-      <a href="/early-exit" class="module-card">
+      <a href="{{ root }}/early-exit" class="module-card">
         <div class="card-icon">🚪</div>
         <div class="card-name">Early Exit — NIFTY</div>
         <div class="card-desc">Set up GTT exit orders for NIFTY options</div>
       </a>
-      <a href="/early-exit-sensex" class="module-card">
+      <a href="{{ root }}/early-exit-sensex" class="module-card">
         <div class="card-icon">🚪</div>
         <div class="card-name">Early Exit — SENSEX</div>
         <div class="card-desc">Set up GTT exit orders for SENSEX options</div>
@@ -181,27 +181,27 @@
   <div class="category-section">
     <div class="category-label">Analysis &amp; Research</div>
     <div class="card-grid">
-      <a href="/trade-journal" class="module-card">
+      <a href="{{ root }}/trade-journal" class="module-card">
         <div class="card-icon">📋</div>
         <div class="card-name">Trade Journal</div>
         <div class="card-desc">Daily P&amp;L, market conditions and trade notes</div>
       </a>
-      <a href="/tradebook-analysis" class="module-card">
+      <a href="{{ root }}/tradebook-analysis" class="module-card">
         <div class="card-icon">📊</div>
         <div class="card-name">Tradebook Analysis</div>
         <div class="card-desc">Analyze weekly/monthly expiries and margin from CSV</div>
       </a>
-      <a href="/swing-levels/" class="module-card">
+      <a href="{{ root }}/swing-levels/" class="module-card">
         <div class="card-icon">📈</div>
         <div class="card-name">Swing Levels</div>
         <div class="card-desc">Weighted support/resistance from 3-min swing reversals</div>
       </a>
-      <a href="/cas_tracker/" class="module-card">
+      <a href="{{ root }}/cas_tracker/" class="module-card">
         <div class="card-icon">🧾</div>
         <div class="card-name">CAS Tracker</div>
         <div class="card-desc">NIFTY Consolidated Account Statement order tracking</div>
       </a>
-      <a href="/nifty_contributors" class="module-card">
+      <a href="{{ root }}/nifty_contributors" class="module-card">
         <div class="card-icon">📊</div>
         <div class="card-name">NIFTY Contributors</div>
         <div class="card-desc">Live index impact of NIFTY 50 constituent stocks</div>
@@ -237,7 +237,7 @@
       var state = !s.installed ? '<span style="color:var(--bear)">missing files</span>'
                 : s.running ? '<span style="color:var(--bull)">● running</span>'
                 : '<span style="color:var(--muted)">idle</span>';
-      var href = s.dashboard || "#";
+      var href = s.dashboard ? (window.APP_ROOT || "") + s.dashboard : "#";
       return '<a href="' + esc(href) + '" class="module-card">'
         + '<div class="card-name">' + esc(s.name) + ' <span style="font-size:10px;font-weight:500;margin-left:6px">' + state + '</span></div>'
         + '<div class="card-desc">' + esc(s.summary) + '</div>'

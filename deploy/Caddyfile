@@ -1,17 +1,9 @@
-# One domain, three apps. Host-based routing, because each app generates
-# absolute paths (/static, /_next, /api) and would break under a path prefix.
+# One domain, one port. Pramana is the gateway: it serves the workspace and
+# proxies /terminal and /lab to the other two processes, which bind to
+# loopback and are reachable only through it. Caddy provisions TLS.
 #
-#   app.example.com       Pramana      — account, research workspace, the hub
-#   terminal.example.com  Terminal     — live / paper options trading
-#   lab.example.com       Strategy Lab — backtesting and validation
-#
-# Set on each process so cross-app links and tickets use these names:
-#   PRAMANA_PUBLIC_URL=https://app.example.com        (terminal)
-#   NEXT_PUBLIC_PRAMANA_URL=https://app.example.com   (lab)
-#   PRAMANA_TERMINAL_URL=https://terminal.example.com (pramana)
-#   PRAMANA_LAB_URL=https://lab.example.com           (pramana)
-# and the same PRAMANA_SSO_SECRET on all three. Caddy provisions TLS itself.
+# Set PRAMANA_SSO_SECRET identically on all three processes.
 
-app.example.com      { reverse_proxy 127.0.0.1:8787 }
-terminal.example.com { reverse_proxy 127.0.0.1:5010 }
-lab.example.com      { reverse_proxy 127.0.0.1:4300 }
+app.example.com {
+  reverse_proxy 127.0.0.1:8787
+}

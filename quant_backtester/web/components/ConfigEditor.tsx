@@ -1,4 +1,5 @@
 "use client";
+import { BASE } from "@/lib/base";
 
 /**
  * Schema-driven settings editor.
@@ -66,7 +67,7 @@ export default function ConfigEditor({
   const [message, setMessage] = useState<{ tone: "green" | "red"; text: string } | null>(null);
 
   useEffect(() => {
-    fetch("/api/config")
+    fetch(`${BASE}/api/config`)
       .then((r) => r.json())
       .then((data) => setValues(data.values))
       .catch(() => setMessage({ tone: "red", text: "Could not load configuration." }));
@@ -98,7 +99,7 @@ export default function ConfigEditor({
     });
 
     try {
-      const response = await fetch("/api/config", {
+      const response = await fetch(`${BASE}/api/config`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ edits }),

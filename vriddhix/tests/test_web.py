@@ -1395,11 +1395,31 @@ def test_the_gateway_forwards_and_strips_hop_by_hop_headers(client, monkeypatch)
 
     assert seen["url"] == "http://127.0.0.1:5010/?x=1"
     assert seen["prefix"] == "/terminal"
-    assert seen["host"] == "127.0.0.1:5010"
+    assert seen["host"] == "testserver"          # the reader's Host, passed through
     assert r.status_code == 302
     assert r.headers["location"] == "/terminal/home"
     assert "session=abc" in r.headers.get("set-cookie", "")
     assert "transfer-encoding" not in {k.lower() for k in r.headers}
+
+
+def test_the_lab_keeps_its_prefix(client):
+    """Next.js is mounted with basePath "/lab" and must be asked for it."""
+    import httpx
+
+    from vriddhix.api import gateway
+
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, content=b"ok")
+
+    gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        client.get("/lab/console/strategies?universe=india")
+    finally:
+        gateway._client = None
+    assert seen["url"] == "http://127.0.0.1:4300/lab/console/strategies?universe=india"
 
 
 def test_handoff_urls_are_same_origin(monkeypatch, session, operator):

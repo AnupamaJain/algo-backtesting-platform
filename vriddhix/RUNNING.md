@@ -14,7 +14,7 @@ cd ~/learningacademy/algo-backtesting-platform/algo-backtesting-platform/vriddhi
 
 Then open:
 
-### **http://127.0.0.1:8787**
+### **http://127.0.0.1:8787** — the whole product is behind this one port
 
 | | |
 |---|---|
@@ -24,6 +24,8 @@ Then open:
 | http://127.0.0.1:8787/login | Sign in |
 | http://127.0.0.1:8787/signup | Create an account |
 | http://127.0.0.1:8787/api/docs | Browsable API reference (46 endpoints) |
+| http://127.0.0.1:8787/terminal/home | The trading terminal (proxied to a loopback process) |
+| http://127.0.0.1:8787/lab/console/strategies | The Strategy Lab (proxied to a loopback process) |
 
 `127.0.0.1` means **this machine only**. Nothing is reachable from your
 network or the internet, which is the right default for something holding a

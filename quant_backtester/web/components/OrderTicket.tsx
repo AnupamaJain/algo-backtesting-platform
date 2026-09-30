@@ -1,4 +1,5 @@
 "use client";
+import { BASE } from "@/lib/base";
 
 /**
  * Order entry.
@@ -49,7 +50,7 @@ export default function OrderTicket({
     setBusy(true);
     setResult(null);
     try {
-      const response = await fetch("/api/broker", {
+      const response = await fetch(`${BASE}/api/broker`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

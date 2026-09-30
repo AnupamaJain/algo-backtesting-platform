@@ -148,7 +148,7 @@
         </div>
 
         <div class="card">
-            <form action="/tradebook-analysis" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <form action="{{ root }}/tradebook-analysis" method="POST" enctype="multipart/form-data" id="uploadForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="upload-section">
                     <i class="fas fa-file-csv fa-3x" style="margin-bottom: 15px; color: var(--text-secondary);"></i>

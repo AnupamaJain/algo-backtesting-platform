@@ -15,8 +15,8 @@ LOG="$ROOT/logs/flask_app.log"
 # real Dhan prices -- no order can leave the building, and the vendor is Dhan
 # rather than Zerodha. common_lib reads this; without it the strategies
 # default to Flattrade.
-export PRAMANA_PUBLIC_URL="${PRAMANA_PUBLIC_URL:-http://127.0.0.1:8787}"
-export LAB_PUBLIC_URL="${LAB_PUBLIC_URL:-http://127.0.0.1:4300}"
+export PRAMANA_PUBLIC_URL="${PRAMANA_PUBLIC_URL:-}"
+export LAB_PUBLIC_URL="${LAB_PUBLIC_URL:-/lab}"
 export BROKER_NAME="${BROKER_NAME:-paper_dhan}"
 
 # Same shared secret the research platform reads. Absent, /sso does not exist.
@@ -37,7 +37,7 @@ case "${1:-start}" in
     for _ in $(seq 1 30); do
       sleep 1
       if curl -fsS -o /dev/null "http://127.0.0.1:$PORT/app_login" 2>/dev/null; then
-        echo "✓ terminal is up — http://127.0.0.1:$PORT"
+        echo "✓ terminal is up on loopback :$PORT — reach it at the gateway: http://127.0.0.1:8787/terminal"
         echo "  broker: $BROKER_NAME"
         grep -m1 "live_trading" "$LOG" 2>/dev/null || true
         exit 0

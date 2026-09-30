@@ -27,15 +27,22 @@ is a hosted service, and nothing here is investment advice.
 
 ---
 
-## One product, three surfaces
+## One app, one port
 
-One sign-in, one look, three processes that each do one thing:
+**http://127.0.0.1:8787** — everything is behind it.
 
-| Surface | What it is | Local |
-|---|---|---|
-| **Research workspace** | Pramana — the account, the NSE scanner, and the hub the other two are reached through | http://127.0.0.1:8787/app |
-| **Trading terminal** | Every Indian strategy, launched on paper or live, with contracts pre-loaded from Dhan | http://127.0.0.1:5010/home |
-| **Strategy Lab** | Backtest any strategy on any market through the six-gate validation funnel | http://127.0.0.1:4300/console/strategies |
+| | |
+|---|---|
+| `/app` | Research workspace — the account, the NSE scanner, and the hub |
+| `/terminal/home` | Trading terminal — every Indian strategy, paper or live, contracts pre-loaded from Dhan |
+| `/lab/console/strategies` | Strategy Lab — backtest any strategy on any market through the six-gate funnel |
+
+The terminal and the Lab are separate processes bound to loopback, reached
+only through the gateway in Pramana (`vriddhix/src/vriddhix/api/gateway.py`).
+They stay separate on purpose: the terminal runs broker websockets,
+schedulers and strategy subprocesses, and a crash there must not take
+sign-in and research down with it. To a user there is one host, one
+sign-in and one look.
 
 ```bash
 ./run-all.sh start      # all three; ./run-all.sh status to check
@@ -48,9 +55,8 @@ the Lab opens without one — the Lab in particular used to open to anyone
 who knew the port. Grant operator status with
 `python3 -m vriddhix.cli operator you@example.com`.
 
-To put all three on one domain, `deploy/Caddyfile` routes three hostnames
-to the three ports with TLS provisioned by Caddy; the environment variables
-it names make the cross-app links and tickets use those hostnames.
+To deploy, `deploy/Caddyfile` fronts the single port with TLS provisioned
+by Caddy. Nothing else is exposed.
 
 ## What's in here
 

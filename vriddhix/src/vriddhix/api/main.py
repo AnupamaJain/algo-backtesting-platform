@@ -25,6 +25,7 @@ from . import auth
 from .errors import ApiError, api_error_handler, validation_error_handler
 from fastapi.responses import HTMLResponse
 
+from . import gateway
 from .routers import (
     ai, breakouts, market, ops, pages, product, research, scanners, sectors,
     seo, stocks,
@@ -180,6 +181,7 @@ def create_app() -> FastAPI:
         market.router, sectors.router, stocks.router, scanners.router,
         breakouts.router, research.router, product.router, ai.router,
         ops.router, auth.router, seo.router, pages.router,
+        gateway.router,  # /terminal and /lab: the other two apps, behind this port
     ):
         app.include_router(router)
 

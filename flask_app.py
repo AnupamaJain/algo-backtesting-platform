@@ -218,6 +218,33 @@ redirect_url = "http://{host}:{port}/login".format(host=HOST, port=PORT)
 # App
 app = Flask(__name__)
 
+
+class _ForwardedPrefix:
+    """Live under the path prefix the gateway forwards us at.
+
+    Pramana's gateway strips "/terminal" before proxying and announces it
+    in X-Forwarded-Prefix. Setting SCRIPT_NAME from that makes url_for(),
+    redirects and the static route all generate "/terminal/..." -- without
+    it every link this app wrote pointed at the gateway's own root, where
+    nothing of ours exists. Direct requests on :5010 carry no prefix and
+    behave exactly as before.
+    """
+
+    def __init__(self, wsgi_app):
+        self._app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        prefix = environ.get("HTTP_X_FORWARDED_PREFIX", "").rstrip("/")
+        if prefix:
+            environ["SCRIPT_NAME"] = prefix
+            path = environ.get("PATH_INFO", "")
+            if path.startswith(prefix):
+                environ["PATH_INFO"] = path[len(prefix):] or "/"
+        return self._app(environ, start_response)
+
+
+app.wsgi_app = _ForwardedPrefix(app.wsgi_app)
+
 # Use a persistent secret key to preserve sessions across restarts
 SECRET_KEY_FILE = os.path.join(base_dir, ".flask_secret")
 if os.path.exists(SECRET_KEY_FILE):
@@ -411,9 +438,16 @@ def _inject_app_urls():
     proxy the three apps sit on three hostnames, and these are what the
     header and the launcher point at.
     """
+    from flask import request as _req
+
     return {
-        "PRAMANA_URL": os.environ.get("PRAMANA_PUBLIC_URL", "http://127.0.0.1:8787"),
-        "LAB_URL": os.environ.get("LAB_PUBLIC_URL", "http://127.0.0.1:4300"),
+        # Where this app is mounted ("/terminal" behind the gateway, "" when
+        # hit directly). Every root-relative href in the templates is
+        # prefixed with it.
+        "root": _req.script_root,
+        # Same origin as of the single-port gateway; empty means "this host".
+        "PRAMANA_URL": os.environ.get("PRAMANA_PUBLIC_URL", ""),
+        "LAB_URL": os.environ.get("LAB_PUBLIC_URL", "/lab"),
     }
 
 
