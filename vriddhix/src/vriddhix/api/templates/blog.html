@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Method notes — Pramana{% endblock %}
+{% block description %}What survives validation, what it costs, and what the numbers do not say.{% endblock %}
+
+{% block content %}
+<section class="wrap narrow" style="padding-block:56px 0">
+  <div class="eyebrow">Method notes</div>
+  <h1>Working notes</h1>
+  <p class="lede">
+    Longer pieces about what the pipeline found and how to read it. Every
+    figure quoted is read from the pipeline's own output when the page is
+    served, so a post cannot drift from the data it is about.
+  </p>
+</section>
+
+<section class="wrap narrow">
+  <ul class="post-list">
+    {% for post in posts %}
+    <li>
+      <a href="/blog/{{ post.slug }}">
+        <span class="post-meta num">{{ post.date }} · {{ post.reading }} min</span>
+        <h2>{{ post.title }}</h2>
+        <p>{{ post.standfirst }}</p>
+        <span class="post-tags">
+          {% for tag in post.tags %}<i>{{ tag }}</i>{% endfor %}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

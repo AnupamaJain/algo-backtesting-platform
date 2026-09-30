@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — Pramana{% endblock %}
+{% block description %}{{ post.standfirst }}{% endblock %}
+
+{% block content %}
+<article class="wrap narrow post">
+  <header style="padding-block:56px 0">
+    <a class="quiet-link" href="/blog">← Method notes</a>
+    <h1>{{ post.title }}</h1>
+    <p class="lede">{{ post.standfirst }}</p>
+    <p class="post-meta num">{{ post.date }} · about {{ post.reading }} minutes</p>
+  </header>
+
+  {% if g %}
+  {% set ten = g.windows[0] %}
+  {% set five = g.windows[1] %}
+
+  <h2>The sweep</h2>
+  <p>
+    The same <b class="num">{{ "{:,}".format(ten.tested) }}</b> parameter
+    configurations — {{ ten.swept|length }} strategies across
+    {{ ten.symbols }} symbols — were walked forward over two windows of
+    global market history: ten years, and then the most recent five. Three
+    years in sample, one out, rolled annually. Costs and slippage applied.
+    Six gates, the last of which is a false-discovery-rate correction.
+  </p>
+  <p>
+    Over ten years, <b class="num">{{ "{:,}".format(ten.survivors) }}</b>
+    configurations cleared every gate. Over five,
+    <b class="num">{{ "{:,}".format(five.survivors) }}</b> did.
+  </p>
+
+  <h2>Why the shorter window is harsher</h2>
+  <p>
+    It is tempting to read the second number as five years being a tougher
+    market. It is mostly not. Look at where the configurations are lost.
+  </p>
+  <div class="table-scroll">
+  <table class="evidence-table">
+    <thead><tr><th>Gate</th><th class="r">10 years</th><th class="r">5 years</th></tr></thead>
+    <tbody>
+      {% for st in ten.stages %}
+      <tr>
+        <td>{{ st.name }}</td>
+        <td class="r num">{{ "{:,}".format(st.survived) }}</td>
+        <td class="r num">{{ "{:,}".format(five.stages[loop.index0].survived) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p>
+    The first gate asks only for thirty out-of-sample trades, and the
+    five-year window loses most of its field there: half the history means
+    roughly half the trades, and a strategy that trades rarely simply
+    cannot show enough of them. That is a sample-size effect, not a verdict
+    on the strategy.
+  </p>
+  <p>
+    The last gate is the interesting one. Over five years,
+    <b class="num">{{ "{:,}".format(five.stages[4].survived) }}</b>
+    configurations reached the false-discovery-rate correction and
+    <b class="num">{{ "{:,}".format(five.stages[4].survived - five.stages[5].survived) }}</b>
+    were rejected by it. Sweep ten thousand configurations and some will
+    look excellent by luck; the correction is what stops the luckiest being
+    reported as findings. On the ten-year window it rejects none, because
+    by then the evidence per configuration is strong enough to stand.
+  </p>
+
+  <h2>What survived, and what did not</h2>
+  <p>
+    Of {{ ten.swept|length }} strategies swept,
+    <b>{{ ten.strategies|length }}</b> produced at least one survivor over
+    ten years and <b>{{ five.strategies|length }}</b> over five. The rest had
+    every configuration rejected.
+  </p>
+  <dl class="rules">
+    <div>
+      <dt>Survived both windows</dt>
+      <dd>
+        {% for name in g.in_both %}<b>{{ name }}</b>{% if not loop.last %} and {% endif %}{% endfor %}.
+        These are the only two to clear the funnel over five years and ten.
+      </dd>
+    </div>
+    <div>
+      <dt>Survived one, eliminated in the other</dt>
+      <dd>
+        {% set flipped = [] %}
+        {% for name, _c in ten.strategies %}{% if name in five.eliminated %}{% set _ = flipped.append(name) %}{% endif %}{% endfor %}
+        {% for name, _c in five.strategies %}{% if name in ten.eliminated %}{% set _ = flipped.append(name) %}{% endif %}{% endfor %}
+        {% for name in flipped %}<b>{{ name }}</b>{% if not loop.last %}, {% endif %}{% endfor %}.
+      </dd>
+      <dd class="cost">
+        <span>What that means:</span> every configuration of these was
+        rejected in the window they failed — not narrowly missed, rejected.
+        A strategy that clears a funnel over one period and is thrown out
+        whole over another has not been shown to work. It has been shown to
+        have had a good stretch.
+      </dd>
+    </div>
+  </dl>
+  <p>
+    VolatilityRegime makes the point most sharply. It takes
+    <b class="num">{{ dict(ten.strategies).get("VolatilityRegime", 0) }}</b>
+    of the {{ ten.survivors }} ten-year survivors and
+    <b class="num">{{ dict(five.strategies).get("VolatilityRegime", 0) }}</b>
+    of the {{ five.survivors }} five-year ones. Read the first number alone
+    and it is the dominant strategy in the study; read both and it is a
+    strategy whose result depends on which decade you measured.
+  </p>
+
+  <h2>And the comparison that matters</h2>
+  <p>
+    A funnel tells you what passed a test. It does not tell you whether
+    passing was worth anything. In both global windows the portfolio built
+    from the survivors is beaten by buying the index and waiting:
+    <b class="num">₹{{ "{:,.0f}".format(g.starting_capital) }}</b> becomes
+    <b class="num">₹{{ "{:,.0f}".format(ten.portfolios[2].capital) }}</b>
+    held against
+    <b class="num">₹{{ "{:,.0f}".format(ten.portfolios[0].capital) }}</b>
+    traded, over ten years.
+  </p>
+  {% if g.windows|length > 2 %}
+  {% set india = g.windows[2] %}
+  <p>
+    On NSE equities the ranking changes, though not in the direction a sales
+    page would want. The rules portfolio still returns less than holding —
+    <b class="num">{{ "%+.1f"|format(india.portfolios[1].annual) }}%</b> a year
+    against <b class="num">{{ "%+.1f"|format(india.portfolios[2].annual) }}%</b> —
+    but at a Sharpe of
+    <b class="num">{{ "%.2f"|format(india.portfolios[1].sharpe) }}</b> against
+    <b class="num">{{ "%.2f"|format(india.portfolios[2].sharpe) }}</b>, with a
+    worst fall of
+    <b class="num">{{ "%.1f"|format(india.portfolios[1].drawdown) }}%</b>
+    against <b class="num">{{ "%.1f"|format(india.portfolios[2].drawdown) }}%</b>.
+    Whether that is better depends on what you are optimising — which is the
+    question a single headline number is designed to stop you asking.
+  </p>
+  {% endif %}
+
+  <h2>How to read any of this</h2>
+  <p>
+    Every figure above is read from <code>results/</code>,
+    <code>results_5y/</code> and <code>results_india/</code> when this page
+    is served. Nothing is typed in. If the pipeline is re-run with different
+    data, this post changes with it — including in the directions that are
+    less flattering, which is the only arrangement under which a number on a
+    page about backtesting means anything.
+  </p>
+  {% else %}
+  <p class="muted">The pipeline output is not present in this install.</p>
+  {% endif %}
+
+  <div class="close" style="margin-top:40px">
+    <p>The same numbers, as a picture, are on the front page.</p>
+    <div class="close-actions">
+      <a class="btn btn-primary btn-lg" href="/#funnel">See the funnel</a>
+      <a class="quiet-link" href="/learn#lies">how this can still mislead you →</a>
+    </div>
+  </div>
+</article>
+{% endblock %}

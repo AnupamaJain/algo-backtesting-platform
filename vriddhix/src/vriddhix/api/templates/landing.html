@@ -4,7 +4,7 @@
 {% block content %}
 
 <!-- ══════════════ hero ══════════════ -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.5"/></symbol><symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4.5"/><path d="M12 17.6v.01"/></symbol><symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol><symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></symbol></svg>
 <section class="hero-wrap">
   {% if surface %}
   <canvas id="terrain" class="terrain" aria-hidden="true"></canvas>
@@ -13,7 +13,7 @@
   <div class="wrap hero">
     <div class="hero-copy">
       <div class="eyebrow">NSE equities · research instrument</div>
-      <h1>Ten years of the market,<br><em>measured the same way.</em></h1>
+      <h1 class="type-in" data-type><span>Ten years of the market,</span><br><em><span>measured the same way.</span></em></h1>
       <p class="lede">
         Pramana finds chart structure in Indian equities, scores it against
         market and sector context, and records what happened next — including
@@ -487,66 +487,51 @@
     {% endfor %}
   </div>
 
-  <div class="gb-verdict">
-    <div>
-      <span class="gb-label">Survives both windows</span>
-      {% if g.in_both %}
-      <p>
-        {% for name in g.in_both %}<b>{{ name }}</b>{% if not loop.last %} and {% endif %}{% endfor %}
-        — the only {{ "strategies" if g.in_both|length > 1 else "strategy" }} to clear
-        the funnel over five years <em>and</em> ten. Everything else that
-        passed one window failed the other.
-      </p>
-      {% else %}
-      <p>Nothing cleared the funnel in both windows.</p>
-      {% endif %}
+  {% if g.matrix %}
+  <div class="matrix">
+    <div class="matrix-head">
+      <span class="gb-label" style="margin:0">Every strategy, every window</span>
+      <span class="matrix-key faint">
+        <i class="on"></i> survived <i class="off"></i> every configuration rejected
+      </span>
     </div>
-    {% set flipped = [] %}
-    {% for name, _c in g.windows[0].strategies %}
-      {% if name in g.windows[1].eliminated %}{% set _ = flipped.append(name) %}{% endif %}
-    {% endfor %}
-    {% for name, _c in g.windows[1].strategies %}
-      {% if name in g.windows[0].eliminated %}{% set _ = flipped.append(name) %}{% endif %}
-    {% endfor %}
-    {% if flipped %}
-    <div>
-      <span class="gb-label">Survived one window, eliminated in the other</span>
-      <p>
-        {% for name in flipped %}<b>{{ name }}</b>{% if not loop.last %}, {% endif %}{% endfor %}.
-        Every configuration of these was rejected in the window they failed.
-        A strategy that clears a funnel over one period and is thrown out
-        whole over another has not been shown to work; it has been shown to
-        have had a good stretch.
-      </p>
+    <div class="matrix-scroll">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            {% for w in g.windows %}
+            <th class="c">{{ w.market }}<span>{{ w.label }}</span></th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in g.matrix %}
+          <tr{% if row.kept == g.windows|length %} class="matrix-all"{% elif row.kept == 0 %} class="matrix-none"{% endif %}>
+            <td>{{ row.name }}</td>
+            {% for cell in row.cells %}
+            <td class="c">
+              {% if cell.survived %}
+              <span class="matrix-cell on" title="{{ row.name }} — {{ cell.count }} surviving configuration{{ "s" if cell.count != 1 }} in {{ cell.market }} {{ cell.label }}">
+                <b class="num">{{ cell.count }}</b>
+              </span>
+              {% else %}
+              <span class="matrix-cell off" title="{{ row.name }} — every configuration rejected in {{ cell.market }} {{ cell.label }}">·</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% endif %}
-    {% if g.beaten_by_hold %}
-    <div>
-      <span class="gb-label">And the honest part</span>
-      <p>
-        Over both global windows the survivors are beaten by buying the index
-        and waiting: <b class="num">₹10,00,000</b> becomes
-        <b class="num">₹{{ "{:,.0f}".format(g.windows[0].portfolios[2].capital) }}</b>
-        held, against
-        <b class="num">₹{{ "{:,.0f}".format(g.windows[0].portfolios[0].capital) }}</b>
-        traded, over ten years. A search that finds something is not the same
-        as a result, and this page is not going to print the first and call
-        it the second.
-      </p>
-    </div>
-    <div>
-      <span class="gb-label">Where it does earn its keep</span>
-      <p>
-        On NSE equities the ranking changes: the rules portfolio returns less
-        than holding — <b class="num">+6.4%</b> a year against
-        <b class="num">+13.8%</b> — but at a Sharpe of
-        <b class="num">2.74</b> against <b class="num">0.83</b>, and a worst
-        fall of <b class="num">3.7%</b> against <b class="num">36.6%</b>.
-        Whether that is better depends on what you are optimising, which is
-        the question a single headline number is designed to stop you asking.
-      </p>
-    </div>
-    {% endif %}
+    <p class="matrix-foot faint">
+      A solid row survived everywhere. Two strategies manage it.
+      <a href="/blog/what-survives-two-windows">Why the shorter window is harsher →</a>
+    </p>
+  </div>
+  {% endif %}
+
   <p class="faint gb-foot">
     Costs, slippage and a walk-forward of three years in sample to one out,
     rolled annually. Numbers read from
@@ -877,60 +862,38 @@
     believe they are real.
   </p>
 
-  <dl class="rules" data-stagger>
-    <div>
-      <dt>There is one implementation of every rule</dt>
-      <dd>
-        The live scanner, the backtester and the historical X-Ray call the same
-        function objects. Not the same algorithm written twice — the same
-        objects.
-      </dd>
-      <dd class="cost">
-        <span>Costs:</span> engines cannot take shortcuts that only make sense
-        live, and a test walks the syntax tree on every commit to keep it that
-        way.
-      </dd>
-    </div>
-
-    <div>
-      <dt>Nothing may see the future</dt>
-      <dd>
-        A value dated <i>t</i> depends only on bars dated <i>t</i> or earlier,
-        checked by truncating history, recomputing, and requiring byte-identical
-        output.
-      </dd>
-      <dd class="cost">
-        <span>Costs:</span> a swing is not confirmed until the bars that confirm
-        it have printed, so the detector is always some days behind the chart a
-        human would draw.
-      </dd>
-    </div>
-
-    <div>
-      <dt>It says what it does not know</dt>
-      <dd>
-        An unranked sector reads <code>null</code>, not <code>0</code>. A win
-        rate over zero resolved trades is <code>null</code>, not
-        <code>0%</code>.
-      </dd>
-      <dd class="cost">
-        <span>Costs:</span> every chart and every caller has to handle absence,
-        because absence is never quietly rendered as a bearish number.
-      </dd>
-    </div>
-
-    <div>
-      <dt>Nothing that failed is deleted</dt>
-      <dd>
-        Failed breakouts keep their row, their reason and the day it happened.
-        No view drops them by default.
-      </dd>
-      <dd class="cost">
-        <span>Costs:</span> the hit rate on this page is lower than the one a
-        platform reports when it quietly counts only survivors.
-      </dd>
-    </div>
-  </dl>
+  <div class="refuse">
+    {% for icon, rule, shortcut, cost in [
+      ("target",
+       "One implementation of every rule",
+       "Write the live version once and the backtest version again",
+       "Engines cannot take shortcuts that only make sense live, and a test walks the syntax tree on every commit to keep it that way."),
+      ("clock",
+       "Nothing may see the future",
+       "Confirm a swing using the bars that came after it",
+       "A swing is not confirmed until the bars that confirm it have closed, so the newest edge of every chart is deliberately unfinished."),
+      ("alert",
+       "It says what it does not know",
+       "Render an unranked sector as zero and move on",
+       "Every chart and every caller has to handle absence, because null is not quietly turned into a bearish number."),
+      ("folder",
+       "Nothing that failed is deleted",
+       "Keep the winners and quietly drop the rest",
+       "The hit rate on this page is lower than the one a survivor-only ledger would show — which is the entire point of keeping them.")] %}
+    <article class="refuse-card">
+      <span class="refuse-ico"><svg class="ico"><use href="#i-{{ icon }}"/></svg></span>
+      <h3>{{ rule }}</h3>
+      <p class="refuse-shortcut">
+        <span class="refuse-x" aria-hidden="true">✕</span>
+        <s>{{ shortcut }}</s>
+      </p>
+      <p class="refuse-cost">
+        <span class="refuse-label">What it costs</span>
+        {{ cost }}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
 </section>
 
 <!-- ══════════════ faq ══════════════ -->
@@ -2197,6 +2160,43 @@
       io.unobserve(entry.target);
     });
   }, { threshold: 0.3 }).observe(svg);
+})();
+
+/* ── the headline assembles itself ───────────────────────────────────
+   Word by word, once, on load. The full sentence is in the markup and
+   the animation only moves it, so a crawler, a reader with script off
+   and anyone on prefers-reduced-motion all get the finished headline --
+   and the largest text on the page is never waiting on JavaScript to
+   exist, only to move.
+
+   Words rather than letters: letter-by-letter looks like a terminal
+   typing, which is a different claim about what the page is. */
+(function () {
+  var h = document.querySelector("h1[data-type]");
+  if (!h) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    h.classList.add("typed");
+    return;
+  }
+
+  var spans = h.querySelectorAll("span");
+  var index = 0;
+  Array.prototype.forEach.call(spans, function (span) {
+    var words = span.textContent.split(/(\s+)/);
+    span.textContent = "";
+    words.forEach(function (word) {
+      if (!word.trim()) { span.appendChild(document.createTextNode(word)); return; }
+      var w = document.createElement("i");
+      w.className = "type-word";
+      w.textContent = word;
+      w.style.transitionDelay = (index++ * 55) + "ms";
+      span.appendChild(w);
+    });
+  });
+
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () { h.classList.add("typed"); });
+  });
 })();
 </script>
 {% endblock %}

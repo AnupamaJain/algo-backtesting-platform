@@ -47,7 +47,10 @@ def is_public(request: Request | None = None) -> bool:
 #: that changes monthly trains crawlers to ignore the field.
 INDEXABLE = [
     ("/",       "daily",   "1.0"),
+    ("/start",  "monthly", "0.9"),
     ("/learn",  "monthly", "0.8"),
+    ("/blog",   "weekly",  "0.7"),
+    ("/blog/what-survives-two-windows", "monthly", "0.7"),
     ("/vcp-breakout-failure-rate", "weekly", "0.9"),
     ("/signup", "yearly",  "0.4"),
 ]
@@ -71,7 +74,9 @@ def robots(request: Request) -> Response:
     body = f"""# Pramana
 User-agent: *
 Allow: /$
+Allow: /start
 Allow: /learn
+Allow: /blog
 Allow: /vcp-breakout-failure-rate
 Allow: /signup
 

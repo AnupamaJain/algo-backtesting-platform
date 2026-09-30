@@ -509,14 +509,19 @@ def test_the_sitemap_is_valid_and_lists_only_indexable_pages(client, monkeypatch
     doc = minidom.parseString(body)
 
     locs = [n.firstChild.data for n in doc.getElementsByTagName("loc")]
-    assert locs == [
-        "https://vriddhix.example/",
-        "https://vriddhix.example/learn",
-        "https://vriddhix.example/vcp-breakout-failure-rate",
-        "https://vriddhix.example/signup",
-    ]
-    # Account surfaces stay out.
+
+    # Derived from INDEXABLE rather than repeated here: a hardcoded list
+    # means adding a page fails this test for the wrong reason, and the
+    # thing worth enforcing is that the sitemap and that table agree.
+    from vriddhix.api.routers.seo import INDEXABLE
+
+    assert locs == [f"https://vriddhix.example{path}" for path, _freq, _pri in INDEXABLE]
+
+    # Account and machine surfaces stay out, whatever is added.
     assert not any("/login" in u or "/api" in u for u in locs)
+    # And every listed page must actually exist.
+    for path, _freq, _pri in INDEXABLE:
+        assert client.get(path).status_code == 200, path
 
 
 def test_every_page_declares_one_canonical_url(client, monkeypatch):
@@ -1608,3 +1613,97 @@ def test_the_lab_is_shown_as_well_as_described(client):
     assert len(lab) >= 6, f"only {len(lab)} Lab screens"
     for slug, _surface, _title, _blurb in lab:
         assert client.get(f"/static/screens/{slug}.png").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Written pieces, onboarding, and the visual replacements
+# ---------------------------------------------------------------------------
+
+
+def test_the_blog_lists_and_serves_its_posts(client):
+    index = client.get("/blog")
+    assert index.status_code == 200
+
+    from vriddhix.api.routers.pages import BLOG_POSTS
+
+    for post in BLOG_POSTS:
+        assert post["title"] in index.text
+        page = client.get(f"/blog/{post['slug']}")
+        assert page.status_code == 200
+        assert post["title"] in page.text
+
+
+def test_an_unknown_post_is_a_404_not_a_blank_page(client):
+    assert client.get("/blog/no-such-thing").status_code == 404
+
+
+def test_the_post_quotes_the_pipeline_rather_than_itself(client):
+    """A post about backtesting that hardcodes its own numbers is the thing
+    it is warning about."""
+    from vriddhix.api.routers.pages import BACKTEST_ROOT, _global_results
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    g = _global_results()
+    body = client.get("/blog/what-survives-two-windows").text
+    assert f"{g['windows'][0]['tested']:,}" in body
+    assert f"{g['windows'][0]['survivors']:,}" in body
+    for name in g["in_both"]:
+        assert name in body
+
+
+def test_the_survival_matrix_covers_every_strategy_swept(client):
+    """The grid replaced four paragraphs; it has to carry the same facts."""
+    from vriddhix.api.routers.pages import BACKTEST_ROOT, _global_results
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    g = _global_results()
+    assert g["matrix"], "no matrix built"
+
+    swept = {name for w in g["windows"] for name in w["swept"]}
+    assert {row["name"] for row in g["matrix"]} == swept
+
+    # The scoped-output directory is not a strategy.
+    assert "strategies" not in {row["name"] for row in g["matrix"]}
+
+    # Rows that survived everywhere sort first.
+    assert g["matrix"][0]["kept"] >= g["matrix"][-1]["kept"]
+
+    body = client.get("/").text
+    for row in g["matrix"][:3]:
+        assert row["name"] in body
+
+
+def test_onboarding_is_ordered_and_every_step_goes_somewhere_real(client):
+    from vriddhix.api.routers.pages import ONBOARDING
+
+    page = client.get("/start")
+    assert page.status_code == 200
+
+    for step in ONBOARDING:
+        assert step["title"] in page.text
+        # /go/<target> is a hub this app serves; everything else is a page.
+        target = step["where"]
+        if not target.startswith("/go/"):
+            assert client.get(target).status_code in (200, 307, 308), target
+
+    assert "Create an account" == ONBOARDING[0]["title"], (
+        "the first step should not require anything"
+    )
+
+
+def test_the_headline_is_readable_without_script(client):
+    """The largest text on the page must not wait on JavaScript to exist."""
+    body = client.get("/").text
+    assert "Ten years of the market," in body
+    assert "measured the same way." in body
+
+
+def test_every_refusal_states_what_it_costs(client):
+    """A refusal with no visible cost is a slogan."""
+    body = client.get("/").text
+    assert body.count("What it costs") == 4
+    assert "refuse-card" in body

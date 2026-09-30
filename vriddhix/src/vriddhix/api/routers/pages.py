@@ -20,7 +20,7 @@ from pathlib import Path
 from datetime import timedelta
 
 import yaml
-from fastapi import APIRouter, Request
+from fastapi import HTTPException, APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -453,7 +453,9 @@ STARTING_CAPITAL = 1_000_000
 
 
 #: Not strategies -- the funnel's own output, written alongside them.
-_NON_STRATEGY_DIRS = {"layer2", "layer3", "layer4", "intraday", "pead"}
+#: "strategies" is where a narrowed run writes its scoped output, not a
+#: strategy of that name.
+_NON_STRATEGY_DIRS = {"layer2", "layer3", "layer4", "intraday", "pead", "strategies"}
 
 
 def _strategies_swept(folder: str) -> list[str]:
@@ -614,6 +616,45 @@ def _read_window(folder: str) -> dict | None:
     }
 
 
+def _survival_matrix(windows: list[dict]) -> list[dict]:
+    """Every strategy swept, against every window, as a grid.
+
+    The prose version of this took four paragraphs and was still hard to
+    check. A row per strategy and a column per window is the same
+    information in a shape a reader can scan: where the row is solid the
+    strategy survived everywhere, where it is broken it did not.
+    """
+    swept: list[str] = []
+    for window in windows:
+        for name in window.get("swept", []):
+            if name not in swept:
+                swept.append(name)
+
+    rows = []
+    for name in swept:
+        cells = []
+        for window in windows:
+            counts = dict(window.get("strategies", []))
+            cells.append({
+                "survived": name in counts,
+                "count": counts.get(name, 0),
+                "label": window["label"],
+                "market": window["market"],
+            })
+        kept = sum(1 for c in cells if c["survived"])
+        rows.append({
+            "name": name,
+            "cells": cells,
+            "kept": kept,
+            # Sorting key: everywhere first, nowhere last, and within a tier
+            # the one with the most surviving configurations.
+            "weight": (kept, sum(c["count"] for c in cells)),
+        })
+
+    rows.sort(key=lambda r: r["weight"], reverse=True)
+    return rows
+
+
 def _global_results() -> dict | None:
     """The global backtest, over both windows, as the pipeline recorded it.
 
@@ -647,6 +688,7 @@ def _global_results() -> dict | None:
     return {
         "windows": windows,
         "in_both": sorted(in_both),
+        "matrix": _survival_matrix(windows),
         "starting_capital": STARTING_CAPITAL,
         "beaten_by_hold": all(
             w["best"] and w["best"]["name"] == "Buy & Hold" for w in globals_
@@ -1149,6 +1191,160 @@ def breakout_evidence(request: Request, session: SessionDep, prov: ProvenanceDep
             ],
         }),
          "page": "evidence", "e": evidence, "faq": faq},
+    )
+
+
+#: Written pieces. Each one is tied to output the pipeline produced, so a
+#: post cannot quietly drift from the data it is about: the figures are
+#: read at render, the prose is what needs a person.
+BLOG_POSTS = [
+    {
+        "slug": "what-survives-two-windows",
+        "title": "What survives five years, and what survives ten",
+        "standfirst": (
+            "The same 10,470 configurations, swept over two windows of global "
+            "market history. Ten strategies clear the funnel over ten years, "
+            "four over five, and two over both — which is a smaller number "
+            "than it sounds."
+        ),
+        "date": "2026-09-30",
+        "reading": 6,
+        "tags": ["backtesting", "survivorship", "method"],
+    },
+]
+
+
+def _post(slug: str) -> dict | None:
+    for entry in BLOG_POSTS:
+        if entry["slug"] == slug:
+            return entry
+    return None
+
+
+@router.get("/blog", response_class=HTMLResponse)
+def blog_index(request: Request):
+    """Everything written up, newest first."""
+    return TEMPLATES.TemplateResponse(
+        request, "blog.html",
+        {
+            "request": request,
+            "posts": BLOG_POSTS,
+            **_seo(request, "/blog", extra={
+                "description": (
+                    "Method notes from a backtesting pipeline: what survives "
+                    "validation, what it costs, and what the numbers do not say."
+                ),
+            }),
+        },
+    )
+
+
+@router.get("/blog/{slug}", response_class=HTMLResponse)
+def blog_post(request: Request, slug: str):
+    """One post, with its figures read from the pipeline at render."""
+    entry = _post(slug)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="No such post")
+
+    return TEMPLATES.TemplateResponse(
+        request, "post.html",
+        {
+            "request": request,
+            "post": entry,
+            "g": _global_results(),
+            **_seo(request, f"/blog/{slug}", kind="Article", extra={
+                "headline": entry["title"],
+                "description": entry["standfirst"],
+                "datePublished": entry["date"],
+            }),
+        },
+    )
+
+
+#: The order a new reader should meet this in. Each step points at a page
+#: that exists, and says what it will show rather than what it enables --
+#: "read the ledger" is a thing you can do, "leverage our analytics" is not.
+ONBOARDING = [
+    {
+        "title": "Create an account",
+        "where": "/signup", "cta": "Sign up",
+        "body": (
+            "Free, and it does not connect to a broker. Watchlists, saved "
+            "screens and alerts live on it; there is no trading path of any "
+            "kind on this side of the product."
+        ),
+        "takes": "a minute",
+    },
+    {
+        "title": "Read one score, and what is under it",
+        "where": "/", "cta": "Open the scanner",
+        "body": (
+            "Every grade decomposes into the components that produced it — "
+            "prior trend, contraction quality, volume behaviour, relative "
+            "strength. A score you cannot take apart is a number you are "
+            "asked to trust."
+        ),
+        "takes": "five minutes",
+    },
+    {
+        "title": "Look at what failed",
+        "where": "/vcp-breakout-failure-rate", "cta": "The ledger",
+        "body": (
+            "Failed breakouts are kept, with the regime they happened in and "
+            "the reason they failed. Start here rather than with the "
+            "winners: the failure rate is the number that tells you how much "
+            "the rest is worth."
+        ),
+        "takes": "five minutes",
+    },
+    {
+        "title": "Backtest a strategy before you believe it",
+        "where": "/go/lab", "cta": "Strategy Lab", "operator": True,
+        "body": (
+            "Pick a strategy, pick a market, run it through the six-gate "
+            "funnel. Watch how many configurations go in and how few come "
+            "out — that ratio is the most useful thing on the page."
+        ),
+        "takes": "ten minutes",
+    },
+    {
+        "title": "Run it on paper",
+        "where": "/go/terminal", "cta": "Trading terminal", "operator": True,
+        "body": (
+            "Simulated money against real prices, on the broker's own "
+            "contract master. The dry-run guard sits on every order path, "
+            "and the header tells you which mode you are in at all times."
+        ),
+        "takes": "a session",
+    },
+    {
+        "title": "Account for every fill",
+        "where": "/go/terminal", "cta": "Trade journal", "operator": True,
+        "body": (
+            "FIFO pairing, per-strategy attribution, and reconciliation "
+            "against the broker. What you learn here is whether the thing "
+            "you backtested is the thing you actually ran."
+        ),
+        "takes": "ongoing",
+    },
+]
+
+
+@router.get("/start", response_class=HTMLResponse)
+def start_here(request: Request):
+    """The order to meet this in, with the reader's position kept visible."""
+    return TEMPLATES.TemplateResponse(
+        request, "start.html",
+        {
+            "request": request,
+            "steps": ONBOARDING,
+            **_seo(request, "/start", extra={
+                "description": (
+                    "Six steps from an account to a paper trade, in the order "
+                    "that makes each one make sense."
+                ),
+            }),
+        },
     )
 
 

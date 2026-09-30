@@ -1639,3 +1639,95 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 /* No truncation: 'Dynamic Regime' clipped to 'Dynamic Reg…' reads as a
    different portfolio. The wrapper scrolls instead. */
 .gb-table td:first-child { white-space: nowrap; }
+
+/* ── written pieces ──────────────────────────────────────────────── */
+.post-list { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 14px; }
+.post-list a {
+  display: block; padding: 20px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--panel);
+  text-decoration: none; transition: border-color .15s, transform .15s;
+}
+.post-list a:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); transform: translateY(-2px); }
+.post-list h2 { margin: 6px 0 6px; font-size: 1.15rem; color: var(--text); }
+.post-list p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.65; }
+.post-meta { font-size: .72rem; color: var(--faint); letter-spacing: .04em; }
+.post-tags { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.post-tags i {
+  font-style: normal; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px;
+}
+.post h2 { margin-top: 36px; font-size: 1.2rem; }
+.post p { color: var(--muted); line-height: 1.75; max-width: 68ch; }
+.post p b { color: var(--text); }
+.post code { font-size: .92em; color: var(--accent); }
+
+/* ── survival matrix ─────────────────────────────────────────────────
+   Four paragraphs of prose became a grid: a row per strategy, a column
+   per window. Where the row is solid the strategy survived everywhere;
+   where it is broken it did not. That is the finding, and it is now
+   something a reader can check at a glance instead of assemble. */
+.matrix { margin-top: 20px; border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--panel); }
+.matrix-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.matrix-key { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; }
+.matrix-key i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.matrix-key i.on { background: var(--accent); }
+.matrix-key i.off { background: var(--line); }
+.matrix-scroll { overflow-x: auto; }
+.matrix-table { width: 100%; border-collapse: collapse; font-size: .78rem; min-width: 380px; }
+.matrix-table th { text-align: left; padding: 6px 8px; color: var(--faint); font-weight: 700; font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); }
+.matrix-table th.c { text-align: center; }
+.matrix-table th span { display: block; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--muted); font-size: .68rem; }
+.matrix-table td { padding: 4px 8px; border-bottom: 1px solid var(--line-soft, #1a2233); color: var(--muted); white-space: nowrap; }
+.matrix-table td.c { text-align: center; }
+.matrix-table tr:last-child td { border-bottom: 0; }
+.matrix-cell { display: inline-grid; place-items: center; width: 34px; height: 22px; border-radius: 6px; font-size: .74rem; }
+.matrix-cell.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.matrix-cell.on b { font-weight: 700; }
+.matrix-cell.off { background: var(--line); color: var(--faint); }
+/* the two that survived everywhere, and the ones that survived nothing */
+.matrix-all td:first-child { color: var(--text); font-weight: 600; }
+.matrix-none td:first-child { color: var(--faint); }
+.matrix-foot { margin: 12px 0 0; font-size: .76rem; }
+
+/* ── onboarding: six steps, with the reader's place kept ──────────── */
+.ob { position: relative; margin-top: 30px; padding-left: 58px; }
+.ob-rail { position: absolute; left: 21px; top: 12px; bottom: 12px; width: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.ob-rail-fill { display: block; width: 100%; height: 100%; transform-origin: top; transform: scaleY(0); background: linear-gradient(to bottom, var(--accent), color-mix(in srgb, var(--accent) 45%, #6366f1)); transition: transform .16s linear; }
+.ob-progress { position: sticky; top: 12px; z-index: 2; margin: 0 0 18px -58px; padding: 4px 10px; display: inline-block; font-size: .72rem; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; }
+.ob-progress .num { color: var(--accent); font-weight: 700; }
+.ob-steps { list-style: none; margin: 0; padding: 0; }
+.ob-step { position: relative; padding-bottom: 34px; opacity: .45; transition: opacity .35s; }
+.ob-step:last-child { padding-bottom: 0; }
+.ob-step.on, .ob-done .ob-step { opacity: 1; }
+.ob-num { position: absolute; left: -58px; top: -4px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: .78rem; font-weight: 700; color: var(--faint); background: var(--panel); border: 2px solid var(--line); transition: color .3s, background .3s, border-color .3s, transform .3s; }
+.ob-step.on .ob-num, .ob-done .ob-num { color: var(--accent-ink, #0a0d16); background: var(--accent); border-color: var(--accent); transform: scale(1.05); }
+.ob-body h2 { margin: 0 0 6px; font-size: 1.05rem; color: var(--text); }
+.ob-body p { margin: 0 0 12px; color: var(--muted); line-height: 1.7; max-width: 62ch; }
+.ob-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.btn-sm { padding: 5px 12px; font-size: .8rem; }
+.ob-takes { font-size: .75rem; }
+.ob-tag { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 999px; padding: 2px 8px; }
+@media (max-width: 560px) { .ob { padding-left: 46px; } .ob-num { left: -46px; width: 36px; height: 36px; } .ob-rail { left: 17px; } .ob-progress { margin-left: -46px; } }
+@media (prefers-reduced-motion: reduce) { .ob-step { opacity: 1; } .ob-rail-fill { transform: scaleY(1); } }
+
+/* ── refusals, as a trade rather than a list ─────────────────────────
+   Each constraint is paired with the shortcut it rules out, struck
+   through, and the price it charges. A refusal with no visible cost is
+   a slogan; the cost is the only reason to believe the refusal. */
+.refuse { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px; margin-top: 24px; }
+.refuse-card { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: var(--panel); }
+.refuse-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--panel-2, #141a29); border: 1px solid var(--line); color: var(--accent); margin-bottom: 12px; }
+.refuse-ico .ico { width: 17px; height: 17px; }
+.refuse-card h3 { margin: 0 0 12px; font-size: 1rem; color: var(--text); line-height: 1.4; }
+.refuse-shortcut { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px; font-size: .86rem; }
+.refuse-shortcut s { color: var(--faint); text-decoration-color: color-mix(in srgb, var(--bear, #fb7185) 65%, transparent); }
+.refuse-x { color: var(--bear, #fb7185); font-weight: 700; line-height: 1.5; }
+.refuse-cost { margin: 0; font-size: .86rem; color: var(--muted); line-height: 1.65; border-top: 1px solid var(--line); padding-top: 12px; }
+.refuse-label { display: block; font-size: .64rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--warn); margin-bottom: 4px; }
+
+/* ── the headline assembles ───────────────────────────────────────── */
+.type-word { font-style: inherit; display: inline-block; opacity: 0; transform: translateY(0.38em); transition: opacity .5s ease, transform .5s cubic-bezier(.22,1,.28,1); }
+.type-in.typed .type-word { opacity: 1; transform: none; }
+/* No script, or reduced motion: the headline is simply already there. */
+html:not(.js) .type-word, .type-in.typed .type-word { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .type-word { opacity: 1; transform: none; transition: none; } }

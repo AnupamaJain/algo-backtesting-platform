@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Start here — Pramana{% endblock %}
+{% block description %}Six steps from an account to a paper trade, in the order that makes each one make sense.{% endblock %}
+
+{% block content %}
+<section class="wrap narrow" style="padding-block:56px 0">
+  <div class="eyebrow">Start here</div>
+  <h1>Six steps, in this order</h1>
+  <p class="lede">
+    The order matters. Reading a score before you have seen the failure rate
+    tells you what the software thinks; reading it afterwards tells you what
+    the software is worth.
+  </p>
+</section>
+
+<section class="wrap narrow">
+  {# The rail is the tracking: it reports where the reader is rather than
+     asking them to keep count, and it is a position in a document rather
+     than a stored state, so it is honest about knowing nothing about them. #}
+  <div class="ob" id="ob">
+    <div class="ob-rail" aria-hidden="true">
+      <span class="ob-rail-fill" id="ob-fill"></span>
+    </div>
+
+    <p class="ob-progress" aria-live="polite">
+      <span id="ob-count" class="num">1</span> of {{ steps|length }}
+    </p>
+
+    <ol class="ob-steps">
+      {% for step in steps %}
+      <li class="ob-step" data-step="{{ loop.index }}">
+        <span class="ob-num num" aria-hidden="true">{{ "%02d"|format(loop.index) }}</span>
+        <div class="ob-body">
+          <h2>{{ step.title }}</h2>
+          <p>{{ step.body }}</p>
+          <div class="ob-foot">
+            <a class="btn btn-primary btn-sm" href="{{ step.where }}">{{ step.cta }} →</a>
+            <span class="ob-takes faint">{{ step.takes }}</span>
+            {% if step.operator %}
+            <span class="ob-tag" title="These two apps are gated: an account alone does not open a live order book.">operator account</span>
+            {% endif %}
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <div class="close" style="margin-top:44px">
+    <p>None of this asks for a broker until step five, and step five is paper.</p>
+    <div class="close-actions">
+      <a class="btn btn-primary btn-lg" href="/signup">Create an account</a>
+      <a class="quiet-link" href="/learn">what it measures and what it will not →</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* The reader's position, reported rather than demanded. Tied to scroll, so
+   the rail marks where they are in the argument instead of running a timer
+   they have to keep up with. Without script every step is simply visible,
+   which is the correct fallback for a list of instructions. */
+(function () {
+  var root = document.getElementById("ob");
+  var fill = document.getElementById("ob-fill");
+  var count = document.getElementById("ob-count");
+  if (!root || !fill) return;
+
+  var steps = Array.prototype.slice.call(root.querySelectorAll(".ob-step"));
+  if (!steps.length) return;
+
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    root.classList.add("ob-done");
+    return;
+  }
+
+  var ticking = false;
+  function update() {
+    ticking = false;
+    var mark = window.innerHeight * 0.55;
+    var reached = 0;
+
+    steps.forEach(function (step, i) {
+      var r = step.getBoundingClientRect();
+      var on = r.top + r.height * 0.4 <= mark;
+      step.classList.toggle("on", on);
+      if (on) reached = i + 1;
+    });
+
+    var box = root.getBoundingClientRect();
+    var p = (mark - box.top) / Math.max(box.height, 1);
+    fill.style.transform = "scaleY(" + Math.max(0, Math.min(1, p)) + ")";
+    if (count) count.textContent = String(Math.max(1, reached));
+  }
+
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  update();
+})();
+</script>
+{% endblock %}

@@ -63,7 +63,9 @@
     </a>
     <nav class="links">
       <a href="/app" class="{% if page == 'app' %}active{% endif %}">Workspace</a>
+      <a href="/start" class="secondary {% if page == 'start' %}active{% endif %}">Start here</a>
       <a href="/learn" class="secondary {% if page == 'learn' %}active{% endif %}">Learn</a>
+      <a href="/blog" class="secondary {% if page == 'blog' %}active{% endif %}">Notes</a>
       <a href="/api/docs" class="secondary">API</a>
       {# Swapped by script once the token is checked. Server-rendered as the
          signed-out state because the session is a bearer token in
@@ -144,7 +146,9 @@
     <div class="foot-row">
       <span>Pramana · NSE equities</span>
       <a href="/app">Workspace</a>
+      <a href="/start">Start here</a>
       <a href="/learn">Learn</a>
+      <a href="/blog">Notes</a>
       <a href="/vcp-breakout-failure-rate">Breakout evidence</a>
       <a href="/api/docs">API reference</a>
       <a href="/api/v1/ops/health">Status</a>
