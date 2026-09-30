@@ -5574,6 +5574,16 @@ def initilise_basic(request_token_passed, kws_on_ticks = on_ticks, kws_on_connec
 
 
 
+#: Where ticker_daemon.py listens. A short, fixed path -- AF_UNIX socket
+#: paths are capped at ~104 bytes, and this repo's own directory nesting
+#: alone exceeds that.
+#:
+#: Module level so tests can choose the branch: initialise_ticker shares
+#: the daemon's feed when this exists and opens its own connection when it
+#: does not, and a suite that depends on whether a daemon is running on the
+#: machine is a suite that passes or fails for reasons unrelated to the code.
+TICKER_DAEMON_SOCKET = "/tmp/algo_backtesting_ticker_daemon.sock"
+
 def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
     """Initialize KiteTicker WebSocket connection.
 
@@ -5634,9 +5644,7 @@ def initialise_ticker(kws_on_ticks, kws_on_connect, kws_on_order_update):
     # the daemon nor any change to work.
     from quant_backtester.src.broker.flattrade_ws import FlattradeTicker, SharedTickerClient
 
-    # A short, fixed path -- AF_UNIX socket paths are capped at ~104 bytes,
-    # and this repo's own directory nesting alone exceeds that.
-    daemon_socket = "/tmp/algo_backtesting_ticker_daemon.sock"
+    daemon_socket = TICKER_DAEMON_SOCKET
     if os.path.exists(daemon_socket):
         logging.info("initialise_ticker: ticker_daemon.py detected — sharing its feed at %s", daemon_socket)
         kws = SharedTickerClient(daemon_socket)

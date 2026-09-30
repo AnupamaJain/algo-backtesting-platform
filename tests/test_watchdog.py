@@ -32,6 +32,23 @@ def reset_globals():
 
 
 
+
+@pytest.fixture(autouse=True)
+def _no_ticker_daemon(monkeypatch, tmp_path):
+    """These tests are about the direct connection.
+
+    initialise_ticker shares ticker_daemon.py's feed when its socket
+    exists and opens its own when it does not. Whether a daemon happens to
+    be running on the machine running the suite is not something these
+    tests should be deciding, so the socket is pointed somewhere empty.
+    """
+    import common_lib
+
+    monkeypatch.setattr(
+        common_lib, "TICKER_DAEMON_SOCKET", str(tmp_path / "no-daemon.sock")
+    )
+
+
 def _fake_clock(start: float, step: float = 1.0):
     """A monotonic clock for patching time.time().
 
@@ -566,3 +583,47 @@ class TestWriteSpotPrice:
             with patch('common_lib.logging') as mock_log:
                 common_lib.write_spot_price("NIFTY", 25900.0)
                 mock_log.warning.assert_called_once()
+
+
+class TestSharedTickerFeed:
+    """Which feed a strategy opens, and why it matters.
+
+    Flattrade permits one websocket per client id. When the daemon is
+    holding it, a strategy must share rather than compete; when it is not,
+    the direct connection is still right for a single run.
+    """
+
+    @patch('quant_backtester.src.broker.flattrade_ws.SharedTickerClient')
+    def test_the_daemons_feed_is_shared_when_it_is_up(self, mock_shared, tmp_path, monkeypatch):
+        import common_lib
+
+        sock = tmp_path / "ticker.sock"
+        sock.write_text("")          # exists, which is all the check asks
+        monkeypatch.setattr(common_lib, "TICKER_DAEMON_SOCKET", str(sock))
+        monkeypatch.setattr(common_lib, "access_token", "test_token")
+
+        client = MagicMock()
+        mock_shared.return_value = client
+
+        common_lib.initialise_ticker(MagicMock(), MagicMock(), MagicMock())
+
+        mock_shared.assert_called_once_with(str(sock))
+        client.connect.assert_called_once_with(threaded=True)
+
+    @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
+    def test_a_direct_connection_when_no_daemon_is_running(
+        self, mock_ticker, tmp_path, monkeypatch
+    ):
+        import common_lib
+
+        monkeypatch.setattr(
+            common_lib, "TICKER_DAEMON_SOCKET", str(tmp_path / "absent.sock")
+        )
+        monkeypatch.setattr(common_lib, "access_token", "test_token")
+
+        client = MagicMock()
+        mock_ticker.return_value = client
+
+        common_lib.initialise_ticker(MagicMock(), MagicMock(), MagicMock())
+
+        client.connect.assert_called_once_with(threaded=True)
