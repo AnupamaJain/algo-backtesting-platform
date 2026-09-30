@@ -1555,3 +1555,32 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 }
 .gb-stats dd { margin: 0; font-size: .98rem; color: var(--text); font-weight: 600; }
 @media (max-width: 420px) { .gb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ── the pipeline, drawn live ─────────────────────────────────────── */
+.flow-section { margin-top: 64px; }
+.flow-stage {
+  position: relative; margin-top: 24px;
+  min-height: clamp(260px, 26vw, 330px);
+  border: 1px solid var(--line); border-radius: 14px;
+  background:
+    radial-gradient(700px 300px at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    var(--panel);
+  overflow: hidden;
+}
+@media (max-width: 720px) { .flow-stage { min-height: 520px; } }
+#flow-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+.flow-stage.flow-live #flow-canvas { display: block; }
+.flow-stage.flow-live .flow-fallback { display: none; }
+.flow-fallback {
+  list-style: none; margin: 0; padding: 18px;
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  counter-reset: flow;
+}
+.flow-fallback li {
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+  background: var(--panel-2, #141a29);
+}
+.flow-fallback b { display: block; color: var(--text); font-size: .85rem; }
+.flow-fallback .num { display: block; color: var(--accent); font-size: 1.1rem; font-weight: 600; }
+.flow-fallback i { color: var(--muted); font-size: .76rem; font-style: normal; }

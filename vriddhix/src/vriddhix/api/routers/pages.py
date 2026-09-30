@@ -929,6 +929,7 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "screens": APP_SCREENS,
             "global_results": _global_results(),
             "use_cases": _use_cases(session),
+            "contract_count": _contract_count(),
             "clips": APP_CLIPS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),
