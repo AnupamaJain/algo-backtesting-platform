@@ -948,3 +948,34 @@ def test_common_lib_and_ticker_daemon_use_the_canonical_token_path():
             f"{relative_path} doubles the quant_backtester/ prefix on the "
             "Flattrade token_file path"
         )
+
+
+def test_a_token_is_not_verified_when_it_cannot_be_replaced(monkeypatch, tmp_path):
+    """Verification is only worth doing if we could act on the answer.
+
+    Checking a nominally-fresh token against the server is right when a
+    replacement can be minted. Without login credentials it is worse than
+    useless: the token gets discarded, no new one can be issued, and a
+    "might still work" becomes a certain failure -- with a network call
+    added to the path of every caller, unit tests included.
+    """
+    from quant_backtester.src.broker.flattrade import FlattradeAuth
+
+    token_file = tmp_path / "flattrade_token.json"
+    token_file.write_text(json.dumps({
+        "token": "dated-today-but-unverified",
+        "client_id": "FZ00000",
+        "issued_at": datetime.now().isoformat(),
+    }))
+
+    auth = FlattradeAuth("flattrade", {"token_file": str(token_file), "auto_login": False})
+
+    called = []
+    monkeypatch.setattr(
+        FlattradeAuth, "_token_works",
+        lambda self, t, c: called.append(1) or True,
+    )
+
+    session = auth.authenticate()
+    assert session.access_token == "dated-today-but-unverified"
+    assert not called, "verified a token it had no way to replace"

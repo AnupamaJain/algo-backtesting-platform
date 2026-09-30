@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+from pathlib import Path
 import math
 import threading
 from typing import Callable
@@ -3348,6 +3349,119 @@ def get_position_for_symbol(symbol: str) -> int:
             return position["quantity"]
     return 0
 
+#: NSE writes a weekly contract's month as a single character: 1-9 for
+#: January to September, then O, N, D. Monthly contracts spell it. The same
+#: table builds the symbols offered in the UI (flask_app._contract_prefix),
+#: so what a dropdown lists is exactly what resolves here.
+_WEEKLY_MONTH_CODE = {
+    1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6",
+    7: "7", 8: "8", 9: "9", 10: "O", 11: "N", 12: "D",
+}
+
+_SCRIP_INSTRUMENT_CACHE: dict = {}
+
+
+def _instrument_from_scrip_master(symbol: str):
+    """Resolve a contract from Dhan's published scrip master.
+
+    The last resort behind the in-memory map and the SQLite cache. Both of
+    those are filled by a broker sync that needs a live session, and when
+    it has not run the table holds cash instruments only -- no F&O row at
+    all -- so every option lookup raised "not found in cache or database"
+    and the strategy died before placing anything.
+
+    The scrip master is a plain cached CSV needing no session, which is the
+    point: it answers in exactly the case the cache cannot.
+
+    Rather than parse the trading symbol (whose format differs between
+    weekly and monthly contracts), every listed contract for the underlying
+    is rendered into a symbol with the same rule the UI uses, and the one
+    that matches wins. A format the UI can offer is therefore always a
+    format this can resolve.
+
+    Args:
+        symbol: e.g. "NIFTY26O0623450CE" or "NIFTY26OCT23000PE".
+
+    Returns:
+        An instrument dict in the shape callers expect, or None.
+    """
+    import re as _re
+
+    key = symbol.strip().upper()
+    if key in _SCRIP_INSTRUMENT_CACHE:
+        return _SCRIP_INSTRUMENT_CACHE[key]
+
+    m = _re.match(r"^([A-Z&-]+?)\d", key)
+    if not m:
+        return None
+    underlying = m.group(1)
+
+    try:
+        import pandas as pd
+
+        from quant_backtester.src.broker.dhan import DhanInstruments
+    except Exception:  # noqa: BLE001 - pandas or the adapter missing
+        return None
+
+    state = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "quant_backtester", "state")
+    frames = []
+    for source_exchange in ("NSE", "BSE"):
+        for kind in ("OPTIDX", "OPTSTK"):
+            try:
+                frame = DhanInstruments(Path(state)).option_chain(
+                    underlying, exchange=source_exchange, instrument=kind)
+            except Exception:  # noqa: BLE001 - a missing kind is not an error
+                continue
+            if len(frame):
+                frames.append((source_exchange, frame))
+    if not frames:
+        return None
+
+    today = datetime.date.today()
+    for source_exchange, chain in frames:
+        for expiry_raw, group in chain.groupby(chain["SM_EXPIRY_DATE"].astype(str)):
+            try:
+                expiry = pd.to_datetime(expiry_raw).date()
+            except Exception:  # noqa: BLE001
+                continue
+            monthly = str(group["EXPIRY_FLAG"].iloc[0]).strip().upper() == "M"
+            yy = f"{expiry.year % 100:02d}"
+            prefix = (f"{underlying}{yy}{expiry.strftime('%b').upper()}" if monthly
+                      else f"{underlying}{yy}{_WEEKLY_MONTH_CODE[expiry.month]}{expiry.day:02d}")
+            if not key.startswith(prefix):
+                continue
+            for _, row in group.iterrows():
+                try:
+                    strike = int(float(row["STRIKE_PRICE"]))
+                except (TypeError, ValueError):
+                    continue
+                right = str(row["OPTION_TYPE"]).strip().upper()
+                if f"{prefix}{strike}{right}" != key:
+                    continue
+                exchange = "BFO" if source_exchange == "BSE" else "NFO"
+                details = {
+                    "tradingsymbol": key,
+                    "instrument_token": int(row["SECURITY_ID"]),
+                    "exchange": exchange,
+                    "segment": f"{exchange}-OPT",
+                    "instrument_type": right,
+                    "strike": float(strike),
+                    "expiry": expiry,
+                    "lot_size": int(float(row["LOT_SIZE"])) if pd.notna(row.get("LOT_SIZE")) else 0,
+                    "tick_size": 0.05,
+                    "days_to_expiry": int(np.busday_count(today, expiry) + 1),
+                    "source": "dhan scrip master",
+                }
+                _SCRIP_INSTRUMENT_CACHE[key] = details
+                logging.info(
+                    "get_instrument_details: %s resolved from the Dhan scrip "
+                    "master (the instrument cache holds no F&O rows)", key,
+                )
+                return details
+    return None
+
+
 def get_instrument_details(symbol):
     global all_instruments
     global token_symbol_map
@@ -3376,6 +3490,14 @@ def get_instrument_details(symbol):
             details['days_to_expiry'] = int(np.busday_count(today, expiry_date) + 1)
         return details
         
+    # Last resort: Dhan's published scrip master. Both caches above are
+    # filled by a broker sync that needs a live session; without one they
+    # hold no F&O rows and every option lookup here failed, killing the
+    # strategy before it could place anything.
+    details = _instrument_from_scrip_master(symbol)
+    if details:
+        return details
+
     raise ValueError(f"Instrument {symbol} not found in cache or database")
     
 

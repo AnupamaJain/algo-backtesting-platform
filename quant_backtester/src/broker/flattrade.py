@@ -449,8 +449,50 @@ class FlattradeAuth(AuthStrategy):
             self._token_file.chmod(0o600)
         return token, creds["client_id"]
 
+    def _can_auto_login(self) -> bool:
+        """Whether a replacement token could be minted without a human."""
+        if not self.config.get("auto_login", True):
+            return False
+        try:
+            creds = self._login_credentials()
+        except Exception:  # noqa: BLE001 - unreadable config is not credentials
+            return False
+        have_all = all(creds.get(k) for k in ("api_key", "api_secret", "client_id", "password"))
+        return bool(have_all and (creds.get("totp_secret") or creds.get("second_factor")))
+
+    def _token_works(self, token: str, client_id: str) -> bool:
+        """Ask Flattrade whether it still honours this token.
+
+        Freshness was judged by the issue date alone -- "issued today, so
+        it is good". Noren does not agree: a session can be invalidated
+        inside the same day by an idle timeout or by logging in elsewhere,
+        and it then answers "Session Expired : Invalid Session Key" to
+        everything. A token minted at 00:32 was still being called fresh at
+        19:40 while every quote through it failed, and because the date
+        rule was satisfied, auto-login never fired to replace it.
+
+        One cheap call settles it. Limits is the smallest.
+        """
+        try:
+            FlattradeClient(token, client_id)._post("limits", {"actid": client_id})
+            return True
+        except AuthError:
+            return False
+        except Exception:  # noqa: BLE001 - a network blip is not a bad token
+            return True
+
     def authenticate(self) -> Session:
         token, client_id, fresh = self._read_token()
+
+        # Verify a nominally-fresh token only when we could actually replace
+        # it. Without login credentials the answer is unusable -- we would
+        # discard a token, fail to mint another, and turn a working-or-not
+        # question into a certain failure -- and it would put a network call
+        # in the path of every caller, including unit tests holding a
+        # deliberately fake token file.
+        if token and fresh and self._can_auto_login() and not self._token_works(token, client_id):
+            logger.info("Flattrade token is dated today but the server rejects it")
+            fresh = False
 
         # A stale or absent token triggers a silent re-login rather than an
         # error the operator has to act on. That is the whole point of
