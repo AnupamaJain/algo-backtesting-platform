@@ -172,8 +172,9 @@ def issue_token(user: User, *, hours: int = 12) -> str:
 
 #: Where the trading terminal lives. It is a separate process on a separate
 #: port, so the handoff below is a redirect and not an internal call.
-TERMINAL_URL = os.getenv("PRAMANA_TERMINAL_URL", "http://127.0.0.1:5010")
-LAB_URL = os.getenv("PRAMANA_LAB_URL", "http://127.0.0.1:4300")
+# Same origin now: both are mounted under this port by api/gateway.py.
+TERMINAL_URL = os.getenv("PRAMANA_TERMINAL_URL", "/terminal")
+LAB_URL = os.getenv("PRAMANA_LAB_URL", "/lab")
 
 #: Where a ticket can admit someone. The audience claim is the target's
 #: name, so a ticket minted for one cannot be presented to the other.

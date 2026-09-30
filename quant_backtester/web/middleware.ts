@@ -9,10 +9,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE, verifySession } from "@/lib/session";
 
-const PRAMANA = process.env.NEXT_PUBLIC_PRAMANA_URL ?? "http://127.0.0.1:8787";
+// Same origin now -- the gateway mounts the Lab under Pramana's port.
+const PRAMANA = process.env.NEXT_PUBLIC_PRAMANA_URL ?? "";
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  // nextUrl.pathname is reported without basePath in some Next versions and
+  // with it in others; normalise so the door is found either way.
+  const raw = req.nextUrl.pathname;
+  const pathname = raw.startsWith("/lab") ? raw.slice(4) || "/" : raw;
   if (pathname === "/sso" || pathname.startsWith("/_next/") || pathname === "/favicon.ico") {
     return NextResponse.next();
   }

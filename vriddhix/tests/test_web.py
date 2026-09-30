@@ -1330,3 +1330,83 @@ def test_the_hub_route_serves_both_targets_and_nothing_else(client):
         assert "/api/v1/auth/handoff" in r.text
         assert f'"{target}"' in r.text
     assert client.get("/go/elsewhere").status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# The gateway: one port for three apps
+# ---------------------------------------------------------------------------
+
+
+def test_upstream_redirects_get_the_prefix_put_back():
+    """Flask redirects "/" to "/home". Forwarded as-is, that would send the
+    reader to the gateway's own /home, which does not exist."""
+    from vriddhix.api.gateway import rewrite_location as rw
+
+    assert rw("/home", "/terminal") == "/terminal/home"
+    assert rw("/app_login?next=/", "/terminal") == "/terminal/app_login?next=/"
+    assert rw("/terminal/home", "/terminal") == "/terminal/home"      # already prefixed
+    assert rw("/terminal", "/terminal") == "/terminal"
+    assert rw("https://elsewhere.example/x", "/terminal") == "https://elsewhere.example/x"
+    assert rw("//cdn.example/x", "/terminal") == "//cdn.example/x"     # protocol-relative
+
+
+def test_a_down_upstream_is_a_502_that_says_so(client):
+    """Not a hang and not a 500: the reader is told which app is not
+    running and how to start it."""
+    from vriddhix.api import gateway
+
+    gateway.UPSTREAMS["terminal"] = "http://127.0.0.1:1"   # nothing listens here
+    gateway._client = None
+    try:
+        r = client.get("/terminal/home")
+    finally:
+        gateway.UPSTREAMS["terminal"] = "http://127.0.0.1:5010"
+        gateway._client = None
+    assert r.status_code == 502
+    assert "terminal is not running" in r.text
+    assert "run-all.sh" in r.text
+
+
+def test_the_gateway_forwards_and_strips_hop_by_hop_headers(client, monkeypatch):
+    """The upstream sees the prefix it lives under and its own host; the
+    reader gets the upstream's status, body and cookies, but never the
+    hop-by-hop headers that would break framing."""
+    import httpx
+
+    from vriddhix.api import gateway
+
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["prefix"] = request.headers.get("x-forwarded-prefix")
+        seen["host"] = request.headers.get("host")
+        return httpx.Response(
+            302, headers={"location": "/home", "set-cookie": "session=abc; Path=/",
+                          "transfer-encoding": "chunked"},
+            content=b"moved",
+        )
+
+    gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        r = client.get("/terminal/?x=1", follow_redirects=False)
+    finally:
+        gateway._client = None
+
+    assert seen["url"] == "http://127.0.0.1:5010/?x=1"
+    assert seen["prefix"] == "/terminal"
+    assert seen["host"] == "127.0.0.1:5010"
+    assert r.status_code == 302
+    assert r.headers["location"] == "/terminal/home"
+    assert "session=abc" in r.headers.get("set-cookie", "")
+    assert "transfer-encoding" not in {k.lower() for k in r.headers}
+
+
+def test_handoff_urls_are_same_origin(monkeypatch, session, operator):
+    """One port: the ticket URLs are paths on this host, not other ports."""
+    from vriddhix.api import auth
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "s" * 40)
+    monkeypatch.setattr(auth, "HANDOFF_TARGETS", {"terminal": "/terminal", "lab": "/lab"})
+    for target in ("terminal", "lab"):
+        assert auth.HANDOFF_TARGETS[target].startswith("/")

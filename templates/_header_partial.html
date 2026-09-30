@@ -1,5 +1,25 @@
 {% include "_csrf_shim.html" ignore missing %}
-<link rel="stylesheet" href="/static/theme.css">
+<script>
+/* The app root, and one fix for a hundred call sites. Behind the gateway
+   this app lives at /terminal, and the templates make ~100 fetch("/api/…")
+   calls with root-relative URLs that would otherwise hit the gateway's own
+   root. Rather than touch each one, fetch and XHR are wrapped here -- once,
+   before any page script runs -- to prefix root-relative URLs. Hit
+   directly on its own port, APP_ROOT is "" and this changes nothing. */
+window.APP_ROOT = "{{ root }}";
+(function (root) {
+  if (!root) return;
+  function fix(u) {
+    if (typeof u !== "string") return u;
+    return (u.charAt(0) === "/" && u.charAt(1) !== "/" && u.indexOf(root + "/") !== 0) ? root + u : u;
+  }
+  var f = window.fetch;
+  window.fetch = function (u, o) { return f.call(this, (u instanceof Request) ? u : fix(u), o); };
+  var open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m, u) { arguments[1] = fix(u); return open.apply(this, arguments); };
+})(window.APP_ROOT);
+</script>
+<link rel="stylesheet" href="{{ root }}/static/theme.css">
 <style>
   #app-global-header {
     position: sticky;
@@ -358,7 +378,7 @@
 </style>
 
 <header id="app-global-header">
-  <a href="/home" class="header-left">
+  <a href="{{ root }}/home" class="header-left">
     <i class="fas fa-home"></i>
     Trading System
   </a>
@@ -371,17 +391,17 @@
       <span class="module-label">Modules</span>
       <div id="app-header-modules-panel">
         <div class="actions-section-header">Monitoring</div>
-        <a href="/positions" class="actions-item"><i class="fas fa-chart-line"></i> NIFTY Positions</a>
-        <a href="/sensex_positions" class="actions-item"><i class="fas fa-chart-bar"></i> SENSEX Positions</a>
-        <a href="/api-monitor" class="actions-item"><i class="fas fa-search"></i> API Monitor</a>
-        <a href="/duplicate-orders" class="actions-item"><i class="fas fa-exclamation-triangle"></i> Duplicate Orders</a>
-        <a href="/position-guard" class="actions-item"><i class="fas fa-shield-halved"></i> Position Guard</a>
+        <a href="{{ root }}/positions" class="actions-item"><i class="fas fa-chart-line"></i> NIFTY Positions</a>
+        <a href="{{ root }}/sensex_positions" class="actions-item"><i class="fas fa-chart-bar"></i> SENSEX Positions</a>
+        <a href="{{ root }}/api-monitor" class="actions-item"><i class="fas fa-search"></i> API Monitor</a>
+        <a href="{{ root }}/duplicate-orders" class="actions-item"><i class="fas fa-exclamation-triangle"></i> Duplicate Orders</a>
+        <a href="{{ root }}/position-guard" class="actions-item"><i class="fas fa-shield-halved"></i> Position Guard</a>
         <div class="actions-divider"></div>
         <div class="actions-section-header">Strategies</div>
-        <a href="/wave-extractor" class="actions-item"><i class="fas fa-wave-square"></i> Wave Extractor</a>
-        <a href="/survivor" class="actions-item"><i class="fas fa-crosshairs"></i> Survivor</a>
-        <a href="/expiry_trade" class="actions-item"><i class="fas fa-calendar-check"></i> Expiry Trade</a>
-        <a href="/covered_calls/" class="actions-item"><i class="fas fa-umbrella"></i> Covered Calls</a>
+        <a href="{{ root }}/wave-extractor" class="actions-item"><i class="fas fa-wave-square"></i> Wave Extractor</a>
+        <a href="{{ root }}/survivor" class="actions-item"><i class="fas fa-crosshairs"></i> Survivor</a>
+        <a href="{{ root }}/expiry_trade" class="actions-item"><i class="fas fa-calendar-check"></i> Expiry Trade</a>
+        <a href="{{ root }}/covered_calls/" class="actions-item"><i class="fas fa-umbrella"></i> Covered Calls</a>
         <div class="actions-divider"></div>
         <div class="actions-section-header">Apps</div>
         <a href="{{ PRAMANA_URL }}/app" class="actions-item"><i class="fas fa-flask"></i> Research workspace</a>
@@ -419,7 +439,7 @@
           <div class="notif-empty">Loading...</div>
         </div>
         <div class="notif-panel-footer">
-          <a id="app-header-notif-view-all" href="/notifications/page" onclick="event.stopPropagation()">View all notifications →</a>
+          <a id="app-header-notif-view-all" href="{{ root }}/notifications/page" onclick="event.stopPropagation()">View all notifications →</a>
         </div>
       </div>
     </div>
@@ -665,7 +685,7 @@
 
   window.appHeaderLogout = function(evt) {
     evt.stopPropagation();
-    window.location.href = '/app_logout';
+    window.location.href = window.APP_ROOT + '/app_logout';
   };
 
   function updateAppHeaderTradingMode() {

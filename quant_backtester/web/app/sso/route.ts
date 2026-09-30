@@ -37,9 +37,9 @@ export async function GET(request: Request) {
   // is scoped to the host it was set on -- so a redirect to the other name
   // would land the reader on the Lab without the session it just received.
   const host = request.headers.get("host") ?? url.host;
-  const res = NextResponse.redirect(new URL("/", `${url.protocol}//${host}`));
+  const res = NextResponse.redirect(new URL("/lab/", `${url.protocol}//${host}`));
   res.cookies.set(COOKIE, await signSession(secret, claims.sub), {
-    httpOnly: true, sameSite: "lax", path: "/", maxAge: SESSION_SECONDS,
+    httpOnly: true, sameSite: "lax", path: "/lab", maxAge: SESSION_SECONDS,
   });
   return res;
 }

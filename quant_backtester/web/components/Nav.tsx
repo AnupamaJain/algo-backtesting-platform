@@ -37,7 +37,7 @@ function SectionLabel({
   );
 }
 
-const PRAMANA = process.env.NEXT_PUBLIC_PRAMANA_URL ?? "http://127.0.0.1:8787";
+const PRAMANA = process.env.NEXT_PUBLIC_PRAMANA_URL ?? "";
 
 export default function Nav() {
   const pathname = usePathname();
