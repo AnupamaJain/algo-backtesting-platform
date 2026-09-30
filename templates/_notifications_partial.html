@@ -47,7 +47,7 @@
 
     const POLL_INTERVAL_MS = 30000;
     const AUTO_DISMISS_MS  = 15000;
-    const notificationSound = new Audio('/notifications/sound');
+    const notificationSound = new Audio(window.appUrl('/notifications/sound'));
     const TOAST_ORDER_TYPES = new Set(['ORDER_EXECUTED', 'ORDER_CANCELLED']);
 
     // Unlock audio on first user interaction (browser autoplay policy)

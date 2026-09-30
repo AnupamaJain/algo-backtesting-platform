@@ -1221,7 +1221,7 @@
                 });
 
                 const result = await response.json();
-                alert(result.message || result.error);
+                alert(result.message || result.error || 'Request failed');
                 fetchStatus();
             } catch (e) {
                 console.error(e);

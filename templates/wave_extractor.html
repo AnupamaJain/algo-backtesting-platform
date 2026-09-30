@@ -2883,7 +2883,7 @@
                         addRow();
                     }
                 } else {
-                    alert("No valid rows to start.");
+                    alert("Nothing to start: every row needs a symbol.\n\nType one (e.g. NIFTY26O0623800PE), or use \u201cLoad From Active Positions\u201d to fill the table from open positions.");
                 }
             } finally {
                 // Restore button status
@@ -2943,7 +2943,7 @@
                         body: JSON.stringify({cancel_orders: cancelOrders}),
                     });
                     const result = await response.json();
-                    alert(result.message + (result.details ? '\n' + result.details.join('\n') : ''));
+                    alert((result.message || result.error || 'Request failed') + (result.details ? '\n' + result.details.join('\n') : ''));
                 } else if (_pendingStop.stopGroup) {
                     const response = await fetch('/api/stop_group', {
                         method: 'POST',
@@ -2951,7 +2951,7 @@
                         body: JSON.stringify({pids: _pendingStop.groupPids, cancel_orders: cancelOrders}),
                     });
                     const result = await response.json();
-                    alert(result.message + (result.details ? '\n' + result.details.join('\n') : ''));
+                    alert((result.message || result.error || 'Request failed') + (result.details ? '\n' + result.details.join('\n') : ''));
                 } else {
                     const response = await fetch('/api/stop', {
                         method: 'POST',
@@ -2983,7 +2983,7 @@
                     method: 'POST'
                 });
                 const result = await response.json();
-                alert(result.message + "\n" + (result.details ? result.details.join("\n") : ""));
+                alert((result.message || result.error || 'Request failed') + "\n" + (result.details ? result.details.join("\n") : ""));
                 fetchStatus(); // Refresh table
             } catch (error) {
                 console.error('Error clearing status:', error);
@@ -3029,7 +3029,7 @@
             fetch(`/api/logs/${symbol}`, { method: 'DELETE' })
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.message || data.error);
+                    alert(data.message || data.error || 'Request failed');
                     viewLogs(symbol); // Refresh
                 })
                 .catch(err => alert("Error clearing logs"));

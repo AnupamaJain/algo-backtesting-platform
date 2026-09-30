@@ -59,3 +59,31 @@ def test_templates_render_links_under_the_prefix(client):
     plain = client.get("/home").get_data(as_text=True)
     assert 'window.APP_ROOT = ""' in plain
     assert 'href="/static/theme.css"' in plain
+
+
+def test_an_absent_optional_module_is_not_a_server_error(client):
+    """delta_live_tracker is not in this checkout. Answering 500 with an HTML
+    error page made the caller die on JSON.parse ("Unexpected token '<'") and
+    took the whole delta table down with it."""
+    with client.session_transaction() as sess:
+        sess["app_authenticated"] = True
+    r = client.get("/api/delta_live_snapshot")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["unavailable"]
+    assert body["NIFTY"] == {} and body["updated_at"] is None
+
+
+def test_a_job_whose_optional_module_is_absent_disables_itself():
+    """It logged a traceback every 60 seconds instead -- 300 of them in the
+    log by the time anyone looked."""
+    from notifications import scheduler
+
+    scheduler._MISSING_OPTIONAL.clear()
+    try:
+        scheduler._job_delta_live_snapshot()
+        assert "DELTA_LIVE_SNAPSHOT" in scheduler._MISSING_OPTIONAL
+        # second call returns before importing again
+        scheduler._job_delta_live_snapshot()
+    finally:
+        scheduler._MISSING_OPTIONAL.clear()

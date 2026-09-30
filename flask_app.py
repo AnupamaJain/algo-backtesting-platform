@@ -1144,7 +1144,18 @@ def delta_live_snapshot():
         JSON with keys NIFTY/BANKNIFTY/SENSEX (each {expiry_date: delta}) and
         updated_at (ISO timestamp string or null).
     """
-    from delta_live_tracker import get_current_live_delta_snapshot
+    try:
+        from delta_live_tracker import get_current_live_delta_snapshot
+    except ModuleNotFoundError:
+        # delta_live_tracker is an optional module that is not part of this
+        # checkout. Answering 500 with an HTML error page made the caller die
+        # on JSON.parse ("Unexpected token '<'") and took the whole delta
+        # table down with it. Say so in the shape the caller expects.
+        return jsonify({
+            "NIFTY": {}, "BANKNIFTY": {}, "SENSEX": {},
+            "updated_at": None,
+            "unavailable": "delta_live_tracker is not installed in this checkout",
+        })
 
     return jsonify(get_current_live_delta_snapshot())
 

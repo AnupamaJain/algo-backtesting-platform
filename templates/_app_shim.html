@@ -1,0 +1,36 @@
+{# The two wrappers every page needs, in the only order that works.
+
+   Behind the gateway this app is served at /terminal, and the templates make
+   ~100 root-relative fetch("/api/...") calls that would otherwise hit the
+   gateway's own root. Rather than touch each one, fetch and XHR are wrapped
+   here to prefix root-relative URLs. Hit directly on its own port, APP_ROOT
+   is "" and this changes nothing.
+
+   The prefix wrapper MUST install before the CSRF wrapper. The CSRF shim
+   captures window.fetch to fetch its own token from /api/csrf-token; if it
+   captures the raw fetch, that request escapes the prefix, 404s on the
+   gateway, and the token is null -- so every POST goes out with no
+   X-CSRFToken header and the server rejects it. That is one bug ("CSRF
+   validation failed") on every execution path in the product. #}
+<script>
+window.APP_ROOT = "{{ root }}";
+(function (root) {
+  if (!root) return;
+  function fix(u) {
+    if (typeof u !== "string") return u;
+    return (u.charAt(0) === "/" && u.charAt(1) !== "/" && u.indexOf(root + "/") !== 0) ? root + u : u;
+  }
+  window.appUrl = fix;   // for URLs that never touch fetch/XHR: Audio, EventSource, img
+  var f = window.fetch;
+  window.fetch = function (u, o) { return f.call(this, (u instanceof Request) ? u : fix(u), o); };
+  var open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m, u) { arguments[1] = fix(u); return open.apply(this, arguments); };
+  if (window.EventSource) {
+    var ES = window.EventSource;
+    window.EventSource = function (u, c) { return new ES(fix(u), c); };
+    window.EventSource.prototype = ES.prototype;
+  }
+})(window.APP_ROOT);
+if (!window.appUrl) window.appUrl = function (u) { return u; };
+</script>
+{% include "_csrf_shim.html" ignore missing %}

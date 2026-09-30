@@ -1173,6 +1173,22 @@ def _job_position_guard_check() -> None:
 
 # ---------------------------------------------------------------------------
 # Job: NIFTY confluence zone enter/exit check (every 5 min, market hours weekdays)
+# Optional modules that some jobs delegate to. They are not part of every
+# checkout; when one is absent the job is disabled after saying so once,
+# rather than logging a traceback on every tick forever.
+_MISSING_OPTIONAL: set[str] = set()
+
+
+def _optional_module_missing(job: str, exc: ModuleNotFoundError) -> None:
+    """Record that a job's optional module is absent, logging only the first time."""
+    if job not in _MISSING_OPTIONAL:
+        _MISSING_OPTIONAL.add(job)
+        logger.warning(
+            "%s is disabled: optional module %r is not installed in this checkout",
+            job, exc.name,
+        )
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -1183,10 +1199,14 @@ def _job_nifty_zone_check() -> None:
     so the logic stays testable independent of APScheduler.
     Never raises.
     """
+    if "NIFTY_ZONE_CHECK" in _MISSING_OPTIONAL:
+        return
     try:
         from swing_levels.zone_alert_monitor import check_nifty_zone_transitions
 
         check_nifty_zone_transitions()
+    except ModuleNotFoundError as exc:
+        _optional_module_missing("NIFTY_ZONE_CHECK", exc)
     except Exception as exc:
         logger.error("NIFTY_ZONE_CHECK job failed unexpectedly: %s", exc, exc_info=True)
 
@@ -1223,10 +1243,14 @@ def _job_delta_live_snapshot() -> None:
     so the logic stays testable independent of APScheduler.
     Never raises.
     """
+    if "DELTA_LIVE_SNAPSHOT" in _MISSING_OPTIONAL:
+        return
     try:
         from delta_live_tracker import compute_live_delta_snapshot
 
         compute_live_delta_snapshot()
+    except ModuleNotFoundError as exc:
+        _optional_module_missing("DELTA_LIVE_SNAPSHOT", exc)
     except Exception as exc:
         logger.error("DELTA_LIVE_SNAPSHOT job failed unexpectedly: %s", exc, exc_info=True)
 
