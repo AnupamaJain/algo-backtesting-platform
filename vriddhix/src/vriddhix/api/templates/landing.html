@@ -647,10 +647,18 @@
 #}
 {% if testimonials %}
 <section class="wrap">
-  <div class="sec-head"><h2>What people using it say</h2></div>
-  <div class="quotes" data-stagger>
+  <div class="sec-head">
+    <h2>What people using it say</h2>
+    {% if testimonials[0].sample %}
+    <span class="sec-note sample-note">preview — sample entries, not testimonials</span>
+    {% endif %}
+  </div>
+
+  <div class="quotes{{ ' quotes-sample' if testimonials[0].sample }}" id="quotes"
+       role="region" aria-roledescription="carousel" aria-label="What people say">
     {% for t in testimonials %}
-    <figure class="quote rise">
+    <figure class="quote{{ ' is-sample' if t.sample }}" data-q="{{ loop.index0 }}">
+      {% if t.sample %}<span class="sample-tag" aria-hidden="true">sample</span>{% endif %}
       <blockquote>{{ t.quote }}</blockquote>
       <figcaption>
         <span class="avatar" aria-hidden="true">{{ t.initials }}</span>
@@ -659,6 +667,15 @@
     </figure>
     {% endfor %}
   </div>
+
+  {% if testimonials|length > 1 %}
+  <div class="quotes-nav">
+    <button class="deck-btn" id="quotes-prev" aria-label="Previous">←</button>
+    <div class="deck-dots" id="quotes-dots"></div>
+    <button class="deck-btn" id="quotes-next" aria-label="Next">→</button>
+    <button class="deck-btn" id="quotes-play" aria-label="Pause" aria-pressed="true">❚❚</button>
+  </div>
+  {% endif %}
 </section>
 {% endif %}
 
@@ -863,25 +880,35 @@
   </p>
 
   <div class="refuse">
-    {% for icon, rule, shortcut, cost in [
-      ("target",
+    {% for shot, alt, rule, shortcut, cost in [
+      ("api",
+       "The read API, every payload carrying its provenance",
        "One implementation of every rule",
        "Write the live version once and the backtest version again",
        "Engines cannot take shortcuts that only make sense live, and a test walks the syntax tree on every commit to keep it that way."),
-      ("clock",
+      ("scanner",
+       "The scanner, with the newest edge of each chart left unconfirmed",
        "Nothing may see the future",
        "Confirm a swing using the bars that came after it",
        "A swing is not confirmed until the bars that confirm it have closed, so the newest edge of every chart is deliberately unfinished."),
-      ("alert",
+      ("regime",
+       "The regime panel, refusing to score rather than guessing",
        "It says what it does not know",
        "Render an unranked sector as zero and move on",
        "Every chart and every caller has to handle absence, because null is not quietly turned into a bearish number."),
-      ("folder",
+      ("evidence",
+       "The breakout ledger, failures kept and counted",
        "Nothing that failed is deleted",
        "Keep the winners and quietly drop the rest",
        "The hit rate on this page is lower than the one a survivor-only ledger would show — which is the entire point of keeping them.")] %}
     <article class="refuse-card">
-      <span class="refuse-ico"><svg class="ico"><use href="#i-{{ icon }}"/></svg></span>
+      {# The picture is the argument: each constraint is shown costing
+         something in the interface it constrains, rather than asserted
+         beside an icon. #}
+      <figure class="refuse-shot">
+        <img src="{{ asset('screens/' ~ shot ~ '.png') }}" alt="{{ alt }}"
+             loading="lazy" draggable="false">
+      </figure>
       <h3>{{ rule }}</h3>
       <p class="refuse-shortcut">
         <span class="refuse-x" aria-hidden="true">✕</span>
@@ -1750,8 +1777,11 @@
   if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
   gl.useProgram(prog);
 
-  // A unit quad, 16:10 like the screenshots.
-  var W = 0.80, H = 0.50;
+  // 16:10, like the screenshots. Sized so the front panel fills most of
+  // the stage: at 0.80 x 0.50 with three panels abreast, a 1440px
+  // screenshot was landing in roughly 300px of canvas and the interface
+  // in it was unreadable, which defeats the point of showing a real one.
+  var W = 1.28, H = 0.80;
   var quad = new Float32Array([-W,-H, W,-H, -W,H, -W,H, W,-H, W,H]);
   var buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -1846,17 +1876,21 @@
     pointer.x += (pointer.tx - pointer.x) * 0.055;
     pointer.y += (pointer.ty - pointer.y) * 0.055;
 
-    var proj = perspective(50 * Math.PI / 180, aspect, 0.1, 30);
-    var view = mul(mul(translate(0, 0, -3.15), rotX(pointer.y * 0.16)), rotY(-pointer.x * 0.30));
+    // Closer camera and a narrower field: both enlarge the front panel
+    // without stretching it, which a wider fov would.
+    var proj = perspective(38 * Math.PI / 180, aspect, 0.1, 30);
+    var view = mul(mul(translate(0, 0, -2.45), rotX(pointer.y * 0.13)), rotY(-pointer.x * 0.24));
 
     panels.forEach(function (panel) {
       var i = panel.slot;
-      var spread = 1.05;
+      var spread = 1.52;
       var x = (i - (panels.length - 1) / 2) * spread;
       // each panel breathes on its own phase, and turns to face outward
       var y = Math.sin(t * 0.55 + i * 1.7) * 0.075;
-      var z = Math.cos(t * 0.4 + i * 1.1) * 0.18 - Math.abs(x) * 0.28;
-      var yaw = -x * 0.34 + Math.sin(t * 0.3 + i) * 0.03;
+      // The side panels step back harder so the middle one is clearly the
+      // one being read rather than three competing for the same plane.
+      var z = Math.cos(t * 0.4 + i * 1.1) * 0.16 - Math.abs(x) * 0.62;
+      var yaw = -x * 0.30 + Math.sin(t * 0.3 + i) * 0.025;
 
       var model = mul(translate(x, y, z), rotY(yaw));
       gl.uniformMatrix4fv(uMVP, false, new Float32Array(mul(mul(proj, view), model)));
@@ -2196,6 +2230,162 @@
 
   requestAnimationFrame(function () {
     requestAnimationFrame(function () { h.classList.add("typed"); });
+  });
+})();
+
+/* ── the comparison counts itself up ─────────────────────────────────
+   Every figure is already correct in the markup -- server-rendered, as
+   it has to be: an earlier version of this page counted up from zero in
+   JavaScript and showed "0" to anyone without it, which on a page about
+   honest numbers is the worst possible bug.
+
+   So this reads the rendered value, counts to it, and puts the original
+   string back at the end rather than reformatting it. Whatever the
+   template wrote is what remains: rupee signs, commas, minus signs,
+   decimal places, "once". */
+(function () {
+  var rows = document.querySelectorAll(".perf-row .num");
+  if (!rows.length) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+
+  var panel = rows[0].closest(".perf");
+  if (!panel) return;
+
+  var targets = [];
+  Array.prototype.forEach.call(rows, function (el) {
+    var text = el.textContent.trim();
+    // The number inside whatever decoration the template applied.
+    var match = text.match(/-?[\d,]*\.?\d+/);
+    if (!match) return;
+    var value = parseFloat(match[0].replace(/,/g, ""));
+    if (!isFinite(value)) return;
+    targets.push({
+      el: el,
+      final: text,
+      value: value,
+      prefix: text.slice(0, match.index),
+      suffix: text.slice(match.index + match[0].length),
+      decimals: (match[0].split(".")[1] || "").length,
+      grouped: match[0].indexOf(",") !== -1,
+    });
+  });
+  if (!targets.length) return;
+
+  function render(t, value) {
+    var n = value.toFixed(t.decimals);
+    if (t.grouped) {
+      var parts = n.split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      n = parts.join(".");
+    }
+    t.el.textContent = t.prefix + n + t.suffix;
+  }
+
+  function run() {
+    var started = performance.now();
+    var DURATION = 1100;
+    function step(now) {
+      var p = Math.min((now - started) / DURATION, 1);
+      // ease-out: the figure settles rather than slamming to a stop
+      var e = 1 - Math.pow(1 - p, 3);
+      targets.forEach(function (t) {
+        if (p >= 1) { t.el.textContent = t.final; }
+        else { render(t, t.value * e); }
+      });
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  new IntersectionObserver(function (entries, io) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      io.unobserve(entry.target);
+      run();
+    });
+  }, { threshold: 0.35 }).observe(panel);
+})();
+
+/* ── the quotes advance on their own ─────────────────────────────────
+   One card at a time on a narrow screen, the row scrolled on a wide one.
+   Any interaction stops it for good: a carousel that resumes under
+   someone who has taken hold of it is the behaviour everyone complains
+   about, and the fix is simply to not do it.
+
+   The cards are in the markup and readable in order without any of this,
+   which matters more here than elsewhere -- a quote nobody can reach is
+   worse than no carousel. */
+(function () {
+  var reel = document.getElementById("quotes");
+  if (!reel) return;
+  var cards = Array.prototype.slice.call(reel.querySelectorAll(".quote"));
+  if (cards.length < 2) return;
+
+  var dots = document.getElementById("quotes-dots");
+  var playBtn = document.getElementById("quotes-play");
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var at = 0, timer = null;
+
+  function show(i) {
+    at = (i + cards.length) % cards.length;
+    cards.forEach(function (card, n) { card.classList.toggle("on", n === at); });
+    if (dots) {
+      Array.prototype.forEach.call(dots.children, function (d, n) {
+        d.classList.toggle("on", n === at);
+        d.setAttribute("aria-current", n === at ? "true" : "false");
+      });
+    }
+    // On a wide screen every card is visible, so bring the active one into
+    // view rather than hiding the others.
+    if (reel.scrollWidth > reel.clientWidth + 4) {
+      reel.scrollTo({ left: cards[at].offsetLeft - reel.offsetLeft - 12, behavior: "smooth" });
+    }
+  }
+
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (playBtn) {
+      playBtn.textContent = "▶";
+      playBtn.setAttribute("aria-pressed", "false");
+      playBtn.setAttribute("aria-label", "Play");
+    }
+  }
+  function play() {
+    if (reduce || timer) return;
+    if (playBtn) {
+      playBtn.textContent = "❚❚";
+      playBtn.setAttribute("aria-pressed", "true");
+      playBtn.setAttribute("aria-label", "Pause");
+    }
+    timer = setInterval(function () { show(at + 1); }, 5200);
+  }
+
+  if (dots) {
+    cards.forEach(function (_, i) {
+      var d = document.createElement("button");
+      d.className = "deck-dot"; d.type = "button";
+      d.setAttribute("aria-label", "Quote " + (i + 1) + " of " + cards.length);
+      d.addEventListener("click", function () { stop(); show(i); });
+      dots.appendChild(d);
+    });
+  }
+  var prev = document.getElementById("quotes-prev");
+  var next = document.getElementById("quotes-next");
+  if (prev) prev.addEventListener("click", function () { stop(); show(at - 1); });
+  if (next) next.addEventListener("click", function () { stop(); show(at + 1); });
+  if (playBtn) playBtn.addEventListener("click", function () { timer ? stop() : play(); });
+  reel.addEventListener("pointerdown", stop);
+
+  show(0);
+  if (!reduce && "IntersectionObserver" in window) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) { e.isIntersecting ? play() : (timer && stop()); });
+    }, { threshold: 0.3 }).observe(reel);
+  } else if (!reduce) { play(); }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) stop();
   });
 })();
 </script>

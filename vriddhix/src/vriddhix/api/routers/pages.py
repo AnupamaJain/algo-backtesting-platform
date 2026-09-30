@@ -893,7 +893,7 @@ def _ledger(session) -> dict:
     }
 
 
-def _testimonials() -> list[dict]:
+def _testimonials(preview: bool = False) -> list[dict]:
     """Quotes from config/testimonials.yaml, verified ones only.
 
     An unverified entry is a draft, not a testimonial, and never reaches the
@@ -903,7 +903,16 @@ def _testimonials() -> list[dict]:
     and analytics products, not only advice. The section disappears when
     there is nothing real to put in it.
     """
+    # Preview loads the sample file instead, so the carousel can be seen
+    # working before there is anything real for it. Every card is
+    # watermarked in that mode and no visitor reaches it by accident: it
+    # needs ?preview=testimonials, and the sample file has to exist.
     path = PROJECT_ROOT / "config" / "testimonials.yaml"
+    if preview:
+        sample = PROJECT_ROOT / "config" / "testimonials.yaml.example"
+        if not sample.exists():
+            return []
+        path = sample
     try:
         with path.open() as handle:
             loaded = yaml.safe_load(handle) or {}
@@ -922,6 +931,7 @@ def _testimonials() -> list[dict]:
             "name": name,
             "role": str(entry.get("role", "")).strip() or None,
             "initials": "".join(w[0] for w in name.split()[:2]).upper(),
+            "sample": preview,
         })
     return out
 
@@ -976,7 +986,9 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "surface": _regime_surface(session),
             "results": _measured_results(session),
             "performance": _performance(session),
-            "testimonials": _testimonials(),
+            "testimonials": _testimonials(
+                preview=request.query_params.get("preview") == "testimonials"
+            ),
             "faq": LANDING_FAQ,
             "universe_size": session.scalar(select(func.count()).select_from(Stock)) or 0,
             "ledger": _ledger(session),

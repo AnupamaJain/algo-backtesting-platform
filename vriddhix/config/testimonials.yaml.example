@@ -1,0 +1,39 @@
+# Sample entries, so the carousel can be seen working before there is
+# anything real to put in it.
+#
+# These are NOT testimonials. The names are placeholders and the quotes are
+# written to demonstrate layout — a short one, a long one, one with a role
+# and one without — not to stand in for anyone's opinion. Nothing in this
+# file renders on the live page: the reader only ever loads
+# testimonials.yaml, and only entries there marked `verified: true` appear.
+#
+# To preview the section with these:
+#
+#     /?preview=testimonials
+#
+# Every card is watermarked "sample" in that mode, and the mode is ignored
+# unless this example file exists. Copy a real one into testimonials.yaml
+# when you have it, set verified: true, and the section becomes real.
+
+testimonials:
+  - quote: >-
+      A short one, to show how the card looks when somebody said something
+      brief and there is a lot of white space left over.
+    name: Sample Name
+    role: Placeholder role
+    verified: true
+
+  - quote: >-
+      A longer one, which is the more common case and the harder layout
+      problem: it runs to three or four lines, wraps past the avatar, and
+      still has to sit level with the shorter cards beside it without
+      anybody noticing the difference in height.
+    name: Second Sample
+    role: Another placeholder
+    verified: true
+
+  - quote: >-
+      A third, with no role attached, because not everyone wants one shown
+      and the card must not look broken when the line is missing.
+    name: Third Sample
+    verified: true

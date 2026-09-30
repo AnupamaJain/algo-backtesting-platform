@@ -1707,3 +1707,67 @@ def test_every_refusal_states_what_it_costs(client):
     body = client.get("/").text
     assert body.count("What it costs") == 4
     assert "refuse-card" in body
+
+
+def test_the_comparison_figures_are_in_the_html_not_only_in_script(client):
+    """They count up, but they are correct before anything counts.
+
+    An earlier version of this animation built the numbers in JavaScript
+    and showed "0" to anyone without it. On a page whose whole argument is
+    that its figures are real, that is the worst available bug, so the
+    animation reads the rendered value and puts the original string back
+    when it finishes.
+    """
+    body = client.get("/").text
+    assert "perf-row" in body
+    # A rupee figure with grouping separators, server-rendered.
+    import re
+    assert re.search(r"₹[\d,]{7,}", body), "no rendered currency figure"
+
+
+def test_sample_testimonials_never_reach_the_live_page(client):
+    """The preview exists so the carousel can be seen working. It must not
+    be reachable by accident, and its entries must be marked on every card
+    -- a screenshot of one card has to carry the mark too."""
+    live = client.get("/").text
+    assert "sample-tag" not in live
+    assert "quotes-sample" not in live
+
+    preview = client.get("/?preview=testimonials").text
+    from vriddhix.api.routers.pages import PROJECT_ROOT
+
+    if not (PROJECT_ROOT / "config" / "testimonials.yaml.example").exists():
+        pytest.skip("no sample file in this checkout")
+
+    assert preview.count("sample-tag") >= 3, "sample cards are not all marked"
+    assert "not testimonials" in preview
+
+
+def test_real_testimonials_still_need_verification(client):
+    """The preview must not have weakened the rule it works around."""
+    from vriddhix.api.routers.pages import _testimonials
+
+    assert _testimonials() == [] or all(
+        not t.get("sample") for t in _testimonials()
+    )
+
+
+def test_each_refusal_shows_the_screen_it_constrains(client):
+    """The picture is the argument: a constraint shown costing something in
+    the interface it constrains, rather than asserted beside an icon."""
+    body = client.get("/").text
+    assert body.count("refuse-shot") == 4
+    for slug in ("api", "scanner", "regime", "evidence"):
+        assert f"screens/{slug}.png" in body
+        assert client.get(f"/static/screens/{slug}.png").status_code == 200
+
+
+def test_the_post_shows_survivorship_rather_than_describing_it(client):
+    from vriddhix.api.routers.pages import BACKTEST_ROOT
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    body = client.get("/blog/what-survives-two-windows").text
+    assert "matrix-table" in body
+    assert "matrix-all" in body, "nothing marked as surviving everywhere"

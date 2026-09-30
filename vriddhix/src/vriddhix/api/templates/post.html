@@ -74,31 +74,48 @@
     ten years and <b>{{ five.strategies|length }}</b> over five. The rest had
     every configuration rejected.
   </p>
-  <dl class="rules">
-    <div>
-      <dt>Survived both windows</dt>
-      <dd>
-        {% for name in g.in_both %}<b>{{ name }}</b>{% if not loop.last %} and {% endif %}{% endfor %}.
-        These are the only two to clear the funnel over five years and ten.
-      </dd>
+  {% if g.matrix %}
+  <div class="matrix" style="margin-top:18px">
+    <div class="matrix-head">
+      <span class="gb-label" style="margin:0">Every strategy, every window</span>
+      <span class="matrix-key faint">
+        <i class="on"></i> survived <i class="off"></i> every configuration rejected
+      </span>
     </div>
-    <div>
-      <dt>Survived one, eliminated in the other</dt>
-      <dd>
-        {% set flipped = [] %}
-        {% for name, _c in ten.strategies %}{% if name in five.eliminated %}{% set _ = flipped.append(name) %}{% endif %}{% endfor %}
-        {% for name, _c in five.strategies %}{% if name in ten.eliminated %}{% set _ = flipped.append(name) %}{% endif %}{% endfor %}
-        {% for name in flipped %}<b>{{ name }}</b>{% if not loop.last %}, {% endif %}{% endfor %}.
-      </dd>
-      <dd class="cost">
-        <span>What that means:</span> every configuration of these was
-        rejected in the window they failed — not narrowly missed, rejected.
-        A strategy that clears a funnel over one period and is thrown out
-        whole over another has not been shown to work. It has been shown to
-        have had a good stretch.
-      </dd>
+    <div class="matrix-scroll">
+      <table class="matrix-table">
+        <thead>
+          <tr>
+            <th>Strategy</th>
+            {% for w in g.windows %}
+            <th class="c">{{ w.market }}<span>{{ w.label }}</span></th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in g.matrix %}
+          <tr{% if row.kept == g.windows|length %} class="matrix-all"{% elif row.kept == 0 %} class="matrix-none"{% endif %}>
+            <td>{{ row.name }}</td>
+            {% for cell in row.cells %}
+            <td class="c">
+              {% if cell.survived %}
+              <span class="matrix-cell on"><b class="num">{{ cell.count }}</b></span>
+              {% else %}
+              <span class="matrix-cell off">·</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-  </dl>
+    <p class="matrix-foot faint">
+      Two rows are solid. Read down a column to see how much of the field a
+      window keeps; read across a row to see whether a strategy travels.
+    </p>
+  </div>
+  {% endif %}
   <p>
     VolatilityRegime makes the point most sharply. It takes
     <b class="num">{{ dict(ten.strategies).get("VolatilityRegime", 0) }}</b>
