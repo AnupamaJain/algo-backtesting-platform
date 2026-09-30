@@ -1,35 +1,47 @@
 /* The trading terminal's design system.
    =====================================
 
-   One palette for the product. Identical values live in the Strategy Lab
-   (globals.css @theme) and in Pramana's dark theme (app.css), so the three
-   app surfaces read as one console. Edit all three together.
+   One palette and one set of proportions for the product. The same values
+   live in the Strategy Lab (globals.css @theme) and in Pramana's dark theme
+   (app.css), so the three surfaces read as one console. Edit all three.
 
    This file is linked from _header_partial.html, which is the first element
    inside <body> -- so it loads AFTER each page's own <style> block and wins
-   at equal specificity. That is deliberate and is what lets one stylesheet
-   retheme twenty-two hand-styled pages without touching them or resorting
-   to !important. Page rules with genuinely higher specificity still win,
-   which is the right way round: a page that means something specific keeps
-   it, and everything structural comes from here.
+   at equal specificity. That is deliberate: it is what lets one stylesheet
+   retheme twenty-two hand-styled pages without rewriting them and without
+   !important. A page rule with genuinely higher specificity still wins,
+   which is the right way round -- a page that means something specific
+   keeps it, and everything structural comes from here.
 
-   The rules below are grouped by what they fix. Most exist because these
-   pages were written light -- white cards, #f4f4f9 bodies -- and inherited
-   light text from this file, which put near-white text on near-white
-   surfaces and made whole tables of live positions invisible. */
+   The shape of a trading terminal is not the shape of a marketing page.
+   Density is a feature: a row of positions should not need scrolling to
+   read. Colour carries meaning rather than decoration -- accent for what
+   you can act on, bull and green for money made, bear and red for money
+   lost, and nothing else competing for attention. Numbers are monospaced
+   and tabular so digits line up down a column and a changing price does
+   not make the row jitter. */
 
 :root {
+  /* Surfaces, from the page up */
   --bg: #0a0d16; --surface: #10141f; --surface-2: #141a29; --raised: #1a2136;
   --border: #232c40; --border-soft: #1a2233;
+
+  /* Ink */
   --text: #e7ecf6; --muted: #94a3b8; --faint: #64748b;
+
+  /* Meaning */
   --accent: #22d3ee; --accent-ink: #0a0d16;
   --bull: #34d399; --bear: #fb7185; --warn: #fbbf24;
+
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Code", monospace;
 
-  /* Tells the browser to render native widgets -- scrollbars, select
-     dropdowns, date pickers, spinners -- dark. Without it a themed page
-     still opens a white dropdown list. */
+  /* One spacing scale. Every gap in the product is one of these. */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --radius: 8px; --radius-sm: 6px;
+
+  /* Native widgets -- scrollbars, select popups, date pickers -- render
+     dark. Without it a themed page still opens a white dropdown. */
   color-scheme: dark;
 }
 
@@ -37,38 +49,87 @@ body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
+/* ---- Type ------------------------------------------------------------
+   A terminal has one voice. Page titles were amber on one page, blue on
+   another and emoji-prefixed on a third. */
+h1, h2, h3, h4 {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--s3);
+}
+h1 { font-size: 22px; letter-spacing: -0.02em; }
+h2 { font-size: 16px; }
+h3 { font-size: 14px; }
+h4 { font-size: 13px; color: var(--muted); font-weight: 600;
+     text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Numbers align down a column and stop jittering as prices tick. */
+td, th, input[type="number"], .num, .mono, code, pre, kbd {
+  font-variant-numeric: tabular-nums;
+}
+code, pre, .mono, .num { font-family: var(--mono); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: 0; border-top: 1px solid var(--border); margin: var(--s5) 0; }
+
 /* ---- Surfaces --------------------------------------------------------
-   Cards were white. With light text inherited from here, every value on
-   them disappeared. */
-.card, .panel, .box, .section-card, .table-wrap, .content-card {
+   Cards were white with light text inherited from here, so every value on
+   them disappeared. They are panels now: one border, no drop shadow --
+   a shadow implies a physical stack that a dense console does not have. */
+.card, .panel, .box, .section-card, .table-wrap, .content-card, .modal-content {
   background: var(--surface);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
   color: var(--text);
+  box-shadow: none;
 }
+.card, .panel, .section-card { padding: var(--s4); }
 
 /* ---- Tables ----------------------------------------------------------
    The row hover was #f1f1f1: passing the mouse over a row of live
    positions turned it white and erased it. */
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
 th {
   background: var(--surface-2);
   color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  padding: var(--s2) var(--s3);
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
-td { border-bottom: 1px solid var(--border-soft); }
+td {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: middle;
+}
 tr:hover, tbody tr:hover { background: var(--raised); }
 tbody tr:nth-child(even) { background: transparent; }
 th.active-sort { background: var(--raised); color: var(--accent); }
+tbody tr:last-child td { border-bottom: none; }
 
 /* ---- Form controls ---------------------------------------------------
-   Native inputs stayed white on every dark page. */
+   Native inputs stayed white on every dark page. One height, one radius,
+   one focus ring, so a row of them reads as a row. */
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: 12.5px;
+}
 input, select, textarea {
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  font-family: inherit;
+  border-radius: var(--radius-sm);
+  padding: 6px var(--s2);
 }
 input::placeholder, textarea::placeholder { color: var(--faint); }
 input:focus, select:focus, textarea:focus {
@@ -83,33 +144,53 @@ input[readonly], input:disabled, select:disabled, textarea:disabled {
 }
 option { background: var(--surface-2); color: var(--text); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+label { color: var(--muted); font-size: 12px; }
 
-/* ---- Modals ----------------------------------------------------------
-   Light dialogs with light text: a confirmation you could not read. */
-.modal-content, .modal-body, .modal-header, .modal-footer {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
-}
-.modal-header, .modal-footer { border-color: var(--border); }
-
-/* ---- Inactive controls -----------------------------------------------
-   An unselected toggle was dark text on what is now a dark surface. */
-.toggle-btn, .tab, .day-tab {
-  background: var(--raised);
-  color: var(--muted);
+/* ---- Buttons ---------------------------------------------------------
+   There were six button treatments across the pages, several of them
+   gradients. A console wants one shape and colour used for meaning. */
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 6px var(--s3);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
+  background: var(--raised);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+button:hover, .btn:hover { background: var(--border); }
+button:disabled, .btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary, button.btn-primary {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+}
+.btn-primary:hover { background: color-mix(in srgb, var(--accent) 85%, white); }
+.btn-success, .btn-green { background: var(--bull); border-color: var(--bull); color: var(--accent-ink); }
+.btn-danger  { background: var(--bear); border-color: var(--bear); color: #2b0a12; }
+.btn-warning { background: var(--warn); border-color: var(--warn); color: var(--accent-ink); }
+.btn-sm { padding: 3px var(--s2); font-size: 11px; }
+
+/* ---- Inactive controls ----------------------------------------------- */
+.toggle-btn, .tab, .day-tab {
+  background: var(--raised); color: var(--muted); border: 1px solid var(--border);
 }
 .toggle-btn.active, .tab.active, .day-tab.active {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
 }
 
-/* ---- Status chips ----------------------------------------------------
-   Pastel fills meant for a white page. Tinted translucent on dark keeps
-   the same semantics and passes contrast. */
-.badge, .pill, .chip { background: var(--raised); color: var(--text); }
+/* ---- Status ----------------------------------------------------------
+   Pastel fills meant for a white page. Tinted on dark keeps the meaning
+   and passes contrast. */
+.badge, .pill, .chip {
+  display: inline-flex; align-items: center; gap: var(--s1);
+  background: var(--raised); color: var(--text);
+  border-radius: 999px; padding: 2px var(--s2);
+  font-size: 11px; font-weight: 600;
+}
 .status-ok, .pill-ok, .badge-success {
   background: color-mix(in srgb, var(--bull) 16%, transparent); color: var(--bull);
 }
@@ -120,10 +201,26 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn);
 }
 
-/* ---- Text ------------------------------------------------------------ */
-a { color: var(--accent); }
-code, pre, .mono, .num { font-family: var(--mono); }
-hr { border: 0; border-top: 1px solid var(--border); }
+/* Money says which way it went, everywhere, without each page deciding. */
+.pnl-pos, .profit, .positive { color: var(--bull); }
+.pnl-neg, .loss, .negative  { color: var(--bear); }
+
+/* ---- Icons -----------------------------------------------------------
+   Emoji were doing the work of an icon set: a sticker at 1.4x the line
+   height, rendered differently on every OS, with no way to colour it to
+   mean anything. These are stroke icons that inherit currentColor. */
+.ico {
+  width: 1em; height: 1em;
+  flex: none;
+  vertical-align: -0.125em;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ico-lg { width: 1.25em; height: 1.25em; }
+h1 .ico, h2 .ico { color: var(--accent); }
 
 /* ---- Scrollbars ------------------------------------------------------ */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -131,14 +228,23 @@ hr { border: 0; border-top: 1px solid var(--border); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 
-/* ---- Button ink ------------------------------------------------------
-   White on a mid-tone fill measures badly: white on #f39c12 is 2.19:1 and
-   on #10b981 is 2.54:1, both under the 4.5:1 floor. Saturated warm and
-   green fills take dark ink; only the dark red fill keeps white. */
-.btn-warning, .btn-success, .btn-info, .btn-accent {
-  color: var(--accent-ink);
+/* ---- Footer ----------------------------------------------------------
+   Was inline hex on every page, including an emoji written as an HTML
+   entity (&#9888;) that no character-level pass could see. */
+.app-footer {
+  margin-top: var(--s6);
+  padding: var(--s4);
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
 }
+.app-footer .ico { color: var(--warn); margin-right: var(--s1); }
+.app-footer strong { color: var(--text); }
 
-/* A green or amber fill anywhere takes dark ink, whatever the class is
-   called: white on #10b981 measures 2.54:1. */
-.btn[style*="10b981"], .btn-green, .btn-analyze { color: var(--accent-ink); }
+/* Empty states read as a quiet statement, not a missing image. */
+.empty-state, .empty-state-icon, .empty-note, .loading-state {
+  color: var(--muted);
+}
+.empty-state-icon { color: var(--faint); margin-bottom: var(--s2); }

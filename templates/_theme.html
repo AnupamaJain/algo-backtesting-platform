@@ -1,0 +1,11 @@
+{# The design system, for pages that carry no global header.
+
+   theme.css is normally linked from _header_partial.html, which is the
+   first element inside <body> -- after each page's own <style>, which is
+   what lets it supersede twenty-two hand-styled pages at equal
+   specificity. A page without that header never loaded it at all, so it
+   fell back to browser defaults: the disclaimer's link rendered in
+   #0000EE on our near-black page, 2.07:1.
+
+   Included at the END of <body> for the same reason: last wins. #}
+<link rel="stylesheet" href="{{ root }}/static/theme.css">

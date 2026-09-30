@@ -170,6 +170,7 @@
 </style>
 </head>
 <body>
+{% include "_icons.html" %}
 
 <div class="topbar">
     <div>
@@ -839,5 +840,6 @@ async function fetchStockHistory() {
 document.getElementById('stock-select').addEventListener('change', fetchStockHistory);
 document.getElementById('btn-refresh-stock').addEventListener('click', fetchStockHistory);
 </script>
+{% include "_theme.html" %}
 </body>
 </html>

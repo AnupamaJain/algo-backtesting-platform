@@ -427,7 +427,7 @@
     <div class="container">
         <a href="{{ root }}/wave-extractor" class="back-link"><i class="fas fa-arrow-left"></i> Back to Wave Extractor Dashboard</a>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h1 style="margin: 0;">🎯 Survivor Algo Dashboard</h1>
+            <h1 style="margin: 0;"><svg class="ico"><use href="#i-target"/></svg> Survivor Algo Dashboard</h1>
             <div style="display: flex; align-items: center; gap: 10px;">
             </div>
         </div>
@@ -606,7 +606,7 @@
         <!-- All Executed Orders Card -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="border: none; padding: 0; margin: 0;">📋 All Executed Orders</h2>
+                <h2 style="border: none; padding: 0; margin: 0;"><svg class="ico"><use href="#i-clipboard"/></svg> All Executed Orders</h2>
                 <button class="btn btn-primary" onclick="refreshSurvivorOrders()"
                     style="padding: 8px 16px; font-size: 13px;">Refresh</button>
             </div>
@@ -962,16 +962,16 @@
 
             // PE should be >= CE
             if (pe !== 0 && ce !== 0 && pe < ce) {
-                warnings.push('⚠️ PE start point is less than CE start point. This is unusual.');
+                warnings.push('<svg class="ico"><use href="#i-alert"/></svg> PE start point is less than CE start point. This is unusual.');
             }
 
             // Price comparisons (if we have current price)
             if (currentIndexPrice > 0) {
                 if (pe !== 0 && pe < currentIndexPrice) {
-                    warnings.push(`⚠️ PE start point (${pe}) is less than current ${selectedIndex} price (${currentIndexPrice}).`);
+                    warnings.push(`<svg class="ico"><use href="#i-alert"/></svg> PE start point (${pe}) is less than current ${selectedIndex} price (${currentIndexPrice}).`);
                 }
                 if (ce !== 0 && ce > currentIndexPrice) {
-                    warnings.push(`⚠️ CE start point (${ce}) is greater than current ${selectedIndex} price (${currentIndexPrice}).`);
+                    warnings.push(`<svg class="ico"><use href="#i-alert"/></svg> CE start point (${ce}) is greater than current ${selectedIndex} price (${currentIndexPrice}).`);
                 }
             }
 
@@ -1028,7 +1028,7 @@
                 const pe = parseInt(startPointPE) || 0;
                 const ce = parseInt(startPointCE) || 0;
                 if (pe !== 0 && ce !== 0 && pe < ce) {
-                    if (!confirm('⚠️ SECOND WARNING: PE start point is LESS than CE start point!\n\nAre you ABSOLUTELY SURE you want to continue?')) {
+ if (!confirm('SECOND WARNING: PE start point is LESS than CE start point!\n\nAre you ABSOLUTELY SURE you want to continue?')) {
                         return;
                     }
                 }
@@ -1126,7 +1126,7 @@
             // NIFTY section
             if (niftyInstances.length > 0) {
                 const niftyPriceStr = niftySpotPrice ? `<span style="color: #fff; font-weight: bold;">₹${niftySpotPrice.toFixed(2)}</span>` : '';
-                html += `<tr class="group-header"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span>📈 NIFTY Instances</span>${niftyPriceStr}</td></tr>`;
+                html += `<tr class="group-header"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span><svg class="ico"><use href="#i-trend-up"/></svg> NIFTY Instances</span>${niftyPriceStr}</td></tr>`;
                 niftyInstances.forEach(inst => {
                     html += renderInstanceRow(inst);
                 });
@@ -1135,7 +1135,7 @@
             // SENSEX section
             if (sensexInstances.length > 0) {
                 const sensexPriceStr = sensexSpotPrice ? `<span style="color: #fff; font-weight: bold;">₹${sensexSpotPrice.toFixed(2)}</span>` : '';
-                html += `<tr class="group-header sensex"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span>📊 SENSEX Instances</span>${sensexPriceStr}</td></tr>`;
+                html += `<tr class="group-header sensex"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span><svg class="ico"><use href="#i-chart"/></svg> SENSEX Instances</span>${sensexPriceStr}</td></tr>`;
                 sensexInstances.forEach(inst => {
                     html += renderInstanceRow(inst);
                 });
@@ -1146,7 +1146,7 @@
                 const stockPriceKey = `${stockName.toLowerCase()}_price`;
                 const stockPrice = allSpotPrices[stockPriceKey];
                 const stockPriceStr = stockPrice ? `<span style="color: #fff; font-weight: bold;">₹${parseFloat(stockPrice).toFixed(2)}</span>` : '';
-                html += `<tr class="group-header" style="background: linear-gradient(135deg, #00897b, #00695c);"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span>🏢 ${stockName} Instances</span>${stockPriceStr}</td></tr>`;
+                html += `<tr class="group-header" style="background: linear-gradient(135deg, #00897b, #00695c);"><td colspan="9" style="display: flex; justify-content: space-between; align-items: center;"><span><svg class="ico"><use href="#i-building"/></svg> ${stockName} Instances</span>${stockPriceStr}</td></tr>`;
                 stockGroups[stockName].forEach(inst => {
                     html += renderInstanceRow(inst);
                 });

@@ -97,12 +97,13 @@
     </style>
 </head>
 <body>
+{% include "_icons.html" %}
     <div class="card">
         <h1>Trading System Setup</h1>
         <div class="subtitle">One-time configuration — writes <code>configfile.ini</code> next to the app.</div>
 
         <div class="warn-banner">
-            ⚠️ This software places real trades when live trading is enabled. It is provided
+            <svg class="ico"><use href="#i-alert"/></svg> This software places real trades when live trading is enabled. It is provided
             as-is, with no warranty. You are solely responsible for any financial losses.
         </div>
 
@@ -166,5 +167,6 @@
         </form>
     </div>
 {% include '_footer_partial.html' %}
+{% include "_theme.html" %}
 </body>
 </html>

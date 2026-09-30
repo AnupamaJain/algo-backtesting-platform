@@ -441,9 +441,9 @@
                         <th>Est. SENSEX</th>
                         <th>IV (%)</th>
                         <th>Fair / Mkt LTP</th>
-                        <th>Discount % ✏</th>
-                        <th>GTT Price ✏</th>
-                        <th>Exit Qty ✏</th>
+                        <th>Discount % <svg class="ico"><use href="#i-pencil"/></svg></th>
+                        <th>GTT Price <svg class="ico"><use href="#i-pencil"/></svg></th>
+                        <th>Exit Qty <svg class="ico"><use href="#i-pencil"/></svg></th>
                         <th>Total Qty</th>
                         <th>Status</th>
                     </tr>
@@ -826,7 +826,7 @@
                 </td>
                 <td>${totalQty != null ? totalQty : dash}</td>
                 <td>${hasError
-                    ? `<span class="error-cell">⚠ ${leg.error}</span>`
+                    ? `<span class="error-cell"><svg class="ico"><use href="#i-alert"/></svg> ${leg.error}</span>`
                     : '<span style="color:var(--success);">✓ Ready</span>'}
                 </td>`;
             tbody.appendChild(row);
@@ -1092,7 +1092,7 @@
             const statusClass = r.status === 'placed' ? 'status-placed'
                               : r.status === 'skipped' ? 'status-skipped'
                               : 'status-error';
-            const statusIcon  = r.status === 'placed' ? '✅' : r.status === 'skipped' ? '⏭' : '❌';
+            const statusIcon  = r.status === 'placed' ? '<svg class="ico"><use href="#i-check"/></svg>' : r.status === 'skipped' ? '⏭' : '<svg class="ico"><use href="#i-x"/></svg>';
             const idVal       = isActive ? (r.order_id || '—') : (r.gtt_id || '—');
             const priceVal    = isActive
                 ? (r.price    != null ? '₹' + r.price    : '—')
@@ -1146,12 +1146,12 @@
     // -----------------------------------------------------------------------
     function showError(msg) {
         const el = document.getElementById('error-banner');
-        el.innerHTML = '⛔ ' + msg;
+        el.innerHTML = '<svg class="ico"><use href="#i-ban"/></svg> ' + msg;
         el.style.display = 'block';
     }
     function showWarning(msg) {
         const el = document.getElementById('warning-banner');
-        el.innerHTML = '⚠ ' + msg;
+        el.innerHTML = '<svg class="ico"><use href="#i-alert"/></svg> ' + msg;
         el.style.display = 'block';
     }
 

@@ -695,7 +695,7 @@
     <div class="header">
         <div class="header-left">
             <div>
-                <h1>📊 Trade Journal</h1>
+                <h1><svg class="ico"><use href="#i-chart"/></svg> Trade Journal</h1>
                 <div class="header-subtitle">Performance Analytics & Attribution</div>
             </div>
         </div>
@@ -728,31 +728,31 @@
         <!-- Summary Cards -->
         <div class="summary-row" id="summaryCards">
             <div class="card">
-                <div class="card-icon" style="background:var(--accent-blue-dim)">💰</div>
+                <div class="card-icon" style="background:var(--accent-blue-dim)"><svg class="ico"><use href="#i-wallet"/></svg></div>
                 <div class="card-label">Total P&L</div>
                 <div class="card-value neutral" id="totalPnl">—</div>
                 <div class="card-detail" id="totalTrades">0 trades</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="background:var(--accent-cyan-dim)">🤖</div>
+                <div class="card-icon" style="background:var(--accent-cyan-dim)"><svg class="ico"><use href="#i-bot"/></svg></div>
                 <div class="card-label">Algo P&L</div>
                 <div class="card-value neutral" id="algoPnl">—</div>
                 <div class="card-detail" id="algoDetail">—</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="background:var(--accent-amber-dim)">👤</div>
+                <div class="card-icon" style="background:var(--accent-amber-dim)"><svg class="ico"><use href="#i-user"/></svg></div>
                 <div class="card-label">Manual P&L</div>
                 <div class="card-value neutral" id="manualPnl">—</div>
                 <div class="card-detail" id="manualDetail">—</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="background:var(--accent-green-dim)">🎯</div>
+                <div class="card-icon" style="background:var(--accent-green-dim)"><svg class="ico"><use href="#i-target"/></svg></div>
                 <div class="card-label">Win Rate</div>
                 <div class="card-value neutral" id="winRate">—</div>
                 <div class="card-detail" id="winLoss">—</div>
             </div>
             <div class="card">
-                <div class="card-icon" style="background:var(--accent-purple-dim)">📈</div>
+                <div class="card-icon" style="background:var(--accent-purple-dim)"><svg class="ico"><use href="#i-trend-up"/></svg></div>
                 <div class="card-label">Open Positions</div>
                 <div class="card-value neutral" id="unpairedCount">—</div>
                 <div class="card-detail">Unpaired orders</div>
@@ -762,14 +762,14 @@
         <!-- Insights -->
         <div class="insights-row" id="insightsRow">
             <div class="insight-item">
-                <div class="insight-icon">🏆</div>
+                <div class="insight-icon"><svg class="ico"><use href="#i-award"/></svg></div>
                 <div class="insight-content">
                     <div class="insight-label">Best Trade</div>
                     <div class="insight-value" id="bestTrade">—</div>
                 </div>
             </div>
             <div class="insight-item">
-                <div class="insight-icon">💥</div>
+                <div class="insight-icon"><svg class="ico"><use href="#i-zap"/></svg></div>
                 <div class="insight-content">
                     <div class="insight-label">Worst Trade</div>
                     <div class="insight-value" id="worstTrade">—</div>
@@ -780,25 +780,25 @@
         <!-- Charts -->
         <div class="charts-grid">
             <div class="chart-card">
-                <div class="chart-title">📈 Cumulative P&L</div>
+                <div class="chart-title"><svg class="ico"><use href="#i-trend-up"/></svg> Cumulative P&L</div>
                 <div class="chart-container">
                     <canvas id="cumulativePnlChart"></canvas>
                 </div>
             </div>
             <div class="chart-card">
-                <div class="chart-title">🤖 P&L by Attribution</div>
+                <div class="chart-title"><svg class="ico"><use href="#i-bot"/></svg> P&L by Attribution</div>
                 <div class="chart-container">
                     <canvas id="algoPerformanceChart"></canvas>
                 </div>
             </div>
             <div class="chart-card">
-                <div class="chart-title">📊 Category Breakdown</div>
+                <div class="chart-title"><svg class="ico"><use href="#i-chart"/></svg> Category Breakdown</div>
                 <div class="chart-container">
                     <canvas id="categoryChart"></canvas>
                 </div>
             </div>
             <div class="chart-card">
-                <div class="chart-title">📅 Daily P&L</div>
+                <div class="chart-title"><svg class="ico"><use href="#i-calendar"/></svg> Daily P&L</div>
                 <div class="chart-container">
                     <canvas id="dailyPnlChart"></canvas>
                 </div>
@@ -808,7 +808,7 @@
         <!-- Trade Log -->
         <div class="trade-log">
             <div class="trade-log-header">
-                <div class="trade-log-title">🗂️ Trade Log</div>
+                <div class="trade-log-title"><svg class="ico"><use href="#i-folder"/></svg> Trade Log</div>
                 <div class="trade-filters">
                     <input type="text" id="filterSymbol" placeholder="Search symbol…" class="filter-select" style="min-width:160px;" oninput="debouncedLoadTrades()">
                     <select class="filter-select" id="filterTradeType" onchange="loadTradesPage(1)">
@@ -871,7 +871,7 @@
     <!-- Orders Debug Table -->
     <div class="trade-log" style="margin-top:24px;">
         <div class="trade-log-header" style="cursor:pointer;" onclick="toggleOrdersSection()">
-            <div class="trade-log-title">📋 Executed Orders
+            <div class="trade-log-title"><svg class="ico"><use href="#i-clipboard"/></svg> Executed Orders
                 <span id="ordersCount" style="font-size:13px; color:#8b98b5; font-weight:normal; margin-left:8px;"></span>
             </div>
             <div style="color:#8b98b5; font-size:13px;">
@@ -903,7 +903,7 @@
     <!-- Position Sync Section -->
     <div class="trade-log" style="margin-top:24px;">
         <div class="trade-log-header" style="cursor:pointer;" onclick="togglePositionSync()">
-            <div class="trade-log-title">🔍 Position Sync
+            <div class="trade-log-title"><svg class="ico"><use href="#i-search"/></svg> Position Sync
                 <span id="positionSyncBadge" style="display:inline-block; margin-left:10px; font-size:12px; font-weight:700; padding:2px 10px; border-radius:10px; background:#1e2a3a; color:#8b98b5;">Not loaded</span>
             </div>
             <div style="display:flex; gap:10px; align-items:center;">
@@ -928,7 +928,7 @@
     <!-- Carry Forward Modal -->
     <div class="modal-overlay" id="carryForwardModal" style="display:none;">
         <div class="modal">
-            <h3>📥 Inject Carry-Forward Position</h3>
+            <h3><svg class="ico"><use href="#i-file"/></svg> Inject Carry-Forward Position</h3>
             <p style="color:#8b98b5; font-size:13px; margin-bottom:16px;">Creates a synthetic open-leg for a position that was opened on a prior session but not recorded locally.</p>
             <input type="hidden" id="cfSymbol">
             <div class="form-group">
@@ -973,7 +973,7 @@
     <!-- Notes Modal -->
     <div class="modal-overlay" id="noteModal">
         <div class="modal">
-            <h3>📝 Trade Note</h3>
+            <h3><svg class="ico"><use href="#i-pencil"/></svg> Trade Note</h3>
             <input type="hidden" id="noteSymbol">
             <input type="hidden" id="noteDate">
             <div class="form-group">
@@ -1593,7 +1593,7 @@
             if (!trades.length) {
                 tbody.innerHTML = `<tr><td colspan="10">
             <div class="empty-state">
-                <div class="empty-state-icon">📭</div>
+                <div class="empty-state-icon"><svg class="ico ico-lg"><use href="#i-folder"/></svg></div>
                 <h3>No trades found</h3>
                 <p>Try adjusting your date range or filters</p>
             </div>
@@ -1683,7 +1683,7 @@
             <td>
                 <button class="btn btn-outline" style="padding:4px 10px;font-size:11px"
                     onclick='event.stopPropagation(); openNoteModal("${rt.symbol}","${rt.open_trade.trade_date}")'>
-                    ${note ? '✏️' : '📝'}
+                    ${note ? '<svg class="ico"><use href="#i-pencil"/></svg>' : '<svg class="ico"><use href="#i-pencil"/></svg>'}
                 </button>
                 ${note?.market_condition ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px">${note.market_condition}</span>` : ''}
             </td>
@@ -1943,7 +1943,7 @@
                 badge.style.background = '#1a2e1a';
                 badge.style.color = '#6fcf97';
             } else {
-                badge.textContent = `⚠ ${discrepancies.length + phantoms.length} issue(s)`;
+ badge.textContent = ` ${discrepancies.length + phantoms.length} issue(s)`;
                 badge.style.background = '#2d1e0a';
                 badge.style.color = '#f39c12';
             }
@@ -1955,7 +1955,7 @@
                     <span style="font-weight:600; color:#f39c12;">Data Gaps — the broker has positions with no open leg in journal:</span>
                     <button id="injectAllBtn" onclick="injectAll()"
                         style="font-size:11px; padding:3px 12px; background:#1a3a1a; color:#6fcf97; border:1px solid #2a4a2a; border-radius:4px; cursor:pointer;">
-                        ⚡ Inject All
+                        <svg class="ico"><use href="#i-zap"/></svg> Inject All
                     </button>
                 </div>`;
                 html += `<table style="width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px;">
@@ -2062,7 +2062,7 @@
                 // Prompt user to rebuild — do not auto-rebuild since they may have more injections
                 document.getElementById('positionSyncContent').insertAdjacentHTML(
                     'afterbegin',
-                    `<div style="color:#f39c12; margin-bottom:8px; font-size:12px;">⚠ ${ok} order(s) injected — click <strong>Rebuild Cache</strong> when done with all injections.</div>`
+                    `<div style="color:#f39c12; margin-bottom:8px; font-size:12px;"><svg class="ico"><use href="#i-alert"/></svg> ${ok} order(s) injected — click <strong>Rebuild Cache</strong> when done with all injections.</div>`
                 );
             }
         }
@@ -2099,7 +2099,7 @@
                 btn.style.color = '#e74c3c';
                 document.getElementById('positionSyncContent').insertAdjacentHTML(
                     'afterbegin',
-                    `<div style="color:#f39c12; margin-bottom:8px; font-size:12px;">⚠ ${ok} phantom(s) closed — click <strong>Rebuild Cache</strong> when done with all injections.</div>`
+                    `<div style="color:#f39c12; margin-bottom:8px; font-size:12px;"><svg class="ico"><use href="#i-alert"/></svg> ${ok} phantom(s) closed — click <strong>Rebuild Cache</strong> when done with all injections.</div>`
                 );
             }
         }

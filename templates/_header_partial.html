@@ -1,4 +1,5 @@
 {% include "_app_shim.html" %}
+{% include "_icons.html" %}
 <link rel="stylesheet" href="{{ root }}/static/theme.css">
 <style>
   #app-global-header {
@@ -20,7 +21,10 @@
     align-items: center;
     gap: 10px;
     text-decoration: none;
-    color: var(--warn);
+    /* Was --warn. Amber is what a dry-run pill and a stale-tick warning use
+       on this same bar; a brand competing with them costs the warning its
+       only job. */
+    color: var(--text);
     font-weight: 600;
     font-size: 15px;
     white-space: nowrap;
@@ -439,11 +443,11 @@
         var btn = document.getElementById('app-header-connect-btn'); // gone with Zerodha; guarded below
         if (!badge) return;
         if (data.authenticated) {
-          badge.textContent = '🟢 ' + (data.broker || 'Connected') + (data.live_trading ? ' · LIVE' : ' · paper');
+ badge.textContent = (data.broker || 'Connected') + (data.live_trading ? ' · LIVE' : ' · paper');
           badge.className = 'connected';
           if (btn) btn.style.display = 'none';
         } else {
-          badge.textContent = '⚠ No broker';
+ badge.textContent = 'No broker';
           badge.className = 'disconnected';
           if (btn) btn.style.display = 'inline-block';
         }
@@ -649,13 +653,13 @@
         var badge = document.getElementById('app-header-mode-badge');
         if (!badge || !data) return;
         if (data.live_trading) {
-          badge.textContent = '🔴 LIVE';
+ badge.textContent = 'LIVE';
           badge.style.background = 'rgba(252,129,129,0.15)';
           badge.style.color = 'var(--bear)';
           badge.style.border = '1px solid rgba(252,129,129,0.4)';
           badge.title = 'Live trading is ENABLED — orders are sent to the broker with real money.';
         } else {
-          badge.textContent = '🟡 DRY-RUN';
+ badge.textContent = 'DRY-RUN';
           badge.style.background = 'rgba(246,173,85,0.15)';
           badge.style.color = 'var(--warn)';
           badge.style.border = '1px solid rgba(246,173,85,0.4)';

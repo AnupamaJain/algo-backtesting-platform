@@ -492,10 +492,11 @@
     </style>
 </head>
 <body>
+{% include "_icons.html" %}
 
     <div class="header-container">
         <div class="title-section">
-            <h1>📊 NIFTY 50 Contributors</h1>
+            <h1><svg class="ico"><use href="#i-chart"/></svg> NIFTY 50 Contributors</h1>
             <p>Real-time positive & negative stock point contributions to NIFTY Index</p>
         </div>
         <div class="controls-section">
@@ -546,7 +547,7 @@
     <div class="intraday-charts-section">
         <div class="charts-header">
             <div class="charts-title">
-                <span>📈 Intraday Price & Top 5 Movers Impact Trends</span>
+                <span><svg class="ico"><use href="#i-trend-up"/></svg> Intraday Price & Top 5 Movers Impact Trends</span>
             </div>
             <div class="charts-controls">
                 <select id="chartDateSelect" class="select-box" onchange="loadHistoricalChartData()">
@@ -598,7 +599,7 @@
 
     <div class="chart-section">
         <div class="section-title">
-            <span>🔥 Key Index Impact Movers (Index Points)</span>
+            <span><svg class="ico"><use href="#i-flame"/></svg> Key Index Impact Movers (Index Points)</span>
             <span style="font-weight: 500; font-size: 11px; color: var(--text-muted);">Top Point Gainers vs Drag</span>
         </div>
         <div class="top-impact-bars" id="topImpactContainer">
@@ -611,7 +612,7 @@
         <!-- Positive Contributors Table -->
         <div class="table-card">
             <div class="table-header-banner pos">
-                <span>🟢 Positive Contributors</span>
+                <span><svg class="ico"><use href="#i-dot"/></svg> Positive Contributors</span>
                 <span id="posCountBadge" class="badge badge-pos">0 Stocks</span>
             </div>
             <div class="table-wrapper">
@@ -636,7 +637,7 @@
         <!-- Negative Contributors Table -->
         <div class="table-card">
             <div class="table-header-banner neg">
-                <span>🔴 Negative Contributors</span>
+                <span><svg class="ico"><use href="#i-dot"/></svg> Negative Contributors</span>
                 <span id="negCountBadge" class="badge badge-neg">0 Stocks</span>
             </div>
             <div class="table-wrapper">
@@ -1086,6 +1087,7 @@
 
         startPolling();
     </script>
+{% include "_theme.html" %}
 </body>
 </html>
 

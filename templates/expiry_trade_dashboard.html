@@ -357,7 +357,7 @@
 
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
             <h1 style="margin: 0;">
-                <span>📈</span> Expiry Trade Dashboard
+                <span><svg class="ico"><use href="#i-trend-up"/></svg></span> Expiry Trade Dashboard
             </h1>
 
         </div>
@@ -542,7 +542,7 @@
                 badge.style.display = 'none';
             } else if (data.is_stuck) {
                 indicator.classList.add('stuck');
-                text.innerHTML = '<strong style="color:#ff8a80">⚠ System Stuck</strong> — No ticks for >10s';
+                text.innerHTML = '<strong style="color:#ff8a80"><svg class="ico"><use href="#i-alert"/></svg> System Stuck</strong> — No ticks for >10s';
                 badge.style.display = 'inline-block';
                 badge.textContent = data.expiry_substring || '--';
             } else {

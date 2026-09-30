@@ -48,8 +48,9 @@
     </style>
 </head>
 <body>
+{% include "_icons.html" %}
     <div class="card">
-        <div class="check">✅</div>
+        <div class="check"><svg class="ico"><use href="#i-check"/></svg></div>
         <h1>Configuration Saved</h1>
         <p><code>configfile.ini</code> has been written. The server is restarting itself
         automatically to apply it — no manual restart needed.</p>
@@ -91,5 +92,6 @@
         })();
     </script>
 {% include '_footer_partial.html' %}
+{% include "_theme.html" %}
 </body>
 </html>
