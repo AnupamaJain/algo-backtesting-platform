@@ -64,7 +64,7 @@ by Caddy. Nothing else is exposed.
 |---|---|---|
 | 🔬 | **[Pramana](vriddhix/)** | Pattern research: VCP, market structure, regime, relative strength. Detects, scores, and tracks outcomes across a decade. **Read-only — cannot trade.** |
 | 📊 | **[quant_backtester](quant_backtester/)** | Strategy backtesting over Indian equities, with broker adapters for Dhan and Flattrade. |
-| 📈 | **UI Trading System** (repo root) | Flask dashboard for live NIFTY/SENSEX options trading on Zerodha Kite. Positions, Greeks, GTT monitoring, automated strategies. **Trades real money.** |
+| 📈 | **Trading terminal** (repo root) | Flask dashboard for NIFTY/SENSEX options through Dhan and Flattrade. Positions, Greeks, GTT monitoring, automated strategies. **Trades real money.** |
 
 They share a Python environment but are otherwise independent — you can run
 any one without the others.
@@ -146,13 +146,15 @@ See **[quant_backtester/RUNNING.md](quant_backtester/RUNNING.md)**.
 
 ---
 
-## 📈 UI Trading System — live options trading
+## 📈 Trading terminal — live options trading
 
 > **This is the part that can lose money.** Read
 > [DISCLAIMER.md](DISCLAIMER.md) before enabling live mode.
 
-A Flask dashboard for NIFTY and SENSEX options on
-[Zerodha Kite Connect](https://kite.trade).
+A Flask dashboard for NIFTY and SENSEX options. Orders go through
+[Dhan](https://dhanhq.co); quotes and ticks come from
+[Flattrade](https://flattrade.in). The default broker profile, `paper_dhan`,
+fills orders on paper against those live quotes and sends nothing anywhere.
 
 | Module | What it does |
 |---|---|
@@ -171,14 +173,14 @@ A Flask dashboard for NIFTY and SENSEX options on
 pip install -r requirements.txt
 cp configfile.ini.example configfile.ini   # then fill in your own keys
 python setup_wizard.py                     # guided configuration
-./run-terminal.sh start                    # http://127.0.0.1:5010
+./run-terminal.sh start                    # loopback :5010 → http://127.0.0.1:8787/terminal
 ```
 
 Starts in **dry-run mode** — the log says so on boot:
 
 ```
 [safety] live_trading = false — DRY-RUN MODE: all order placement is
-simulated and logged, nothing is sent to Zerodha.
+simulated and logged, nothing reaches the broker.
 ```
 
 The guard sits on all three order paths (market, GTT and stop-loss), each
@@ -201,7 +203,7 @@ whichever parts you use:
 |---|---|
 | Pramana | Nothing. Market data comes from yfinance. |
 | quant_backtester | Dhan or Flattrade credentials for live data; historical CSVs work offline |
-| UI Trading System | A Zerodha [Kite Connect](https://developers.kite.trade/) subscription (paid) |
+| Trading terminal | Dhan for orders and Flattrade for market data; the paper profile needs only Flattrade |
 
 ```bash
 git clone https://github.com/AnupamaJain/algo-backtesting-platform.git
@@ -251,7 +253,7 @@ Dependencies/               instrument dumps and live access tokens
 │
 ├── quant_backtester/    📊 strategy backtesting + broker adapters
 │
-├── templates/           📈 UI Trading System — Flask views
+├── templates/           📈 Trading terminal — Flask views
 ├── notifications/          Telegram and Web Push
 ├── position_guard/         exposure checks
 ├── covered_calls/          covered-call workflow

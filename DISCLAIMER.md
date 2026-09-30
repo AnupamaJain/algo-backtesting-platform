@@ -5,15 +5,14 @@
 ## Educational Purpose
 
 This project is published **for educational purposes** — to show one way of
-building a self-hosted algorithmic trading setup on top of the Zerodha Kite
-Connect API. It is a reference implementation, not a packaged product or a
+building a self-hosted algorithmic trading setup on top of broker APIs —
+Dhan for orders and Flattrade for market data. It is a reference implementation, not a packaged product or a
 trading signal service.
 
 ## Financial Risk
 
 This software places **real orders with real money** on Indian stock
-exchanges (NSE/BSE) through the Zerodha Kite Connect API when live trading is
-enabled. Algorithmic trading of futures and options carries a **substantial
+exchanges (NSE/BSE) through the Dhan API when live trading is enabled. Algorithmic trading of futures and options carries a **substantial
 risk of loss**. You can lose more than your initial investment.
 
 - Past performance of any strategy in this repository is **not** indicative
@@ -36,12 +35,12 @@ or implied. The authors and contributors accept **no liability** for any
 damages or losses — financial or otherwise — arising from its use. See the
 [LICENSE](LICENSE) for the full warranty disclaimer.
 
-## Not Affiliated with Zerodha
+## Not Affiliated with Any Broker
 
 This is an independent open-source project. It is **not** affiliated with,
-endorsed by, or supported by Zerodha Broking Ltd. or any exchange. "Zerodha",
-"Kite", and "Kite Connect" are trademarks of their respective owners. Use of
-the Kite Connect API is subject to Zerodha's own terms of service.
+endorsed by, or supported by Dhan, Flattrade, or any exchange. "Dhan" and
+"Flattrade" are trademarks of their respective owners. Use of their APIs is
+subject to each broker's own terms of service.
 
 ## Regulatory Notice
 

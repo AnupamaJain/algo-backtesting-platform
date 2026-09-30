@@ -28,7 +28,7 @@ running() { pgrep -f "[f]lask_app.py" >/dev/null 2>&1; }
 
 case "${1:-start}" in
   start)
-    if running; then echo "already running — http://127.0.0.1:$PORT"; exit 0; fi
+    if running; then echo "already running on loopback :$PORT — http://127.0.0.1:8787/terminal"; exit 0; fi
     test -d "$VENV" || { echo "no virtualenv at $VENV" >&2; exit 1; }
     mkdir -p "$ROOT/logs"
     # shellcheck disable=SC1091
@@ -51,7 +51,7 @@ case "${1:-start}" in
   restart) "$0" stop; sleep 2; "$0" start ;;
   status)
     if running; then
-      echo "terminal: running (pid $(pgrep -f '[f]lask_app.py' | head -1)) — http://127.0.0.1:$PORT"
+      echo "terminal: running (pid $(pgrep -f '[f]lask_app.py' | head -1)) on loopback :$PORT — http://127.0.0.1:8787/terminal"
       grep -m1 "live_trading" "$LOG" 2>/dev/null || true
       echo "broker  : ${BROKER_NAME:-flattrade}"
       if [ -f "$ROOT/vriddhix/state/sso.env" ]; then

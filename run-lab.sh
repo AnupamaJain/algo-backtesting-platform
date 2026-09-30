@@ -14,7 +14,7 @@ export NEXT_PUBLIC_PRAMANA_URL="${NEXT_PUBLIC_PRAMANA_URL:-http://127.0.0.1:8787
 running() { pgrep -f "next dev -p $PORT" >/dev/null 2>&1; }
 case "${1:-start}" in
   start)
-    if running; then echo "already running — http://127.0.0.1:$PORT"; exit 0; fi
+    if running; then echo "already running on loopback :$PORT — http://127.0.0.1:8787/lab"; exit 0; fi
     mkdir -p "$ROOT/logs"
     # Loopback only: the gateway is the door. It was listening on the LAN.
     (cd "$WEB" && nohup npm run dev -- -H 127.0.0.1 > "$LOG" 2>&1 &)
@@ -31,7 +31,7 @@ case "${1:-start}" in
   stop)    pkill -f "next dev -p $PORT" 2>/dev/null && echo "stopped" || echo "not running" ;;
   restart) "$0" stop; sleep 2; "$0" start ;;
   status)
-    if running; then echo "lab: running — http://127.0.0.1:$PORT"; else echo "lab: not running"; fi
+    if running; then echo "lab: running on loopback :$PORT — http://127.0.0.1:8787/lab"; else echo "lab: not running"; fi
     [ -f "$ROOT/vriddhix/state/sso.env" ] && echo "sign-in: paired" || echo "sign-in: standalone (refuses all)" ;;
   logs)    tail -f "$LOG" ;;
   *)       echo "usage: $0 {start|stop|restart|status|logs}" >&2; exit 2 ;;

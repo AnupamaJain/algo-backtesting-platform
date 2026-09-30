@@ -64,9 +64,11 @@ only reset.
 
 ## The trading terminal, from the same sign-in
 
-The options dashboard is a **separate process on port 5010** that can place
-real orders. Pramana cannot — it has no trading path at all. They are paired
-for sign-in only; pairing them does not merge them.
+The options dashboard is a **separate process, bound to loopback :5010 and
+served at `/terminal`** by the gateway in this app. It can place real orders.
+Pramana cannot — it has no trading path at all. One host and one sign-in;
+the processes stay separate so that a crash in the terminal cannot take
+sign-in and research down with it.
 
 ```bash
 ./run-terminal.sh start     # from the repository root

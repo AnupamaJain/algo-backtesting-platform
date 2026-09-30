@@ -37,13 +37,13 @@ npm run dev          # development, hot reload
 npm run build && npm start   # production build
 ```
 
-### → Open **http://localhost:4300**
+### → Open **http://127.0.0.1:8787/lab**
 
-Both commands bind port **4300**. To use a different one:
-
-```bash
-npx next dev -p 5200
-```
+Both commands bind **loopback :4300**, which is not meant to be opened
+directly: the Lab refuses every request that did not arrive with a sign-in
+ticket, and the ticket comes from the gateway. `./run-lab.sh start` from the
+repository root sets this up. To move the internal port, change it in
+`run-lab.sh` and set `PRAMANA_LAB_UPSTREAM` for the gateway to match.
 
 ## 3. Load real market data
 
@@ -75,7 +75,7 @@ and keeps a durable SQLite ledger. The only simulated thing is the money.
 
 ### From the browser
 
-Open **http://localhost:4300/console** and use the order ticket. Orders fill
+Open **http://127.0.0.1:8787/lab/console** and use the order ticket. Orders fill
 immediately at the live market price and appear in positions, fills and the
 audit log.
 
@@ -127,7 +127,7 @@ The console's **Strategies** and **Watchdogs** pages read a live inventory
 (`python quant_backtester/ops_cli.py inventory`) rather than a hardcoded list,
 so they always reflect what is actually on disk.
 
-### Production — Indian markets (Zerodha Kite)
+### Production — Indian markets (Dhan · Flattrade)
 
 | Family | Strategies |
 |---|---|
@@ -148,11 +148,13 @@ Instrument Cache · Notifications
 RSI Snapback · Bollinger Reversion · Keltner Reversion · MA Crossover ·
 Donchian Breakout · Simple Momentum
 
-> The production modules are **installed and complete but not running**. They
-> are Kite Connect implementations and need Zerodha credentials plus a running
-> dashboard process. The console distinguishes *idle* (never run) from
-> *missing files*, and `tests/test_inventory.py` fails if the inventory ever
-> claims a module that is not on disk.
+> The production modules run from the trading terminal at
+> `http://127.0.0.1:8787/terminal/home`, on paper by default (`paper_dhan`)
+> and live only when `[safety] live_trading` says so. This page is where they
+> are backtested; the **Backtest** link on each card runs the funnel for that
+> strategy alone. The console distinguishes *idle* (never run) from *missing
+> files*, and `tests/test_inventory.py` fails if the inventory ever claims a
+> module that is not on disk.
 
 ---
 
@@ -353,7 +355,7 @@ Notable suites:
 
 | Thing | Where |
 |---|---|
-| Web app | http://localhost:4300 |
+| Web app | http://127.0.0.1:8787/lab — the process itself is loopback :4300 behind the gateway |
 | Server log | `/tmp/strategy-lab.log` when started with `nohup` |
 | Paper account | `quant_backtester/state/paper_broker.db` |
 | Market data cache | `quant_backtester/data/*.csv` |
