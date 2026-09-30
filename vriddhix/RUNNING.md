@@ -105,6 +105,39 @@ any proxy log on the way, and in the `Referer` of whatever loads next.
 
 ---
 
+## The other two apps
+
+The workspace is one of three surfaces; `../run-all.sh` starts them all.
+The header shows **Terminal** and **Lab** to operator accounts, and both go
+through `/go/<target>` — a page that mints a short-lived ticket for the
+target and forwards. Every app links to the others through that hub rather
+than directly, because only this process holds the account.
+
+The Lab is gated the same way the terminal is: `../run-lab.sh` sources the
+shared secret in `state/sso.env`, and without it the Lab refuses every
+request rather than opening by default.
+
+**Backtesting one strategy.** On the Lab's Strategies page, every library
+strategy has a **Backtest** link that pre-selects it in the run panel;
+pick the market (India is priced by Flattrade with Dhan behind it) and
+run. Narrowed runs write to `results_<market>/strategies/<name>/`, apart
+from the full-grid baseline, because the two are not comparable: the last
+gate is a multiple-comparison correction priced on how many
+configurations were tried, so one strategy alone clears it more easily
+than the same strategy inside the grid. RSIReversion clears the India
+funnel on its own with 3 survivors and inside the full grid with 0. Both
+are true.
+
+**The Dhan token.** It lasts about a day and cannot be renewed
+programmatically — `python quant_backtester/dhan_token.py --totp` mints
+one from the PIN and TOTP seed in `configfile.ini`. It has also been seen
+rejected (`DH-906 Invalid Token`) well before expiry; nothing in this
+repository re-mints it, so the likely cause is Dhan ending the session when
+another login happens, such as the Dhan app. Re-mint before the session and
+treat `--check` as part of opening the terminal.
+
+---
+
 ## Start, stop, check
 
 ```bash

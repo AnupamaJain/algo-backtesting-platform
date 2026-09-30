@@ -27,6 +27,31 @@ is a hosted service, and nothing here is investment advice.
 
 ---
 
+## One product, three surfaces
+
+One sign-in, one look, three processes that each do one thing:
+
+| Surface | What it is | Local |
+|---|---|---|
+| **Research workspace** | Pramana — the account, the NSE scanner, and the hub the other two are reached through | http://127.0.0.1:8787/app |
+| **Trading terminal** | Every Indian strategy, launched on paper or live, with contracts pre-loaded from Dhan | http://127.0.0.1:5010/home |
+| **Strategy Lab** | Backtest any strategy on any market through the six-gate validation funnel | http://127.0.0.1:4300/console/strategies |
+
+```bash
+./run-all.sh start      # all three; ./run-all.sh status to check
+```
+
+Sign in once at the workspace. The header carries **Terminal** and **Lab**
+for operator accounts; each link goes through `/go/<target>`, which mints a
+45-second single-use ticket the other app trusts. Neither the terminal nor
+the Lab opens without one — the Lab in particular used to open to anyone
+who knew the port. Grant operator status with
+`python3 -m vriddhix.cli operator you@example.com`.
+
+To put all three on one domain, `deploy/Caddyfile` routes three hostnames
+to the three ports with TLS provisioned by Caddy; the environment variables
+it names make the cross-app links and tickets use those hostnames.
+
 ## What's in here
 
 | | | |

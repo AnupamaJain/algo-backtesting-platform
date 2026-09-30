@@ -1184,3 +1184,8 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 /* The product accent is bright; primary buttons take dark ink on it. */
 :root[data-theme="dark"] .btn-primary,
 :root:not([data-theme="light"]) .btn-primary { color: var(--accent-ink, #0a0d16); }
+
+/* `display: flex` on these spans was overriding the hidden attribute, so a
+   signed-in header showed "Sign in / Create account" next to "Sign out".
+   The DOM said hidden; the page did not. */
+#nav-in[hidden], #nav-out[hidden], #nav-apps[hidden] { display: none; }
