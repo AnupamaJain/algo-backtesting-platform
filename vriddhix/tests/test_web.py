@@ -777,12 +777,21 @@ def test_the_app_screens_are_real_files(client):
     """Screenshots of this application, not stock imagery or mockups."""
     from vriddhix.api.routers.pages import APP_SCREENS
 
-    for slug, title, note in APP_SCREENS:
+    surfaces = set()
+    for slug, surface, title, note in APP_SCREENS:
         r = client.get(f"/static/screens/{slug}.png")
         assert r.status_code == 200, f"{slug}.png missing"
         assert r.headers["content-type"] == "image/png"
         assert len(r.content) > 8000, f"{slug}.png looks empty"
-        assert title and note
+        assert title and note and surface
+        surfaces.add(surface)
+
+    # All three surfaces are shown. A deck of only the research pages let a
+    # reader leave believing the terminal and the Lab were claims rather
+    # than screens.
+    assert {"Trading terminal", "Strategy Lab", "Research"} <= surfaces, (
+        f"the deck only shows {sorted(surfaces)}"
+    )
 
 
 def test_every_screen_has_alt_text(client):
@@ -1491,3 +1500,32 @@ def test_handoff_urls_are_same_origin(monkeypatch, session, operator):
     monkeypatch.setattr(auth, "HANDOFF_TARGETS", {"terminal": "/terminal", "lab": "/lab"})
     for target in ("terminal", "lab"):
         assert auth.HANDOFF_TARGETS[target].startswith("/")
+
+
+def test_the_stack_plays_and_can_be_stopped(client):
+    """The section shows the product working without being asked first.
+
+    A carousel that resumes under someone who has taken hold of it is the
+    behaviour everyone hates, so any interaction stops it for good.
+    """
+    body = client.get("/").text
+    assert 'id="stack"' in body
+    assert 'id="stack-play"' in body, "no way to stop it"
+    assert "setInterval" in body, "it does not play on its own"
+    assert "prefers-reduced-motion" in body, "plays regardless of the reader's setting"
+    assert "visibilitychange" in body, "keeps ticking in a background tab"
+
+
+def test_the_stack_moves_vertically(client):
+    """Up and down, which is the direction the gesture already wants."""
+    body = client.get("/").text
+    assert "ArrowDown" in body and "ArrowUp" in body
+    assert "clientY" in body, "drag is not tracked vertically"
+
+
+def test_the_hero_stands_on_a_real_screen(client):
+    """The background is the product, not stock imagery or a flat fill."""
+    css = client.get("/static/app.css").text
+    assert "/static/screens/term-home.png" in css
+    shot = client.get("/static/screens/term-home.png")
+    assert shot.status_code == 200 and len(shot.content) > 8000

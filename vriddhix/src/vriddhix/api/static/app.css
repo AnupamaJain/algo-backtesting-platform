@@ -78,6 +78,14 @@ body {
   font-size: 16px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
+  /* Not a flat fill: two very low accent lights fixed to the viewport, so
+     scrolling moves the content across the ground rather than moving the
+     ground with it. */
+  background-image:
+    radial-gradient(1200px 700px at 78% -8%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+    radial-gradient(900px 600px at -6% 42%, color-mix(in srgb, #6366f1 6%, transparent), transparent 58%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 .wrap { max-width: 1080px; margin: 0 auto; padding-inline: 24px; }
@@ -754,7 +762,45 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
 
 /* ---- WebGL terrain behind the hero ---- */
 
-.hero-wrap { position: relative; overflow: hidden; }
+.hero-wrap { position: relative; overflow: hidden; isolation: isolate; }
+
+/* ---- the hero's ground ----
+   A flat fill said nothing. This is the terminal itself -- the real
+   screenshot the stack below shows sharp -- blurred and pushed almost all
+   the way down, so the page is standing on the product rather than on a
+   colour. It is decoration built from the thing being sold, which is the
+   only kind this page is entitled to.
+
+   Two layers over it: a wash that keeps the headline at full contrast
+   wherever the image happens to be bright, and two soft accent lights so
+   the ground has some depth instead of reading as a grey photograph. */
+.hero-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -12% -6% -30%;
+  z-index: -2;
+  background: url("/static/screens/term-home.png") center 18% / cover no-repeat;
+  filter: blur(26px) saturate(.5) brightness(.5);
+  opacity: .30;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+.hero-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 480px at 14% 8%,  color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+    radial-gradient(760px 420px at 88% 92%, color-mix(in srgb, #6366f1 14%, transparent), transparent 60%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--bg) 62%, transparent) 0%,
+                               color-mix(in srgb, var(--bg) 82%, transparent) 55%,
+                               var(--bg) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-wrap::before { filter: blur(26px) saturate(.4) brightness(.45); }
+}
 /* Kept out of the text column. A surface drawn across the whole hero reads
    as a smudge behind the headline rather than as a chart. */
 .terrain {
@@ -770,53 +816,115 @@ table.evidence-table tr:last-child td { border-bottom: 0; }
 /* ---- screen deck ---- */
 
 .deck-section { margin-top: 64px; }
-.deck { margin-top: 24px; }
-.deck-stage {
-  position: relative; height: clamp(300px, 40vw, 480px);
-  display: flex; align-items: center; justify-content: center;
-  perspective: 1600px; cursor: grab; touch-action: pan-y;
-  /* The cards behind the front one are offset sideways to show they are a
-     stack, and on a phone that offset reached past the viewport and took the
-     whole document into a horizontal scroll. Clipped on one axis only:
-     `clip` (not `hidden`) lets the vertical shadow stay visible instead of
-     forcing this into a scroll container. The shorthand is x then y. */
-  overflow: clip visible;
-}
-.deck-stage.dragging { cursor: grabbing; }
-.deck-stage.dragging .screen { transition: none; }
-
-.screen {
-  position: absolute; margin: 0; width: min(74%, 780px);
-  border: 1px solid var(--border); border-radius: 12px;
-  background: var(--surface); overflow: hidden;
-  transform-style: preserve-3d; will-change: transform;
-  box-shadow: 0 2px 6px rgba(0,0,0,.05), 0 30px 60px -30px rgba(0,0,0,.45);
-  transition: transform .5s cubic-bezier(.22,1,.28,1),
-              opacity .4s ease, box-shadow .4s ease;
-}
-.screen.is-front { box-shadow: 0 4px 10px rgba(0,0,0,.07), 0 44px 80px -34px rgba(0,0,0,.55); }
-.screen img { display: block; width: 100%; height: auto; }
-.screen figcaption {
-  padding: 13px 18px; border-top: 1px solid var(--border);
-  background: var(--surface); display: flex; flex-direction: column; gap: 2px;
-}
-.screen figcaption b { font-size: .92rem; }
-.screen figcaption span { font-size: .8rem; color: var(--muted); }
-
-.deck-nav { display: flex; align-items: center; justify-content: center;
-            gap: 16px; margin-top: 18px; }
 .deck-btn {
-  width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
-  border: 1px solid var(--border); background: var(--surface);
-  color: var(--muted); font-size: 1rem; font-family: inherit;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 15px; line-height: 1; display: grid; place-items: center;
+  transition: color .15s, border-color .15s, background .15s;
 }
 .deck-btn:hover { color: var(--text); border-color: var(--muted); }
 .deck-dots { display: flex; gap: 7px; }
 .deck-dot {
-  width: 7px; height: 7px; padding: 0; border-radius: 50%; cursor: pointer;
-  border: 0; background: var(--border); transition: background .2s, transform .2s;
+  width: 7px; height: 7px; border-radius: 50%; border: 0; padding: 0;
+  background: var(--line); cursor: pointer; transition: transform .2s, background .2s;
 }
 .deck-dot.on { background: var(--accent); transform: scale(1.35); }
+
+/* ── the screen stack ────────────────────────────────────────────────
+   A deck of real screenshots, stacked in depth rather than laid in a
+   row. The card in front is the one being read; the ones behind it are
+   smaller, pushed back along Z and dimmed, so the pile reads as depth
+   instead of as a list. Moving through it goes up and down, which is the
+   direction the gesture already wants on a touchscreen.
+
+   Everything here degrades: without JavaScript the first card is visible
+   and the rest are stacked behind it, and prefers-reduced-motion stops
+   the autoplay and the transitions. */
+.stack {
+  position: relative;
+  margin-top: 28px;
+  padding: 8px 0 0;
+  outline: none;
+  touch-action: pan-x;   /* vertical drag belongs to the stack */
+}
+.stack-cards {
+  position: relative;
+  height: clamp(300px, 46vw, 560px);
+  perspective: 1600px;
+  perspective-origin: 50% 42%;
+  /* Cards move in depth and rise above the box; none of that may widen the
+     page. Clipping x while leaving y visible keeps the 3D and keeps the
+     phone from scrolling sideways. */
+  overflow: clip visible;
+}
+.scard {
+  position: absolute;
+  inset: 0 auto auto 50%;
+  width: min(100%, 940px);
+  margin: 0;
+  transform: translate(-50%, 0);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  transition: transform .55s cubic-bezier(.22,.8,.3,1), opacity .45s ease;
+  cursor: grab;
+}
+.stack.dragging .scard { transition: none; }
+.stack.dragging { cursor: grabbing; }
+
+.scard-shell {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 30px 70px -28px rgba(0,0,0,.85), 0 2px 8px rgba(0,0,0,.4);
+}
+/* A window chrome bar, so a screenshot reads as an application and not as
+   a photograph that happens to be rectangular. */
+.scard-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 12px;
+  background: var(--panel-2, #141a29);
+  border-bottom: 1px solid var(--line);
+}
+.scard-bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.scard-bar i:first-child { background: #fb7185; }
+.scard-bar i:nth-child(2) { background: #fbbf24; }
+.scard-bar i:nth-child(3) { background: #34d399; }
+.scard img { display: block; width: 100%; height: auto; }
+
+.scard figcaption {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px;
+  padding: 12px 2px 0;
+  font-size: .85rem;
+}
+.scard-surface {
+  font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent-ink, #0a0d16);
+  background: var(--accent);
+  border-radius: 999px; padding: 2px 8px;
+}
+.scard figcaption b { color: var(--text); font-size: .95rem; }
+.scard-blurb { color: var(--muted); flex: 1 1 260px; }
+
+.stack-nav {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 18px;
+}
+.stack-play { font-size: 11px; letter-spacing: -1px; }
+.stack-hint { text-align: center; margin-top: 8px; font-size: .78rem; }
+
+/* No JavaScript: show the front card, keep the rest out of the way. */
+html:not(.js) .scard { position: relative; inset: auto; transform: none; margin: 0 auto 18px; }
+html:not(.js) .scard:nth-of-type(n+3) { display: none; }
+html:not(.js) .stack-nav, html:not(.js) .stack-hint { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scard { transition: none; }
+}
+@media (max-width: 720px) {
+  .stack-cards { height: clamp(220px, 62vw, 380px); }
+  .scard figcaption { font-size: .8rem; }
+}
 
 /* ---- measured results ---- */
 

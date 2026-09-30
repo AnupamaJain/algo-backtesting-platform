@@ -242,28 +242,42 @@
 <section class="wrap deck-section">
   <div class="sec-head">
     <h2>The application, running</h2>
-    <span class="faint">captured from this instance · drag or swipe</span>
+    <span class="faint">captured from this instance</span>
   </div>
   <p class="muted lead-narrow">
-    Not mockups. Each of these is a region of a page that renders from the
-    database on every request.
+    Not mockups. Each of these is a page that renders from the database on
+    every request — the terminal and Lab shots go through the same sign-in
+    a reader would.
   </p>
 
-  <div class="deck" id="deck">
-    <div class="deck-stage" id="deck-stage">
-      {% for slug, title, blurb in screens %}
-      <figure class="screen" data-i="{{ loop.index0 }}">
-        <img src="/static/screens/{{ slug }}.png" alt="{{ title }} — {{ blurb }}"
-             loading="lazy" draggable="false">
-        <figcaption><b>{{ title }}</b><span>{{ blurb }}</span></figcaption>
+  <div class="stack" id="stack" tabindex="0" role="group"
+       aria-roledescription="carousel" aria-label="Screens from the application">
+    <div class="stack-cards" id="stack-cards">
+      {% for slug, surface, title, blurb in screens %}
+      <figure class="scard" data-i="{{ loop.index0 }}" aria-hidden="true">
+        <div class="scard-shell">
+          <div class="scard-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <img src="{{ asset('screens/' ~ slug ~ '.png') }}"
+               alt="{{ title }} — {{ blurb }}"
+               loading="{{ 'eager' if loop.index0 < 2 else 'lazy' }}" draggable="false">
+        </div>
+        <figcaption>
+          <span class="scard-surface">{{ surface }}</span>
+          <b>{{ title }}</b>
+          <span class="scard-blurb">{{ blurb }}</span>
+        </figcaption>
       </figure>
       {% endfor %}
     </div>
-    <div class="deck-nav">
-      <button class="deck-btn" id="deck-prev" aria-label="Previous screen">←</button>
-      <div class="deck-dots" id="deck-dots"></div>
-      <button class="deck-btn" id="deck-next" aria-label="Next screen">→</button>
+
+    <div class="stack-nav">
+      <button class="deck-btn" id="stack-prev" aria-label="Previous screen">↑</button>
+      <div class="deck-dots" id="stack-dots"></div>
+      <button class="deck-btn" id="stack-next" aria-label="Next screen">↓</button>
+      <button class="deck-btn stack-play" id="stack-play"
+              aria-label="Pause automatic playback" aria-pressed="true">❚❚</button>
     </div>
+    <p class="stack-hint faint">swipe, scroll or use ↑ ↓ — playing automatically</p>
   </div>
 </section>
 {% endif %}
@@ -1226,66 +1240,183 @@
   io.observe(cv);
 })();
 
-/* ── the screen deck: drag, swipe, keys ─────────────────────────────── */
+/* ── the screen stack: depth, autoplay, swipe up and down ──────────────
+   The cards are stacked along Z rather than laid out in a row: the front
+   one is being read, the ones behind are scaled down, pushed back and
+   dimmed. Moving through them is vertical, which is the direction the
+   gesture already wants on a touchscreen.
+
+   It plays on its own because the point of the section is to show the
+   product working without asking for anything first. Any interaction --
+   drag, key, dot, wheel -- stops it, and it stays stopped: resuming
+   under someone who has taken hold of it is the behaviour everyone hates
+   about carousels. */
 (function () {
-  var stage = document.getElementById("deck-stage");
-  if (!stage) return;
-  var screens = Array.prototype.slice.call(stage.children);
-  var dots = document.getElementById("deck-dots");
-  var at = 0, dragFrom = null, dragDX = 0;
+  var root = document.getElementById("stack");
+  var cards = document.getElementById("stack-cards");
+  if (!root || !cards) return;
 
-  screens.forEach(function (_, i) {
-    var d = document.createElement("button");
-    d.className = "deck-dot"; d.setAttribute("aria-label", "Screen " + (i + 1));
-    d.addEventListener("click", function () { go(i); });
-    dots.appendChild(d);
-  });
+  var screens = Array.prototype.slice.call(cards.children);
+  if (!screens.length) return;
 
-  function layout(drag) {
-    screens.forEach(function (el, i) {
-      var off = i - at;
-      var x = off * 62 + (drag || 0) * 0.35;
-      var scale = 1 - Math.min(Math.abs(off), 3) * 0.07;
-      var rot = off * -4;
-      el.style.transform =
-        "translate3d(" + x + "px,0,0) scale(" + scale + ") rotateY(" + rot + "deg)";
-      el.style.zIndex = String(50 - Math.abs(off));
-      el.style.opacity = Math.abs(off) > 3 ? "0" : String(1 - Math.abs(off) * 0.18);
-      el.classList.toggle("is-front", off === 0);
+  var dots = document.getElementById("stack-dots");
+  var playBtn = document.getElementById("stack-play");
+  var hint = root.querySelector(".stack-hint");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var at = 0;
+  var timer = null;
+  var playing = !reduce;
+  var dragFrom = null, dragDY = 0;
+
+  var DEPTH = 3;          // how many cards stay visible behind the front one
+  var STEP_Y = 26;        // px each card behind rises
+  var STEP_Z = 110;       // px each card behind recedes
+  var STEP_S = 0.055;     // scale lost per step back
+
+  function layout(extraY) {
+    extraY = extraY || 0;
+    screens.forEach(function (card, i) {
+      var d = i - at;                       // 0 = front, >0 behind, <0 gone
+      var visible = d >= 0 && d <= DEPTH;
+      var y, z, scale, opacity;
+
+      if (d < 0) {
+        // Already read: slides down and out, so the motion reads as a pile
+        // being dealt downward.
+        y = 90; z = 90; scale = 1.04; opacity = 0;
+      } else {
+        y = -d * STEP_Y + (d === 0 ? extraY : 0);
+        z = -d * STEP_Z;
+        scale = 1 - d * STEP_S;
+        opacity = d > DEPTH ? 0 : 1 - d * 0.18;
+      }
+
+      card.style.transform =
+        "translate(-50%," + y + "px) translateZ(" + z + "px) scale(" + scale + ")";
+      card.style.opacity = opacity;
+      card.style.zIndex = String(screens.length - Math.abs(d));
+      card.style.pointerEvents = d === 0 ? "auto" : "none";
+      card.setAttribute("aria-hidden", d === 0 ? "false" : "true");
+      if (!visible && d !== 0) card.style.visibility = d > DEPTH ? "hidden" : "visible";
+      else card.style.visibility = "visible";
     });
-    Array.prototype.forEach.call(dots.children, function (d, i) {
-      d.classList.toggle("on", i === at);
+
+    if (dots) {
+      Array.prototype.forEach.call(dots.children, function (dot, i) {
+        dot.classList.toggle("on", i === at);
+        dot.setAttribute("aria-current", i === at ? "true" : "false");
+      });
+    }
+  }
+
+  function go(next) {
+    at = (next + screens.length) % screens.length;
+    layout();
+  }
+
+  function stop(userAsked) {
+    if (timer) { clearInterval(timer); timer = null; }
+    playing = false;
+    if (playBtn) {
+      playBtn.textContent = "▶";
+      playBtn.setAttribute("aria-pressed", "false");
+      playBtn.setAttribute("aria-label", "Play automatically");
+    }
+    if (hint && userAsked) hint.textContent = "swipe, scroll or use ↑ ↓";
+  }
+
+  function play() {
+    if (reduce || timer) return;
+    playing = true;
+    if (playBtn) {
+      playBtn.textContent = "❚❚";
+      playBtn.setAttribute("aria-pressed", "true");
+      playBtn.setAttribute("aria-label", "Pause automatic playback");
+    }
+    if (hint) hint.textContent = "swipe, scroll or use ↑ ↓ — playing automatically";
+    timer = setInterval(function () { go(at + 1); }, 4200);
+  }
+
+  // Dots
+  if (dots) {
+    screens.forEach(function (_, i) {
+      var dot = document.createElement("button");
+      dot.className = "deck-dot";
+      dot.type = "button";
+      dot.setAttribute("aria-label", "Screen " + (i + 1) + " of " + screens.length);
+      dot.addEventListener("click", function () { stop(true); go(i); });
+      dots.appendChild(dot);
     });
   }
 
-  function go(i) { at = Math.max(0, Math.min(screens.length - 1, i)); layout(0); }
-
-  document.getElementById("deck-prev").addEventListener("click", function () { go(at - 1); });
-  document.getElementById("deck-next").addEventListener("click", function () { go(at + 1); });
-
-  stage.addEventListener("pointerdown", function (e) {
-    dragFrom = e.clientX; dragDX = 0; stage.setPointerCapture(e.pointerId);
-    stage.classList.add("dragging");
+  var prev = document.getElementById("stack-prev");
+  var next = document.getElementById("stack-next");
+  if (prev) prev.addEventListener("click", function () { stop(true); go(at - 1); });
+  if (next) next.addEventListener("click", function () { stop(true); go(at + 1); });
+  if (playBtn) playBtn.addEventListener("click", function () {
+    if (playing) { stop(true); } else { play(); }
   });
-  stage.addEventListener("pointermove", function (e) {
-    if (dragFrom === null) return;
-    dragDX = e.clientX - dragFrom; layout(dragDX);
+
+  // Keyboard, once the stack has focus.
+  root.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") { stop(true); go(at + 1); e.preventDefault(); }
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { stop(true); go(at - 1); e.preventDefault(); }
   });
-  function release() {
+
+  // Drag and swipe, vertically.
+  cards.addEventListener("pointerdown", function (e) {
+    dragFrom = e.clientY; dragDY = 0;
+    root.classList.add("dragging");
+    cards.setPointerCapture(e.pointerId);
+    stop(true);
+  });
+  cards.addEventListener("pointermove", function (e) {
     if (dragFrom === null) return;
-    stage.classList.remove("dragging");
-    if (Math.abs(dragDX) > 60) go(at + (dragDX < 0 ? 1 : -1)); else layout(0);
-    dragFrom = null; dragDX = 0;
+    dragDY = e.clientY - dragFrom;
+    layout(dragDY * 0.35);
+  });
+  function endDrag() {
+    if (dragFrom === null) return;
+    root.classList.remove("dragging");
+    if (Math.abs(dragDY) > 45) go(at + (dragDY < 0 ? 1 : -1));
+    else layout();
+    dragFrom = null; dragDY = 0;
   }
-  stage.addEventListener("pointerup", release);
-  stage.addEventListener("pointercancel", release);
+  cards.addEventListener("pointerup", endDrag);
+  cards.addEventListener("pointercancel", endDrag);
 
-  document.getElementById("deck").addEventListener("keydown", function (e) {
-    if (e.key === "ArrowLeft") go(at - 1);
-    if (e.key === "ArrowRight") go(at + 1);
+  // A deliberate wheel gesture over the stack steps it; anything gentler
+  // is the reader scrolling the page and must be left alone.
+  var wheelLock = 0;
+  root.addEventListener("wheel", function (e) {
+    if (Math.abs(e.deltaY) < 24) return;
+    var now = Date.now();
+    if (now - wheelLock < 420) return;
+    var goingDown = e.deltaY > 0;
+    if ((goingDown && at === screens.length - 1) || (!goingDown && at === 0)) return;
+    wheelLock = now;
+    stop(true);
+    go(at + (goingDown ? 1 : -1));
+    e.preventDefault();
+  }, { passive: false });
+
+  // Only run while it is on screen; a carousel ticking in a background tab
+  // is pure battery.
+  layout();
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { if (playing || (!timer && !reduce && playing !== false)) play(); }
+        else if (timer) { clearInterval(timer); timer = null; }
+      });
+    }, { threshold: 0.35 }).observe(root);
+  }
+  if (!reduce) play();
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden && timer) { clearInterval(timer); timer = null; }
+    else if (!document.hidden && playing) play();
   });
-
-  layout(0);
 })();
 
 /* ── measured-result bars grow when scrolled to ─────────────────────── */

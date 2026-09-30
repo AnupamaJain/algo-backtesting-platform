@@ -392,19 +392,33 @@ def _rotation(session, as_of) -> list[dict]:
 
 
 #: Real screens, captured from this application rather than drawn. Each one
-#: is a region of a page that actually renders from the database.
+#: is a region of a page that actually renders from the database, taken at
+#: 2x from the running instance -- the terminal and Lab shots go through
+#: the same sign-in and gateway a reader would.
+#:
+#: (slug, surface, title, blurb). The surface is what the card is labelled
+#: with, because the three of them are one product and a reader has no way
+#: to know which they are being shown otherwise.
 APP_SCREENS = [
-    ("scanner",  "Live scanner",
+    ("term-home", "Trading terminal", "Every strategy, one launcher",
+     "Twelve Indian strategies with live state, paper or real, contracts pre-loaded."),
+    ("term-wave", "Trading terminal", "Wave Extractor",
+     "Linked buy/sell pairs re-placed as the price moves, grouped by expiry."),
+    ("term-survivor", "Trading terminal", "Survivor",
+     "Single-leg index selling with delta-based rebalancing."),
+    ("lab-strategies", "Strategy Lab", "Backtest any strategy",
+     "The same strategies the terminal runs, through a six-gate funnel."),
+    ("term-journal", "Trading terminal", "Trade journal",
+     "FIFO pairing and per-algo attribution over every fill."),
+    ("scanner",  "Research", "Live scanner",
      "209 NSE names, filtered in the browser against stored scan rows."),
-    ("regime",   "Market regime",
+    ("regime",   "Research", "Market regime",
      "Five weighted components with hysteresis, or an explicit refusal."),
-    ("rotation", "Sector rotation",
-     "Equal-weight aggregation into four quadrants."),
-    ("equity",   "Ten years of ₹10 lakh",
+    ("equity",   "Research", "Ten years of ₹10 lakh",
      "A stored backtest against buying the index and waiting."),
-    ("evidence", "Breakout ledger",
+    ("evidence", "Research", "Breakout ledger",
      "Every outcome recorded, failures kept and counted."),
-    ("api",      "Read API",
+    ("api",      "Research", "Read API",
      "46 endpoints, every payload carrying its provenance."),
 ]
 
