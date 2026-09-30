@@ -1293,3 +1293,40 @@ def test_a_dead_token_is_discarded_rather_than_kept(client):
     """Leaving an expired token in localStorage fails every request after it
     and shows a signed-out header anyway."""
     assert 'localStorage.removeItem("vriddhix-token")' in client.get("/").text
+
+
+def test_a_ticket_carries_the_audience_it_was_minted_for(monkeypatch, session, operator):
+    """The lab and the terminal trust the same signer but not each other's
+    tickets: a ticket minted for one names it in `aud`, and the other
+    refuses it. Without that, a terminal ticket read out of a proxy log
+    would also open the lab."""
+    import base64
+    import json
+
+    from vriddhix.api import auth
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "s" * 40)
+    for target in ("terminal", "lab"):
+        ticket = auth.issue_handoff(operator, target)
+        seg = ticket.split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4)))
+        assert claims["aud"] == target
+
+
+def test_an_unknown_handoff_target_is_refused(monkeypatch, session, operator):
+    from vriddhix.api import auth, errors
+
+    monkeypatch.setenv("PRAMANA_SSO_SECRET", "s" * 40)
+    with pytest.raises(errors.ApiError) as caught:
+        auth.issue_handoff(operator, "somewhere-else")
+    assert caught.value.status_code == 400
+
+
+def test_the_hub_route_serves_both_targets_and_nothing_else(client):
+    """/go/<target> is where every other app sends a reader to reach a third."""
+    for target in ("terminal", "lab"):
+        r = client.get(f"/go/{target}")
+        assert r.status_code == 200
+        assert "/api/v1/auth/handoff" in r.text
+        assert f'"{target}"' in r.text
+    assert client.get("/go/elsewhere").status_code == 404

@@ -693,6 +693,27 @@ def _num(value):
     return round(float(value), 2) if value is not None else None
 
 
+@router.get("/go/{target}", response_class=HTMLResponse)
+def go(target: str, request: Request):
+    """The hub. Every other app links here to reach a third.
+
+    The terminal and the lab are separate processes that trust a ticket
+    this server mints. Neither holds the account, so neither can mint one
+    for the other -- but both can send the reader here, where the bearer
+    token in localStorage is, and this page mints the ticket and forwards.
+    """
+    if target not in ("terminal", "lab"):
+        from fastapi import HTTPException
+        raise HTTPException(404)
+    # Built through _seo() like every other page: base.html serialises the
+    # structured-data block with |tojson, and a hand-built context that
+    # omitted it rendered as a 500.
+    return TEMPLATES.TemplateResponse(
+        request, "go.html",
+        {**_seo(request, f"/go/{target}"), "target": target, "page": "go"},
+    )
+
+
 @router.get("/app", response_class=HTMLResponse)
 def workspace(request: Request, session: SessionDep, prov: ProvenanceDep):
     """The application itself.

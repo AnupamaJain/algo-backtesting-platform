@@ -70,6 +70,13 @@
         <a class="btn btn-primary" href="/signup">Create account</a>
       </span>
       <span id="nav-in" hidden>
+        {# Operators only; revealed by the same /auth/me check that names
+           the account. The other two apps trust tickets this server mints,
+           so these go through /go/<target> rather than linking directly. #}
+        <span id="nav-apps" class="nav-apps" hidden>
+          <a href="/go/terminal">Terminal</a>
+          <a href="/go/lab">Lab</a>
+        </span>
         <span id="nav-who" class="nav-who"></span>
         <button id="nav-signout" class="nav-signout">Sign out</button>
       </span>
@@ -104,6 +111,7 @@
       document.getElementById("nav-in").hidden = false;
       document.getElementById("nav-who").textContent =
         me.display_name || me.email;
+      if (me.is_admin) document.getElementById("nav-apps").hidden = false;
     })
     .catch(function () {});
 

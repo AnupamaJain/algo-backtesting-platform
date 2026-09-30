@@ -381,10 +381,13 @@
         <a href="/survivor" class="actions-item"><i class="fas fa-crosshairs"></i> Survivor</a>
         <a href="/expiry_trade" class="actions-item"><i class="fas fa-calendar-check"></i> Expiry Trade</a>
         <a href="/covered_calls/" class="actions-item"><i class="fas fa-umbrella"></i> Covered Calls</a>
+        <div class="actions-divider"></div>
+        <div class="actions-section-header">Apps</div>
+        <a href="http://127.0.0.1:8787/app" class="actions-item"><i class="fas fa-flask"></i> Research workspace</a>
+        <a href="http://127.0.0.1:8787/go/lab" class="actions-item"><i class="fas fa-vial"></i> Strategy Lab</a>
       </div>
     </div>
 
-    <button id="app-header-connect-btn" onclick="appHeaderConnectKite()">Connect Kite</button>
     <div id="app-header-actions-btn" title="Quick Actions" onclick="appHeaderToggleActionsPanel()">
       <i id="app-header-actions-icon" class="fas fa-bolt"></i>
       <div id="app-header-actions-panel">
@@ -432,6 +435,7 @@
       .then(function(data) {
         var badge = document.getElementById('app-header-session-badge');
         var btn = document.getElementById('app-header-connect-btn');
+        if (!btn) return; // Zerodha connect button was removed with Zerodha
         if (!badge) return;
         if (data.authenticated) {
           badge.textContent = '🟢 Connected';

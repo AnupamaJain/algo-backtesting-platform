@@ -37,6 +37,8 @@ function SectionLabel({
   );
 }
 
+const PRAMANA = process.env.NEXT_PUBLIC_PRAMANA_URL ?? "http://127.0.0.1:8787";
+
 export default function Nav() {
   const pathname = usePathname();
 
@@ -51,6 +53,17 @@ export default function Nav() {
           <span className="block text-[10px] text-slate-500">Quant backtester</span>
         </span>
       </Link>
+
+      {/* The other two apps. Pramana holds the account, so the terminal is
+          reached through its /go hub, which mints the ticket the terminal
+          trusts. The workspace needs no ticket -- it is where the account is. */}
+      <SectionLabel>Apps</SectionLabel>
+      <a href={`${PRAMANA}/app`} className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium text-slate-400 hover:bg-[var(--color-panel2)] hover:text-slate-200">
+        <span className="w-4 text-center opacity-70">◈</span><span>Research workspace</span>
+      </a>
+      <a href={`${PRAMANA}/go/terminal`} className="mb-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] font-medium text-slate-400 hover:bg-[var(--color-panel2)] hover:text-slate-200">
+        <span className="w-4 text-center opacity-70">▣</span><span>Trading terminal</span>
+      </a>
 
       <SectionLabel>Research</SectionLabel>
       {RESEARCH_LINKS.map((link) => {

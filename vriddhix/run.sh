@@ -74,7 +74,7 @@ start() {
 
   # Wait for it to answer rather than guessing at a sleep duration.
   for _ in $(seq 1 40); do
-    if curl -fsS -o /dev/null "http://$HOST:$PORT/api/v1/ops/health" 2>/dev/null; then
+    if curl -fsS -o /dev/null --max-time 5 "http://$HOST:$PORT/api/v1/ops/health" 2>/dev/null; then
       echo "✓ Pramana is up"
       echo
       echo "   http://$HOST:$PORT/          landing"

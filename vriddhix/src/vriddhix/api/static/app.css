@@ -1167,3 +1167,8 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 }
 .nav-signout:hover { color: var(--text); border-color: var(--muted); }
 @media (max-width: 400px) { .nav-who { display: none; } }
+
+/* ---- app switcher (operators) ---- */
+.nav-apps { display: flex; gap: 14px; padding-right: 14px; border-right: 1px solid var(--border); }
+.nav-apps a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+.nav-apps a:hover { color: var(--text); }

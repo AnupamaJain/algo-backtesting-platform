@@ -173,6 +173,11 @@ def issue_token(user: User, *, hours: int = 12) -> str:
 #: Where the trading terminal lives. It is a separate process on a separate
 #: port, so the handoff below is a redirect and not an internal call.
 TERMINAL_URL = os.getenv("PRAMANA_TERMINAL_URL", "http://127.0.0.1:5010")
+LAB_URL = os.getenv("PRAMANA_LAB_URL", "http://127.0.0.1:4300")
+
+#: Where a ticket can admit someone. The audience claim is the target's
+#: name, so a ticket minted for one cannot be presented to the other.
+HANDOFF_TARGETS = {"terminal": TERMINAL_URL, "lab": LAB_URL}
 
 #: Seconds a handoff ticket stays valid. Long enough for one redirect and no
 #: longer -- it travels in a URL, so it lands in browser history, in any
@@ -180,7 +185,7 @@ TERMINAL_URL = os.getenv("PRAMANA_TERMINAL_URL", "http://127.0.0.1:5010")
 HANDOFF_TTL_SECONDS = 45
 
 
-def issue_handoff(user: User) -> str:
+def issue_handoff(user: User, target: str = "terminal") -> str:
     """A single-use ticket admitting this user to the trading terminal.
 
     Signed with PRAMANA_SSO_SECRET, which is deliberately *not* the API JWT
@@ -204,11 +209,13 @@ def issue_handoff(user: User) -> str:
             "PRAMANA_SSO_SECRET is not configured on this server, so the "
             "trading terminal is not paired with this account system.",
         )
+    if target not in HANDOFF_TARGETS:
+        raise errors.ApiError("INVALID_PARAMS", 400, f"Unknown handoff target: {target}")
     if not user.is_admin:
         raise errors.ApiError(
             "FORBIDDEN", 403,
-            "This account is not an operator. The trading terminal places "
-            "real orders and is not opened by signing up.",
+            "This account is not an operator. The trading terminal and the "
+            "strategy lab are not opened by signing up.",
         )
 
     header = _b64(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
@@ -216,7 +223,7 @@ def issue_handoff(user: User) -> str:
     payload = _b64(json.dumps({
         "sub": user.email,
         "name": user.display_name,
-        "aud": "terminal",
+        "aud": target,
         "jti": secrets.token_urlsafe(12),
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=HANDOFF_TTL_SECONDS)).timestamp()),
@@ -381,7 +388,7 @@ def _maybe_token(user: User) -> str | None:
 
 
 @router.post("/handoff")
-def handoff(user: UserDep) -> dict:
+def handoff(user: UserDep, payload: Annotated[dict | None, Body()] = None) -> dict:
     """Mint a ticket and say where to take it.
 
     The terminal is a different process on a different port. Rather than
@@ -389,8 +396,10 @@ def handoff(user: UserDep) -> dict:
     request path of an order book -- the reader is handed a short-lived
     ticket and sent there directly.
     """
-    ticket = issue_handoff(user)
+    target = str((payload or {}).get("target") or "terminal")
+    ticket = issue_handoff(user, target)
     return {
-        "url": f"{TERMINAL_URL}/sso?ticket={ticket}",
+        "target": target,
+        "url": f"{HANDOFF_TARGETS[target]}/sso?ticket={ticket}",
         "expires_in": HANDOFF_TTL_SECONDS,
     }
