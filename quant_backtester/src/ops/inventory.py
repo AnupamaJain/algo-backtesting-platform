@@ -389,7 +389,7 @@ PRODUCTION: tuple[ModuleDef, ...] = (
         entry="ticker_single_scraper_new.py",
         parameters=("symbol", "gap", "multiplier_scale", "buy_quantity", "sell_quantity", "cool_off_time"),
         requires=("broker",),
-        dashboard="/wave_extractor",
+        dashboard="/wave-extractor",
         prd_ref="FR-W1…W10",
     ),
     ModuleDef(
@@ -430,7 +430,7 @@ PRODUCTION: tuple[ModuleDef, ...] = (
         entry="early_exit_lib.py",
         parameters=("gtt_trigger_buffer_pct", "volatility", "interest_rate"),
         requires=("broker",),
-        dashboard="/early_exit",
+        dashboard="/early-exit",
         prd_ref="FR-EE1…EE4",
     ),
     ModuleDef(
@@ -445,7 +445,7 @@ PRODUCTION: tuple[ModuleDef, ...] = (
         entry="early_exit_sensex_lib.py",
         parameters=("gtt_trigger_buffer_pct", "volatility", "interest_rate"),
         requires=("broker",),
-        dashboard="/early_exit_sensex",
+        dashboard="/early-exit-sensex",
         prd_ref="FR-EE1…EE4",
     ),
     ModuleDef(
@@ -546,7 +546,7 @@ WATCHDOGS: tuple[ModuleDef, ...] = (
         entry="position_guard/detector.py",
         state=HeartbeatStateSource("position_guard"),
         requires=("broker",),
-        dashboard="/position_guard",
+        dashboard="/survivor",
         prd_ref="FR-O2",
     ),
     ModuleDef(

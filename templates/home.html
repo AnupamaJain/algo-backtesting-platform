@@ -88,6 +88,19 @@
   <div class="home-title">Trading System</div>
   <div class="home-subtitle">Select a module to get started</div>
 
+  <!-- Launch — every Indian strategy, one list, live state -->
+  <div class="category-section" id="launch-section">
+    <div class="category-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      Launch
+      <span id="launch-broker" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#1e2535;color:#a0aec0">…</span>
+      <span id="launch-mode" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px"></span>
+      <a href="/lab-strategies" id="launch-lab" style="margin-left:auto;font-size:11px;color:#63b3ed;text-decoration:none">Backtest these in the Strategy Lab ↗</a>
+    </div>
+    <div id="launch-grid" class="card-grid">
+      <div class="card-desc" style="padding:12px">Loading strategies…</div>
+    </div>
+  </div>
+
   <!-- Positions & Monitoring -->
   <div class="category-section">
     <div class="category-label">Positions &amp; Monitoring</div>
@@ -199,5 +212,42 @@
 
 </div>
 {% include '_footer_partial.html' %}
+
+<script>
+/* The launcher. One request, rendered from the same inventory the Strategy
+   Lab shows, so the two consoles cannot disagree about what exists. */
+(function () {
+  var grid = document.getElementById("launch-grid");
+  var brokerEl = document.getElementById("launch-broker");
+  var modeEl = document.getElementById("launch-mode");
+  var labLink = document.getElementById("launch-lab");
+  labLink.href = "http://127.0.0.1:4300/console/strategies?universe=india";
+
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  fetch("/api/strategies").then(function (r) { return r.json(); }).then(function (d) {
+    if (d.error) { grid.innerHTML = '<div class="card-desc" style="padding:12px">' + esc(d.error) + '</div>'; return; }
+    brokerEl.textContent = d.broker;
+    modeEl.textContent = d.live_trading ? "LIVE — real money" : "PAPER";
+    modeEl.style.background = d.live_trading ? "#742a2a" : "#2a4365";
+    modeEl.style.color = d.live_trading ? "#feb2b2" : "#90cdf4";
+
+    grid.innerHTML = d.strategies.map(function (s) {
+      var state = !s.installed ? '<span style="color:#fc8181">missing files</span>'
+                : s.running ? '<span style="color:#68d391">● running</span>'
+                : '<span style="color:#718096">idle</span>';
+      var href = s.dashboard || "#";
+      return '<a href="' + esc(href) + '" class="module-card">'
+        + '<div class="card-name">' + esc(s.name) + ' <span style="font-size:10px;font-weight:500;margin-left:6px">' + state + '</span></div>'
+        + '<div class="card-desc">' + esc(s.summary) + '</div>'
+        + '<div class="card-desc" style="margin-top:6px;color:#4a5568">' + esc(s.entry) + '</div>'
+        + '</a>';
+    }).join("") || '<div class="card-desc" style="padding:12px">No Indian strategies installed.</div>';
+  }).catch(function () {
+    grid.innerHTML = '<div class="card-desc" style="padding:12px">Could not load the strategy list.</div>';
+  });
+})();
+</script>
 </body>
 </html>

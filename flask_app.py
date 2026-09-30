@@ -2966,6 +2966,53 @@ if not os.path.exists(SURVIVOR_LOG_DIR):
     os.makedirs(SURVIVOR_LOG_DIR)
 
 
+@app.route("/api/strategies")
+def api_strategies():
+    """Every Indian strategy this terminal can run, with its live state.
+
+    Read from the same inventory the Strategy Lab renders -- one list, two
+    consoles -- so a strategy cannot be "installed" on one page and absent
+    from the other. `running` comes from the process table, `mode` from the
+    safety switch, neither assumed.
+
+    Which page launches it is the inventory's `dashboard` field. A generic
+    one-click start is deliberately not offered here: each of these needs
+    its own parameters (contract, strike distance, gap, quantity), and the
+    right place to choose them is the strategy's own page with its symbols
+    pre-loaded from the broker.
+    """
+    import common_lib
+    from quant_backtester.src.ops.inventory import build_inventory
+
+    try:
+        inventory = build_inventory()
+    except Exception as exc:  # noqa: BLE001 - report, do not blank the page
+        return jsonify({"error": f"inventory unavailable: {exc}"}), 503
+
+    modules = inventory.get("modules") or inventory.get("entries") or []
+    rows = [
+        {
+            "key": m.get("key"),
+            "name": m.get("name"),
+            "family": m.get("family"),
+            "summary": m.get("summary"),
+            "entry": m.get("entry"),
+            "installed": bool(m.get("installed")),
+            "running": bool(m.get("running")),
+            "dashboard": m.get("dashboard") or None,
+            "requires": m.get("requires") or [],
+        }
+        for m in modules
+        if m.get("kind") == "production" and m.get("market") == "IN"
+        and m.get("category") == "strategy"
+    ]
+    return jsonify({
+        "broker": os.environ.get("BROKER_NAME") or "paper_dhan",
+        "live_trading": common_lib.is_live_trading_enabled(),
+        "strategies": rows,
+    })
+
+
 @app.route("/survivor")
 def survivor_dashboard():
     """Render the Survivor Algo Dashboard page."""
