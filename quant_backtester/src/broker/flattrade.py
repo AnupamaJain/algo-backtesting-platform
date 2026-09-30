@@ -760,12 +760,36 @@ class FlattradeQuotes(QuoteProvider):
         return quote
 
 
+def _segment_for(symbol: str, default_exchange: str) -> str:
+    """Which exchange a bare symbol trades on.
+
+    An option is not listed where cash equity is, and the adapter's own
+    configured exchange stays "NSE" for a cash account regardless of what
+    it is asked to price. Every NIFTY option lookup therefore went to NSE
+    and came back "not found on Flattrade (no exact trading-symbol match)"
+    -- so the fallback feed could not price a single contract.
+
+    An option symbol ends in CE or PE *after its strike*: the digits are
+    what separate NIFTY26O0623450CE from RELIANCE, which also ends in CE.
+    """
+    import re as _re
+
+    upper = symbol.upper()
+    if _re.search(r"\d(CE|PE)$", upper) or upper.endswith("FUT"):
+        return "BFO" if upper.startswith(("SENSEX", "BANKEX")) else "NFO"
+    return default_exchange
+
+
 def _split_symbol(symbol: str, default_exchange: str) -> tuple[str, str]:
-    """Accept either "NSE:RELIANCE-EQ" or a bare "RELIANCE-EQ"."""
+    """Accept either "NSE:RELIANCE-EQ" or a bare "RELIANCE-EQ".
+
+    A qualifier the caller supplied always wins; without one the segment is
+    inferred from the symbol rather than assumed to be the default.
+    """
     if ":" in symbol:
         exchange, tsym = symbol.split(":", 1)
         return exchange.upper(), tsym
-    return default_exchange, symbol
+    return _segment_for(symbol, default_exchange), symbol
 
 
 class FlattradeAdapter(BrokerAdapter):

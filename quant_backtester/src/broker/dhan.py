@@ -281,6 +281,74 @@ def _clean(value: str | None) -> str:
 # ==========================================================================
 
 
+#: NSE writes a weekly contract's month as one character -- 1-9 for January
+#: to September, then O, N, D -- and spells a monthly one. The terminal, the
+#: strategies and the contract dropdowns all speak this; Dhan's master does
+#: not, which is why an option could be listed and still not be priceable.
+_NSE_WEEKLY_MONTH_CODE = {
+    1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6",
+    7: "7", 8: "8", 9: "9", 10: "O", 11: "N", 12: "D",
+}
+
+
+def _nse_contract_prefix(underlying: str, expiry, monthly: bool) -> str:
+    yy = f"{expiry.year % 100:02d}"
+    if monthly:
+        return f"{underlying}{yy}{expiry.strftime('%b').upper()}"
+    return f"{underlying}{yy}{_NSE_WEEKLY_MONTH_CODE[expiry.month]}{expiry.day:02d}"
+
+
+def _match_nse_option_symbol(frame, wanted: str):
+    """Find the scrip-master row for an NSE trading symbol, or None.
+
+    Dhan names a contract "NIFTY-Oct2026-23450-CE"; the exchange, the
+    terminal and every strategy here name the same contract
+    "NIFTY26O0623450CE". Nothing translated between them, so Dhan could
+    list an option, the dropdown could offer it, and the quote call would
+    still answer "not in the Dhan scrip master".
+
+    Parsing the trading symbol is where this gets brittle -- the weekly and
+    monthly formats differ, and a strike runs straight into the CE/PE with
+    no separator. So the contracts are rendered forward instead: every
+    listed expiry for the underlying is turned into a symbol with the
+    exchange's own rule, and the one that matches wins. A format the
+    dropdowns can offer is therefore always a format this resolves.
+    """
+    import re as _re
+
+    import pandas as pd
+
+    head = _re.match(r"^([A-Z&-]+?)\d", wanted)
+    if not head or not wanted.endswith(("CE", "PE")):
+        return None
+    underlying = head.group(1)
+
+    rows = frame[frame["UNDERLYING_SYMBOL"].astype(str).str.strip().str.upper() == underlying]
+    if rows.empty or "SM_EXPIRY_DATE" not in rows.columns:
+        return None
+
+    for expiry_raw, group in rows.groupby(rows["SM_EXPIRY_DATE"].astype(str)):
+        try:
+            expiry = pd.to_datetime(expiry_raw).date()
+        except Exception:  # noqa: BLE001
+            continue
+        monthly = str(group["EXPIRY_FLAG"].iloc[0]).strip().upper() == "M"
+        prefix = _nse_contract_prefix(underlying, expiry, monthly)
+        if not wanted.startswith(prefix):
+            continue
+        tail = wanted[len(prefix):]
+        if not tail[:-2].isdigit():
+            continue
+        strike, right = float(tail[:-2]), tail[-2:]
+        hit = group[
+            (group["STRIKE_PRICE"].astype(float) == strike)
+            & (group["OPTION_TYPE"].astype(str).str.upper() == right)
+        ]
+        if not hit.empty:
+            return hit.iloc[0], underlying, right
+    return None
+
+
 class DhanInstruments:
     """Symbol -> securityId, from Dhan's published scrip master.
 
@@ -405,6 +473,25 @@ class DhanInstruments:
                     f"{symbol!r} (expiry {expiry}, strike {strike_str}{option_type}) is not "
                     "in the Dhan scrip master", symbol=symbol,
                 )
+
+        # The exchange's own trading symbol ("NIFTY26O0623450CE"), which is
+        # what the terminal, the strategies and the contract dropdowns all
+        # use. Without this an option resolves nowhere and cannot be priced.
+        nse_hit = _match_nse_option_symbol(frame, wanted)
+        if nse_hit is not None:
+            row, underlying, option_type = nse_hit
+            return UnifiedInstrument(
+                symbol=symbol,
+                # The segment follows the underlying, not this adapter's
+                # configured exchange, which stays NSE for a cash account.
+                exchange="BFO" if underlying in ("SENSEX", "BANKEX") else "NFO",
+                broker_token=str(row["SECURITY_ID"]).split(".")[0],
+                lot_size=int(_num(row.get("LOT_SIZE"), 1)),
+                tick_size=_tick_in_rupees(row.get("TICK_SIZE")),
+                instrument_type=(
+                    InstrumentType.CALL if option_type == "CE" else InstrumentType.PUT
+                ),
+            )
 
         # An exact SYMBOL_NAME or DISPLAY_NAME match (Dhan's own option/
         # future symbol e.g. "NIFTY-Sep2026-29150-CE", or an index's display
