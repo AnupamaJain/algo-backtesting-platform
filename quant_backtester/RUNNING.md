@@ -410,3 +410,37 @@ Dhan's market feed allows roughly one request per second. Two things keep
 that from stalling a poll loop, and both matter if you change the config:
 a quote TTL (`quote_ttl_seconds: 5`), and batched fetches — marking a
 twenty-symbol book is one request, not twenty.
+
+## One runner, many symbols
+
+The Wave Extractor used to run one operating-system process per symbol.
+Eight contracts meant eight interpreters, eight broker sessions and eight
+attempts on Flattrade's single permitted websocket — which is why the feed
+answered `handshake refused (t=ck, s=NOT_OK)`.
+
+`wave_runner.py` works every symbol in one process. The dashboard starts
+and stops a symbol by editing its control file, which the runner re-reads
+each cycle:
+
+```jsonc
+// state/wave_runner.json
+{"symbols": [
+  {"symbol": "NIFTY26O0623450CE", "buy_gap": 12.6, "sell_gap": 12.6,
+   "quantity": "300:300", "product_type": "NRML", "gtt": false}
+]}
+```
+
+`common_lib` keeps the instrument it is working on in module-level globals,
+which is why one process could only ever hold one symbol.
+`symbol_context.py` swaps that slice around each instrument's turn — safe
+because the loop is sequential, never concurrent. 38 globals are
+per-symbol; 34 are process-wide and must not be swapped, including the
+order maps, which are keyed by broker order id because a fill can arrive
+for any symbol at any moment.
+
+A symbol that raises is retried and dropped only after three consecutive
+failures, so one bad contract cannot stall the book — the isolation a
+process each used to provide. The runner exits when the market closes so
+nothing is left running overnight.
+
+`WAVE_RUNNER=0` restores one process per symbol.

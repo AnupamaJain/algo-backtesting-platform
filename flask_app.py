@@ -2009,6 +2009,142 @@ _SCRAPER_SCRIPT_NAME = "ticker_single_scraper_new.py"
 _start_instance_lock = threading.Lock()
 
 
+# ---------------------------------------------------------------------------
+# Wave Extractor: one runner, many symbols
+# ---------------------------------------------------------------------------
+#
+# The dashboard used to spawn one ticker_single_scraper_new.py per symbol.
+# Eight contracts meant eight interpreters, eight broker sessions and eight
+# attempts on Flattrade's single permitted websocket, which is why the feed
+# refused connections. wave_runner.py works every symbol in one process
+# (see symbol_context.py for how the per-symbol globals are kept apart).
+#
+# Set WAVE_RUNNER=0 to go back to a process per symbol. The old path is
+# still here because this one changes how a live order book is started,
+# and a way back that does not need a deploy is worth keeping.
+
+WAVE_RUNNER_ENABLED = os.environ.get("WAVE_RUNNER", "1") not in ("0", "false", "no")
+WAVE_RUNNER_CONTROL = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "state", "wave_runner.json"
+)
+_wave_runner_lock = threading.Lock()
+
+
+def _read_runner_control() -> dict:
+    try:
+        with open(WAVE_RUNNER_CONTROL, "r") as fh:
+            data = json.load(fh)
+    except (FileNotFoundError, ValueError, OSError):
+        return {"symbols": []}
+    data.setdefault("symbols", [])
+    return data
+
+
+def _write_runner_control(data: dict) -> None:
+    """Replace the control file atomically.
+
+    The runner re-reads this every cycle, so a half-written file would be
+    read as "no symbols" and silently stop the book.
+    """
+    os.makedirs(os.path.dirname(WAVE_RUNNER_CONTROL), exist_ok=True)
+    tmp = f"{WAVE_RUNNER_CONTROL}.tmp"
+    with open(tmp, "w") as fh:
+        json.dump(data, fh, indent=2)
+    os.replace(tmp, WAVE_RUNNER_CONTROL)
+
+
+def _runner_is_running() -> Optional[int]:
+    """PID of the live runner, or None."""
+    try:
+        out = subprocess.check_output(["ps", "-eo", "pid=,args="], text=True)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for line in out.splitlines():
+        if "wave_runner.py" in line and "ps -eo" not in line:
+            try:
+                return int(line.split(None, 1)[0])
+            except (ValueError, IndexError):
+                continue
+    return None
+
+
+def _ensure_runner() -> Optional[dict]:
+    """Start the runner if it is not already up. Returns an error dict or None."""
+    if _runner_is_running():
+        return None
+
+    log_path = os.path.join(LOG_DIR, "wave_runner.log")
+    os.makedirs(LOG_DIR, exist_ok=True)
+    try:
+        with open(log_path, "a") as log_file:
+            log_file.write(f"\n=== runner start {get_ist_now().isoformat()} ===\n")
+            log_file.flush()
+            process = subprocess.Popen(
+                [sys.executable, os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "wave_runner.py")],
+                stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True,
+            )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logging.error("could not start the wave runner: %s", exc)
+        return {"error": f"Could not start the wave runner: {exc}"}
+
+    failed = _confirm_process_started(process, log_path, "Wave Extractor runner")
+    if failed:
+        # The runner exits cleanly when the market is closed so that no
+        # order or GTT is left running overnight. That is the design, and
+        # reporting it as "started but exited immediately" told the reader
+        # something had broken.
+        if process.returncode == 0 and "market is closed" in (failed.get("reason") or ""):
+            logging.info("wave runner stood down: the market is closed")
+            return {
+                "error": "The market is closed.",
+                "reason": "Symbols are recorded and will start on the next "
+                          "session; the runner exits outside market hours so "
+                          "no order or GTT is left running overnight.",
+                "market_closed": True,
+                "log_file": os.path.basename(log_path),
+            }
+        return failed
+    logging.info("wave runner started (PID %s)", process.pid)
+    return None
+
+
+def _runner_add_symbol(spec: dict) -> Optional[dict]:
+    """Put one symbol in front of the runner. Returns an error dict or None."""
+    with _wave_runner_lock:
+        data = _read_runner_control()
+        symbol = spec["symbol"].strip().upper()
+        data["symbols"] = [
+            row for row in data["symbols"]
+            if str(row.get("symbol", "")).strip().upper() != symbol
+        ]
+        data["symbols"].append({**spec, "symbol": symbol})
+        _write_runner_control(data)
+    return _ensure_runner()
+
+
+def _runner_remove_symbol(symbol: str) -> bool:
+    """Take one symbol off the runner. True if it was there."""
+    wanted = symbol.strip().upper()
+    with _wave_runner_lock:
+        data = _read_runner_control()
+        before = len(data["symbols"])
+        data["symbols"] = [
+            row for row in data["symbols"]
+            if str(row.get("symbol", "")).strip().upper() != wanted
+        ]
+        _write_runner_control(data)
+        return len(data["symbols"]) < before
+
+
+def _runner_symbols() -> set:
+    return {
+        str(row.get("symbol", "")).strip().upper()
+        for row in _read_runner_control()["symbols"]
+        if row.get("symbol")
+    }
+
+
 def _find_running_scrapers(symbol: Optional[str] = None) -> List[Dict[str, Any]]:
     """Scan live processes for wave extractor scraper instances.
 
@@ -2150,6 +2286,14 @@ def start_instance():
         # its own BUY+SELL duo → doubled legs (NIFTY2670724400CE incident).
         # force=true is sent only after the user explicitly confirms a
         # duplicate, or by the restart flow after killing the old PID.
+        if WAVE_RUNNER_ENABLED and symbol.upper() in _runner_symbols() and not force:
+            logging.warning("start_instance: %s is already on the runner", symbol)
+            return jsonify({
+                "error": "already_running",
+                "message": f"{symbol} is already running on the wave runner.",
+                "symbol": symbol,
+            }), 409
+
         existing = _find_running_scrapers(symbol)
         if existing and not force:
             live = existing[0]
@@ -2164,6 +2308,27 @@ def start_instance():
                 "pid": live["pid"],
                 "started": live["started"],
             }), 409
+
+        if WAVE_RUNNER_ENABLED:
+            # One process works every symbol; starting one is a line in the
+            # control file, not another interpreter and another broker
+            # session competing for the single permitted websocket.
+            failed = _runner_add_symbol({
+                "symbol": symbol,
+                "buy_gap": buy_gap,
+                "sell_gap": sell_gap,
+                "quantity": f"{buy_quantity}:{sell_quantity}",
+                "product_type": data.get("product_type") or "NRML",
+                "gtt": bool(is_gtt),
+            })
+            if failed:
+                return jsonify(failed), 502
+            logging.info("start_instance: %s handed to the wave runner", symbol)
+            return jsonify({
+                "message": f"Started {symbol} on the wave runner.",
+                "symbol": symbol,
+                "runner_pid": _runner_is_running(),
+            })
 
         try:
             # Append (not truncate) so prior runs stay diagnosable; banner marks
@@ -2395,7 +2560,11 @@ def stop_instance():
     symbol = data.get("symbol")
     cancel_orders: bool = bool(data.get("cancel_orders", False))
 
-    if not pid:
+    # With one runner there is no process per symbol to kill, so a symbol is
+    # enough to stop one. A PID is still accepted, for instances started
+    # before the runner and for WAVE_RUNNER=0.
+    on_runner = bool(WAVE_RUNNER_ENABLED and symbol and symbol.upper() in _runner_symbols())
+    if not pid and not on_runner:
         return jsonify({"error": "PID required"}), 400
 
     # --- Step 1: read order IDs from status file before anything is deleted ---
@@ -2405,9 +2574,9 @@ def stop_instance():
     order_ids: list[str] = []
     status_file: str | None = None
     if symbol:
-        per_pid_file = os.path.join(STATUS_DIR, f"status_{symbol}_{pid}.json")
+        per_pid_file = os.path.join(STATUS_DIR, f"status_{symbol}_{pid}.json") if pid else ""
         legacy_file = os.path.join(STATUS_DIR, f"status_{symbol}.json")
-        status_file = per_pid_file if os.path.exists(per_pid_file) else legacy_file
+        status_file = per_pid_file if (per_pid_file and os.path.exists(per_pid_file)) else legacy_file
         if os.path.exists(status_file):
             try:
                 with open(status_file, "r") as f:
@@ -2416,11 +2585,18 @@ def stop_instance():
             except Exception as exc:
                 logging.warning("stop_instance: could not read status file for %s: %s", symbol, exc)
 
-    # --- Step 2: kill the process ---
-    try:
-        os.kill(int(pid), signal.SIGTERM)
-    except ProcessLookupError:
-        pass  # Already dead; proceed to cleanup
+    # --- Step 2: take the symbol off the runner, or kill the process ---
+    if on_runner:
+        # The runner drops it on its next cycle. Everything after this --
+        # cancelling its open orders, deleting its status file -- is the
+        # same as it ever was.
+        _runner_remove_symbol(symbol)
+        logging.info("stop_instance: %s removed from the wave runner", symbol)
+    elif pid:
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass  # Already dead; proceed to cleanup
 
     # --- Step 3: cancel open orders (process is now dead, cannot re-place) ---
     cancel_results: list[dict] = []
@@ -2448,7 +2624,8 @@ def stop_instance():
         except Exception as exc:
             logging.warning("stop_instance: could not delete status file: %s", exc)
 
-    return jsonify({"message": f"Stopped process {pid}", "cancel_results": cancel_results})
+    stopped = f"{symbol} (wave runner)" if on_runner else f"process {pid}"
+    return jsonify({"message": f"Stopped {stopped}", "cancel_results": cancel_results})
 
 @app.route("/api/delta_config", methods=["GET", "POST"])
 def delta_config():
@@ -3418,8 +3595,12 @@ def _confirm_process_started(process, log_path: str, what: str, grace: float = 3
         if re.match(r"^[A-Za-z_][A-Za-z0-9_.]*(Error|Exception|Unavailable):", line):
             reason = line
             break
-    if not reason and lines:
-        reason = lines[-1]
+    if not reason:
+        # Skip banner rules and blank separators; they are not a reason.
+        for line in reversed(lines):
+            if line.strip("-=_ *#"):
+                reason = line
+                break
 
     logging.error("%s exited immediately (rc=%s): %s", what, process.returncode, reason)
     return {

@@ -82,3 +82,4 @@ Dependencies\\*
 *.code-workspace
 .vscode/
 .idea/
+state/wave_runner.json

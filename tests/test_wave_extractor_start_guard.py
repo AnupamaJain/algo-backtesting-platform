@@ -110,6 +110,26 @@ def _patch_scraper_spawn(monkeypatch, on_scraper_spawn):
     monkeypatch.setattr(flask_app.subprocess, "Popen", _dispatch)
 
 
+
+@pytest.fixture(autouse=True)
+def _legacy_spawn_mode(monkeypatch, tmp_path):
+    """These tests are about the one-process-per-symbol guard.
+
+    /api/start hands symbols to wave_runner.py now, which is a line in a
+    control file rather than a spawn -- so the spawn guard is exercised
+    with WAVE_RUNNER=0. The control file is also redirected into tmp_path
+    regardless: without it a test run writes symbols into the real
+    state/wave_runner.json and the next start is refused as a duplicate of
+    something no one asked for.
+    """
+    import flask_app
+
+    monkeypatch.setattr(flask_app, "WAVE_RUNNER_ENABLED", False)
+    monkeypatch.setattr(
+        flask_app, "WAVE_RUNNER_CONTROL", str(tmp_path / "wave_runner.json")
+    )
+
+
 class TestFindRunningScrapers:
     def test_sees_live_process(self, fake_scraper):
         found = flask_app._find_running_scrapers(TEST_SYMBOL)
