@@ -257,7 +257,7 @@ not know or care which market the data came from.
 
 ### Paper trading on NSE
 
-A paper account that fills against **real Flattrade prices** with simulated
+A paper account that fills against **real Dhan prices** (Flattrade behind them) with simulated
 money — the Indian equivalent of the default paper broker:
 
 ```bash
@@ -384,3 +384,29 @@ are still real, just not current; the UI labels them rather than pretending.
 **"Nothing has cleared the gauntlet"** on the Strategies page is a *result*, not
 an error. Only strategies surviving both the validation funnel and the
 robustness tests are offered for deployment.
+
+## Where the terminal's data comes from
+
+Everything the trading terminal shows is Dhan's, with one exception.
+
+| | Source |
+|---|---|
+| Quotes / LTP | **Dhan** `/marketfeed`, Flattrade as fallback |
+| Positions, holdings, orders, trades | **Dhan** |
+| Order placement, GTT ("forever" orders) | **Dhan** |
+| Contracts, strikes, expiries | **Dhan** scrip master (a public CSV, no session needed) |
+| Historical bars | **Dhan** |
+| **Streaming ticks** | **Flattrade** — see below |
+
+Ticks are the exception and it is a code gap, not a configuration one:
+`flattrade_ws.py` is the only websocket client in this repository. Dhan
+publishes a live feed API, but nothing here implements it, so a strategy
+that wants a tick stream still opens a Flattrade session even though its
+book, orders and prices are Dhan's. Flattrade also permits only one
+websocket per client id, so a mobile app or charting bridge holding the
+feed will refuse the terminal's connection.
+
+Dhan's market feed allows roughly one request per second. Two things keep
+that from stalling a poll loop, and both matter if you change the config:
+a quote TTL (`quote_ttl_seconds: 5`), and batched fetches — marking a
+twenty-symbol book is one request, not twenty.

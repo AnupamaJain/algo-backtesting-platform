@@ -123,7 +123,7 @@ request rather than opening by default.
 
 **Backtesting one strategy.** On the Lab's Strategies page, every library
 strategy has a **Backtest** link that pre-selects it in the run panel;
-pick the market (India is priced by Flattrade with Dhan behind it) and
+pick the market (India is priced by Dhan with Flattrade behind it) and
 run. Narrowed runs write to `results_<market>/strategies/<name>/`, apart
 from the full-grid baseline, because the two are not comparable: the last
 gate is a multiple-comparison correction priced on how many

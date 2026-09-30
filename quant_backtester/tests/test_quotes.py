@@ -96,13 +96,20 @@ def test_one_unpriceable_symbol_falls_through_per_symbol():
     assert chain.get_quote("B").last_price == 200.0
 
 
-def test_every_indian_path_prefers_flattrade():
-    """Flattrade is the primary on every NSE path, Dhan the fallback.
+def test_the_dhan_account_quotes_from_dhan_and_keeps_a_fallback():
+    """The Dhan paper account prices from Dhan, with Flattrade behind it.
 
-    Not a style preference: Dhan rate-limits token generation to once every
-    two minutes and its market feed to about one request per second, so a
-    busy loop stalls on it. Flipping this ordering by accident would be a
-    quiet performance regression rather than an obvious break, hence a test.
+    This asserted the opposite for a long time, on a real measurement:
+    pointed at Dhan, the profile logged 17 rate-limit retries for one
+    served quote, because Dhan's market feed allows roughly one request per
+    second. What made that bite was a missing quote TTL (every poll of
+    every symbol reached the feed) and unbatched fetches (one request per
+    symbol). Both are fixed -- 5s TTL, and LegacyBrokerShim.quote() batches
+    through get_quotes -- so the book, the orders, the contracts and now
+    the prices all describe the same broker.
+
+    The fallback is the part worth protecting: without it, a rate-limit
+    stall or an expired token leaves the book unpriced.
     """
     from pathlib import Path
 
@@ -117,13 +124,22 @@ def test_every_indian_path_prefers_flattrade():
         if settings.get("quote_source") in ("flattrade", "dhan")
     }
     assert indian, "expected at least one NSE paper account"
+
     for name, settings in indian.items():
-        assert settings["quote_source"] == "flattrade", (
-            f"{name} should quote from Flattrade first, not {settings['quote_source']}"
+        fallbacks = settings.get("quote_fallbacks", [])
+        assert fallbacks, f"{name} has no quote fallback; one feed failing unprices the book"
+        assert settings["quote_source"] not in fallbacks, (
+            f"{name} lists its own primary as a fallback"
         )
-        assert "dhan" in settings.get("quote_fallbacks", []), (
-            f"{name} should keep Dhan as a fallback"
+        assert settings.get("quote_ttl_seconds"), (
+            f"{name} has no quote TTL. Dhan's feed allows about one request a "
+            f"second, so an untimed poll loop stalls on rate limits."
         )
+
+    assert config["brokers"]["paper_dhan"]["quote_source"] == "dhan", (
+        "the Dhan account should price from Dhan"
+    )
+    assert "flattrade" in config["brokers"]["paper_dhan"]["quote_fallbacks"]
 
 
 def test_the_indian_universe_ingests_from_flattrade_first():

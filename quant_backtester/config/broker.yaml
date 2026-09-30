@@ -107,24 +107,34 @@ brokers:
     commission_pct: 0.0003
     slippage_pct: 0.0002
     allow_short: true
-    # Flattrade first, everywhere. Two measured reasons, not a preference:
-    #   * Dhan rate-limits token generation to once every 2 minutes and its
-    #     market feed to roughly one request per second; Flattrade does
-    #     neither, so it survives a busy loop.
-    #   * Flattrade's automated login is unattended (see flattrade_token.py).
-    # Dhan remains the fallback: it covers the same NSE instruments, so
-    # either can price the book on its own.
-    # Execution is Dhan: this is the Dhan paper account, orders resolve
-    # against Dhan's scrip master and the book is the Dhan one.
+    # Dhan first, by instruction: this is the Dhan account, and the book,
+    # the orders and the contracts all come from Dhan, so the prices should
+    # describe the same place.
     #
-    # Quotes are a separate question and Flattrade wins it on measurement,
-    # not preference. Pointed at Dhan, this profile logged 17 rate-limit
-    # retries for one served quote: its feed allows roughly one request a
-    # second and token generation once every two minutes, where Flattrade
-    # does neither. test_every_indian_path_prefers_flattrade exists to catch
-    # this being flipped, and caught exactly that.
-    quote_source: flattrade
-    quote_fallbacks: [dhan]
+    # This ordering was Flattrade-first on measured grounds, and the
+    # measurement was real: pointed at Dhan, this profile once logged 17
+    # rate-limit retries for a single served quote. Dhan's market feed
+    # allows roughly one request per second (see _RATE_LIMITS in dhan.py)
+    # and token generation once every two minutes; Flattrade throttles
+    # neither. Two things have changed since that number was taken, and
+    # both attack exactly the cause:
+    #
+    #   * that run had no quote TTL at all, so every poll of every symbol
+    #     hit the feed. It is 5s now, inside the dashboard's own refresh.
+    #   * quotes were fetched one symbol at a time. LegacyBrokerShim.quote()
+    #     batches through get_quotes now, so marking a 20-symbol book is one
+    #     request rather than twenty.
+    #
+    # Flattrade stays as the fallback rather than being removed: it covers
+    # the same NSE instruments, and a fallback is what keeps a rate-limit
+    # stall or an expired token from leaving the book unpriced.
+    #
+    # Ticks are a separate matter and are NOT affected by this setting.
+    # Streaming still comes from Flattrade because flattrade_ws.py is the
+    # only websocket client in this codebase; Dhan publishes a live feed,
+    # but nothing here implements it. See RUNNING.md.
+    quote_source: dhan
+    quote_fallbacks: [flattrade]
     flattrade_token_file: state/flattrade_token.json
     dhan_token_file: state/dhan_token.json
     # This profile had no TTL at all, where paper has 15s and paper_india 5s,
