@@ -91,3 +91,12 @@ class SafetyGateBlocked(BrokerError):
 
     def __init__(self, message: str, *, broker: str = "") -> None:
         super().__init__(message, broker=broker, retryable=False)
+
+
+class UnsupportedOperation(BrokerError):
+    """The configured broker does not provide this capability."""
+
+
+# Moved here from legacy.py, where it sat alone among the shim's own code.
+# It is a broker error like the rest, and quotes.py and paper.py could not
+# import it from legacy without a cycle -- legacy imports them.

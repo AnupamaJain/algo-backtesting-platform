@@ -261,3 +261,75 @@ def test_an_adapter_without_batching_still_works():
 
     out = LegacyBrokerShim(NoBatch()).quote(["NSE:A-EQ", "NSE:B-EQ"])
     assert len(out) == 2
+
+
+def test_history_fails_over_like_quotes_do():
+    """A paper account trades real prices, so it can read real history.
+
+    Only the money is simulated. Refusing outright made the early-exit
+    preview -- which needs one specific one-minute candle to compute a fair
+    value -- answer 500 on a paper account.
+    """
+    from quant_backtester.src.broker.quotes import ChainedQuotes
+
+    class NoHistory:
+        def get_quote(self, symbol):  # pragma: no cover - not exercised
+            raise RuntimeError("no")
+
+    class HasHistory:
+        def get_quote(self, symbol):  # pragma: no cover - not exercised
+            raise RuntimeError("no")
+
+        def get_history(self, symbol, start, end, interval="day"):
+            return [("bar", symbol, interval)]
+
+    chain = ChainedQuotes([("first", NoHistory), ("second", HasHistory)])
+    assert chain.get_history("NIFTY 50", None, None, "minute") == [("bar", "NIFTY 50", "minute")]
+
+
+def test_history_says_so_when_no_source_has_any():
+    from quant_backtester.src.broker.exceptions import UnsupportedOperation
+    from quant_backtester.src.broker.quotes import ChainedQuotes
+
+    class NoHistory:
+        def get_quote(self, symbol):  # pragma: no cover - not exercised
+            raise RuntimeError("no")
+
+    chain = ChainedQuotes([("only", NoHistory)])
+    with pytest.raises(UnsupportedOperation):
+        chain.get_history("NIFTY 50", None, None)
+
+
+def test_a_token_is_translated_back_to_its_symbol():
+    """Kite addressed instruments by number; every adapter here uses symbols.
+
+    A caller holding a token read it off a quote, so the quote is where the
+    translation comes from. Without it the token went out as a symbol and
+    Dhan answered "'26000' is not in the Dhan scrip master".
+    """
+    from quant_backtester.src.broker.legacy import LegacyBrokerShim
+
+    class Adapter:
+        name = "stub"
+        asked: list = []
+
+        def get_quote(self, symbol):
+            from quant_backtester.src.broker.models import UnifiedQuote
+            from datetime import datetime
+            return UnifiedQuote(symbol=symbol, last_price=1.0,
+                                timestamp=datetime.now(), broker_token="26000")
+
+        def get_history(self, symbol, start, end, interval="day"):
+            Adapter.asked.append(symbol)
+            import pandas as pd
+            return pd.DataFrame(
+                [{"Open": 1, "High": 1, "Low": 1, "Close": 1, "Volume": 0}],
+                index=pd.to_datetime(["2026-09-30"]),
+            )
+
+    shim = LegacyBrokerShim(Adapter(), default_exchange="NSE")
+    served = shim.quote("NSE:NIFTY 50")
+    assert served["NSE:NIFTY 50"]["instrument_token"] == "26000"
+
+    shim.historical_data(26000, "2026-09-30", "2026-09-30", "minute")
+    assert Adapter.asked == ["NIFTY 50"], "the numeric token reached the adapter"

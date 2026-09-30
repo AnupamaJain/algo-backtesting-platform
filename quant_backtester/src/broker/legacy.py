@@ -30,7 +30,7 @@ import logging
 from datetime import date, datetime
 
 from .adapter import BrokerAdapter
-from .exceptions import BrokerError
+from .exceptions import UnsupportedOperation, BrokerError
 from .models import (
     Fill,
     OrderType,
@@ -51,8 +51,6 @@ __all__ = [
 ]
 
 
-class UnsupportedOperation(BrokerError):
-    """The configured broker does not provide this capability."""
 
 
 class DryRunBlocked(BrokerError):
@@ -133,6 +131,8 @@ class LegacyBrokerShim:
     def __init__(self, adapter: BrokerAdapter, default_exchange: str = "NSE") -> None:
         self._adapter = adapter
         self._default_exchange = default_exchange
+        #: instrument_token -> symbol, learned from quotes served.
+        self._token_symbols: dict[str, str] = {}
 
     @property
     def adapter(self) -> BrokerAdapter:
@@ -210,6 +210,7 @@ class LegacyBrokerShim:
                     for key, symbol in wanted
                     if symbol in quotes
                 }
+                self._remember_tokens(out)
                 missing = [key for key, symbol in wanted if symbol not in quotes]
                 if missing:
                     logger.debug("no quote for %s", ", ".join(missing[:8]))
@@ -229,6 +230,7 @@ class LegacyBrokerShim:
                     raise
                 continue
             out[key] = _quote_to_dict(q)
+        self._remember_tokens(out)
         return out
 
     def ltp(self, instruments) -> dict:
@@ -236,6 +238,20 @@ class LegacyBrokerShim:
             key: {"instrument_token": q.get("instrument_token"), "last_price": q["last_price"]}
             for key, q in self.quote(instruments).items()
         }
+
+    def _remember_tokens(self, quotes: dict) -> None:
+        """Record instrument_token -> symbol for callers that only have a token.
+
+        Kite's historical_data takes a numeric token; every adapter here
+        takes a symbol. A caller holding a token read it off a quote, so
+        the quote is where the translation comes from.
+        """
+        for key, row in quotes.items():
+            token = row.get("instrument_token")
+            if token in (None, ""):
+                continue
+            _, symbol = _split(str(key), self._default_exchange)
+            self._token_symbols[str(token)] = symbol
 
     def historical_data(
         self,
@@ -254,7 +270,18 @@ class LegacyBrokerShim:
                 "use the HistoricalDataManager or IntradayDataManager instead",
                 broker=self._broker_name(),
             )
-        _, symbol = _split(str(instrument_token), self._default_exchange)
+        # Kite addressed instruments by a numeric token, so callers written
+        # against it pass the token they read off a quote -- and every
+        # adapter here addresses them by symbol. Without the translation
+        # the token went out as a symbol and Dhan answered "'26000' is not
+        # in the Dhan scrip master", which is true and useless.
+        #
+        # The mapping comes from quotes this shim has already served: a
+        # caller that has a token got it from one.
+        key = str(instrument_token)
+        symbol = self._token_symbols.get(key)
+        if symbol is None:
+            _, symbol = _split(key, self._default_exchange)
         frame = fetch(symbol, _as_datetime(from_date), _as_datetime(to_date), interval)
         return [
             {

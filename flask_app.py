@@ -5126,8 +5126,30 @@ def early_exit_preview():
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
+        if _broker_down(exc):
+            logging.warning("early_exit_preview: broker unavailable — %s", exc)
+            return jsonify({
+                "error": "The broker is not reachable.",
+                "reason": str(exc),
+                "broker_unavailable": True,
+            }), 503
         logging.exception("early_exit_preview unexpected error")
         return jsonify({"error": f"Unexpected error: {exc}"}), 500
+
+
+def _broker_down(exc: Exception) -> bool:
+    """Whether this failure is the broker being unreachable, not a bug.
+
+    An expired token or a refused session is an operational state with an
+    operator action attached, and reporting it as "Unexpected error" with a
+    500 told the reader to file a bug instead of renewing a token.
+    """
+    from quant_backtester.src.broker.exceptions import (
+        AuthError, BrokerUnavailable, RateLimited,
+    )
+    from quant_backtester.src.broker.legacy import UnsupportedOperation
+
+    return isinstance(exc, (BrokerUnavailable, AuthError, RateLimited, UnsupportedOperation))
 
 
 @app.route('/early-exit/run', methods=['POST'])
@@ -5227,6 +5249,13 @@ def early_exit_sensex_preview():
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
+        if _broker_down(exc):
+            logging.warning("early_exit_sensex_preview: broker unavailable — %s", exc)
+            return jsonify({
+                "error": "The broker is not reachable.",
+                "reason": str(exc),
+                "broker_unavailable": True,
+            }), 503
         logging.exception("early_exit_sensex_preview unexpected error")
         return jsonify({"error": f"Unexpected error: {exc}"}), 500
 

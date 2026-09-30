@@ -18,7 +18,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 
-from .exceptions import BrokerUnavailable, InstrumentNotFound
+from .exceptions import UnsupportedOperation, BrokerUnavailable, InstrumentNotFound
 from .models import UnifiedQuote
 
 logger = logging.getLogger(__name__)
@@ -242,6 +242,31 @@ class ChainedQuotes(QuoteProvider):
         return super().get_quotes(symbols)
 
 
+    def get_history(self, *args, **kwargs):
+        """Historical bars from the first source that has any.
+
+        A paper account trades against real prices, so it has to be able to
+        read real history -- the early-exit preview needs a specific
+        one-minute candle to compute a fair value, and answering "PaperBroker
+        does not expose historical bars" made that page 500. Quotes fail over
+        between brokers here; history has the same reason to.
+        """
+        errors = []
+        for name, build in self._builders:
+            provider = self._provider(name, build)
+            fetch = getattr(provider, "get_history", None) if provider else None
+            if fetch is None:
+                continue
+            try:
+                return fetch(*args, **kwargs)
+            except Exception as exc:  # noqa: BLE001 - try the next source
+                errors.append(f"{name}: {exc}")
+        raise UnsupportedOperation(
+            "no configured quote source can supply historical bars"
+            + (f" ({'; '.join(errors)})" if errors else ""),
+            broker="chained",
+        )
+
 def build_quote_provider(config: dict, data_dir: Path) -> QuoteProvider:
     """Construct the configured quote source, plus any declared fallbacks.
 
@@ -322,6 +347,8 @@ def build_quote_provider(config: dict, data_dir: Path) -> QuoteProvider:
     return ChainedQuotes([(name, builder(name)) for name in chain])
 
 
+
+
 class BrokerQuotes(QuoteProvider):
     """Quotes from any BrokerAdapter, with a cached-history fallback.
 
@@ -332,6 +359,16 @@ class BrokerQuotes(QuoteProvider):
     def __init__(self, adapter, fallback: QuoteProvider | None = None) -> None:
         self._adapter = adapter
         self._fallback = fallback
+
+    def get_history(self, *args, **kwargs):
+        """Whatever history the wrapped adapter has. Dhan has some."""
+        fetch = getattr(self._adapter, "get_history", None)
+        if fetch is None:
+            raise UnsupportedOperation(
+                f"{self._adapter.__class__.__name__} has no historical bars",
+                broker=getattr(self._adapter, "name", "broker"),
+            )
+        return fetch(*args, **kwargs)
 
     def get_quote(self, symbol: str) -> UnifiedQuote:
         try:

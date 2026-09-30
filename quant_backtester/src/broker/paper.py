@@ -29,7 +29,7 @@ from datetime import datetime
 
 from .adapter import BrokerAdapter, BrokerCapabilities
 from .auth import AuthStrategy, NoAuth
-from .exceptions import InstrumentNotFound, InsufficientFunds, OrderRejected
+from .exceptions import UnsupportedOperation, InstrumentNotFound, InsufficientFunds, OrderRejected
 from .models import (
     AccountSnapshot,
     Fill,
@@ -247,6 +247,22 @@ class PaperBroker(BrokerAdapter):
 
     def get_quote(self, symbol: str) -> UnifiedQuote:
         return self._quotes.get_quote(symbol)
+
+    def get_history(self, *args, **kwargs):
+        """Real historical bars, through the same chain that prices the book.
+
+        Only the money here is simulated; the prices are real, so a question
+        about history has a real answer. Refusing outright made the
+        early-exit preview -- which needs one specific one-minute candle to
+        compute a fair value -- answer 500 on a paper account.
+        """
+        fetch = getattr(self._quotes, "get_history", None)
+        if fetch is None:
+            raise UnsupportedOperation(
+                "this paper account's quote source has no historical bars",
+                broker=self.name,
+            )
+        return fetch(*args, **kwargs)
 
     def get_instruments(self) -> list[UnifiedInstrument]:
         """Whatever the quote provider can price.
