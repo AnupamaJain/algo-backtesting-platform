@@ -1422,6 +1422,67 @@ def test_the_lab_keeps_its_prefix(client):
     assert seen["url"] == "http://127.0.0.1:4300/lab/console/strategies?universe=india"
 
 
+def test_a_bare_lab_path_gets_no_invented_slash(client):
+    """Forwarding "/lab" as ".../lab/" met Next's basePath normalisation, which
+    answers 308 -> "/lab"; the gateway put the slash back, and the browser
+    gave up at ERR_TOO_MANY_REDIRECTS. The prefix alone goes through alone."""
+    import httpx
+
+    from vriddhix.api import gateway
+
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, content=b"ok")
+
+    gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        client.get("/lab")
+    finally:
+        gateway._client = None
+    assert seen["url"] == "http://127.0.0.1:4300/lab"
+
+
+def test_the_gateway_does_not_invent_accept_encoding():
+    """httpx adds "gzip, deflate" to any request that lacks Accept-Encoding,
+    and the upstream then compresses -- for a reader that never asked and may
+    not decode. A proxy passes the reader's preference through as sent, and
+    no preference means identity."""
+    import asyncio
+
+    import httpx
+    from starlette.requests import Request
+
+    from vriddhix.api import gateway
+
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers.get("accept-encoding"))
+        return httpx.Response(200, content=b"ok")
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    def ask(extra):
+        scope = {
+            "type": "http", "http_version": "1.1", "method": "GET", "scheme": "http",
+            "path": "/lab", "raw_path": b"/lab", "root_path": "", "query_string": b"",
+            "headers": [(b"host", b"testserver")] + extra,
+            "client": ("127.0.0.1", 1), "server": ("testserver", 80),
+        }
+        return asyncio.run(gateway.forward(Request(scope, receive), "lab", ""))
+
+    gateway._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        ask([])
+        ask([(b"accept-encoding", b"br")])
+    finally:
+        gateway._client = None
+    assert seen == ["identity", "br"]
+
+
 def test_handoff_urls_are_same_origin(monkeypatch, session, operator):
     """One port: the ticket URLs are paths on this host, not other ports."""
     from vriddhix.api import auth

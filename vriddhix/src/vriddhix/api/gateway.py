@@ -85,6 +85,11 @@ async def forward(request: Request, name: str, path: str) -> Response:
 
     headers = {k: v for k, v in request.headers.items() if k.lower() not in HOP_BY_HOP}
     headers["x-forwarded-prefix"] = prefix
+    # httpx would otherwise add its own "Accept-Encoding: gzip, deflate" and
+    # the upstream would compress -- for a client that never asked and might
+    # not decode. The client's preference goes through as sent; none means
+    # none.
+    headers.setdefault("accept-encoding", "identity")
     headers["x-forwarded-host"] = request.headers.get("host", "")
     headers["x-forwarded-proto"] = request.url.scheme
     # The original Host goes through untouched. The terminal builds absolute

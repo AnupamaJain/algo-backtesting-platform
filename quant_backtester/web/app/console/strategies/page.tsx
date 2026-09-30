@@ -148,8 +148,7 @@ export default async function StrategiesPage({
           The production strategies trade NSE/BSE through the{" "}
           <strong>configured broker</strong> — whichever <code>config/broker.yaml</code> selects.
           They reach it via the <code>BrokerAdapter</code> abstraction, so none of them names a
-          vendor. They are installed and complete, but none is running here: they need broker
-          credentials and a running dashboard process. Status below is read from disk and the
+          vendor. They run from the Trading terminal, on paper by default; this page is where they are backtested, and Backtest on a card runs the funnel for that strategy alone. Status below is read from disk and the
           process table, not assumed. Library strategies show how much walk-forward testing
           they have been through, since they are functions the backtester calls rather than
           processes that run.
