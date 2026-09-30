@@ -414,13 +414,20 @@ class TestLoadOrdersRange:
 class TestGetJournalSummary:
     """Tests for aggregate summary calculations."""
 
-    @patch('trade_journal.load_orders_range')
-    def test_basic_summary(self, mock_load):
-        """Test summary with two profitable trades."""
-        from trade_journal import get_journal_summary
+    @patch("trade_journal.get_trade_log")
+    def test_basic_summary(self, mock_log):
+        """Summary aggregation over a paired, attributed round trip.
+
+        This used to patch load_orders_range, but get_trade_log has served
+        from the SQLite cache in trade_journal_db since that landed, so the
+        patch stopped reaching anything and the summary saw no trades at
+        all -- reported here as a P&L of 0.0. The pairing and attribution
+        below are the real functions; only the cache is stubbed.
+        """
+        from trade_journal import attribute_pnl, get_journal_summary, pair_trades
 
         # Arrange - two sell-first profitable trades
-        mock_load.return_value = [
+        orders = [
             {"symbol": "SYM1", "transaction_type": "SELL",
              "price": 100, "quantity": 50, "timestamp": "2026-02-12T10:00:00",
              "algo_source": "Trending_Market_Code", "option_type": "PE",
@@ -430,6 +437,15 @@ class TestGetJournalSummary:
              "algo_source": "Unknown", "option_type": "PE",
              "trade_date": "2026-02-12"},
         ]
+
+        round_trips, unpaired = pair_trades(orders)
+        for rt in round_trips:
+            rt["attribution"] = attribute_pnl(rt)
+        mock_log.return_value = {
+            "round_trips": round_trips,
+            "unpaired": unpaired,
+            "total_orders": len(round_trips) + len(unpaired),
+        }
 
         # Act
         result = get_journal_summary(date(2026, 2, 12), date(2026, 2, 12))
@@ -529,6 +545,7 @@ class TestReconcileWithZerodha:
                 "quantity": 75,
                 "average_price": 110.5,
                 "fill_timestamp": "2026-03-20T10:30:00",
+                "exchange": "NFO",
             }
         ]
 
@@ -610,6 +627,70 @@ class TestReconcileWithZerodha:
         assert result["added"] == 0
         assert result["skipped"] == 1
         mock_save.assert_not_called()
+
+    @patch('trade_journal.load_orders_for_date')
+    @patch('common_lib.save_executed_order')
+    def test_two_identical_orders_are_not_both_swallowed_by_one_legacy_record(
+        self, mock_save, mock_load
+    ):
+        """One legacy record absorbs one fill, not every fill that matches it.
+
+        Fuzzy dedup keys on symbol + side + quantity, and two genuinely
+        distinct orders can share all three on the same day. Matching as a
+        set would drop the second one; it is counted instead.
+        """
+        from datetime import date
+
+        from trade_journal import reconcile_with_zerodha
+
+        mock_load.return_value = [
+            {"order_id": "", "symbol": "NIFTY2632422750PE",
+             "transaction_type": "SELL", "quantity": 75, "algo_source": "Unknown"},
+        ]
+        mock_save.return_value = True
+
+        kite = MagicMock()
+        kite.trades.return_value = [
+            {"order_id": "999001", "tradingsymbol": "NIFTY2632422750PE",
+             "transaction_type": "SELL", "quantity": 75, "average_price": 110.5,
+             "exchange": "NFO"},
+            {"order_id": "999002", "tradingsymbol": "NIFTY2632422750PE",
+             "transaction_type": "SELL", "quantity": 75, "average_price": 112.0,
+             "exchange": "NFO"},
+        ]
+
+        result = reconcile_with_zerodha(kite, date(2026, 3, 20))
+
+        assert result["skipped"] == 1, "the legacy record accounts for one fill"
+        assert result["added"] == 1, "the second fill is real and must be kept"
+
+    @patch('trade_journal.load_orders_for_date')
+    @patch('common_lib.save_executed_order')
+    def test_a_fill_with_no_exchange_is_judged_by_its_symbol(self, mock_save, mock_load):
+        """An absent exchange field is not evidence of a cash trade.
+
+        Treating it as one silently dropped option fills during the very
+        operation meant to find missing ones.
+        """
+        from datetime import date
+
+        from trade_journal import reconcile_with_zerodha
+
+        mock_load.return_value = []
+        mock_save.return_value = True
+
+        kite = MagicMock()
+        kite.trades.return_value = [
+            {"order_id": "999003", "tradingsymbol": "NIFTY2632422750PE",
+             "transaction_type": "SELL", "quantity": 75, "average_price": 110.5},
+            {"order_id": "999004", "tradingsymbol": "RELIANCE",
+             "transaction_type": "BUY", "quantity": 10, "average_price": 1400.0},
+        ]
+
+        result = reconcile_with_zerodha(kite, date(2026, 3, 20))
+
+        assert result["added"] == 1, "the option is journalled"
+        assert mock_save.call_args.kwargs["symbol"] == "NIFTY2632422750PE"
 
     @patch('trade_journal.load_orders_for_date')
     def test_handles_kite_api_failure_gracefully(self, mock_load):

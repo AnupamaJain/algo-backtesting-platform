@@ -481,7 +481,8 @@ def enforce_auth():
     # mean the ticket could never be presented, which is exactly what
     # happened: the handoff redirected to /app_login with the ticket still
     # unspent in the next= parameter.
-    if request.endpoint in ("app_login", "static", "login", "sso_entry"):
+    if request.endpoint in ("app_login", "static", "login", "sso_entry",
+                            "serve_asset", "favicon"):
         return
 
     # The Claude-Skills API blueprint enforces its own X-API-Key auth per route.
@@ -1173,6 +1174,26 @@ def gtt_monitor_status():
     from gtt_monitor import get_current_mismatch_snapshot
 
     return jsonify(get_current_mismatch_snapshot())
+
+
+@app.route("/assets/<path:filename>")
+def serve_asset(filename: str):  # noqa: ANN201 - Flask handler
+    """Serve files from assets/ (favicons, share images).
+
+    The contributors page linked /assets/favicon.jpg and /favicon.ico with no
+    route behind either, so every load logged two 404s and the tab showed no
+    icon. Assets are public by design -- this route is exempt from the
+    gatekeeper alongside the other unauthenticated paths.
+    """
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    return send_from_directory(root, filename)
+
+
+@app.route("/favicon.ico")
+def favicon():  # noqa: ANN201 - Flask handler
+    """The browser asks for this unprompted on every origin."""
+    root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    return send_from_directory(root, "favicon.png", mimetype="image/png")
 
 
 @app.route("/gtt_monitor/debug")

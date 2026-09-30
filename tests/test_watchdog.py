@@ -31,6 +31,25 @@ def reset_globals():
     common_lib.kws = None
 
 
+
+def _fake_clock(start: float, step: float = 1.0):
+    """A monotonic clock for patching time.time().
+
+    Must be a callable, not a list: `patch('common_lib.time.time')` patches
+    the time module globally, so logging's internal time.time() draws from
+    the same source. Any fixed list is exhausted the moment the code under
+    test logs anything, and StopIteration surfaces from inside logging
+    rather than from the assertion that was meant to fail.
+    """
+    state = {"n": 0}
+
+    def now() -> float:
+        state["n"] += 1
+        return start + state["n"] * step
+
+    return now
+
+
 class TestUpdateLastTickTime:
     """Tests for update_last_tick_time function."""
 
@@ -186,32 +205,28 @@ class TestInitialiseTicker:
         # Assert
         mock_kws.connect.assert_called_once_with(threaded=True)
 
-    @patch('autobahn.twisted.websocket.connectWS')
-    @patch('twisted.internet.reactor')
     @patch('quant_backtester.src.broker.flattrade_ws.FlattradeTicker')
-    def test_reconnect_uses_existing_reactor(self, mock_ticker_class,
-                                             mock_reactor,
-                                             mock_connect_ws):
-        """Test that reconnect uses reactor.callFromThread instead of
-        starting a new reactor."""
-        # Arrange
+    def test_reconnect_goes_through_the_flattrade_ticker(self, mock_ticker_class):
+        """Reconnection connects a FlattradeTicker; there is no reactor.
+
+        This test used to assert that a reconnect reused an existing Twisted
+        reactor via callFromThread instead of calling connect(threaded=True).
+        That was the KiteTicker design. Ticks now come from FlattradeTicker,
+        which runs websocket-client on its own thread and manages no
+        reactor at all, so the old assertion could only fail: connect IS
+        called, every time, and that is correct.
+        """
         import common_lib
         common_lib.access_token = "test_token"
         common_lib._subscribed_tokens = [256265]
         mock_kws = MagicMock()
         mock_ticker_class.return_value = mock_kws
-        mock_reactor.running = True
 
-        # Act
-        common_lib.initialise_ticker(
-            MagicMock(), MagicMock(), MagicMock()
-        )
+        common_lib.initialise_ticker(MagicMock(), MagicMock(), MagicMock())
 
-        # Assert - should NOT call connect(threaded=True)
-        mock_kws.connect.assert_not_called()
-        # Should create connection and use callFromThread
-        mock_kws._create_connection.assert_called_once()
-        mock_reactor.callFromThread.assert_called_once()
+        mock_kws.connect.assert_called_once_with(threaded=True)
+        assert mock_kws.on_ticks is not None
+        assert mock_kws.on_connect is not None
 
     @patch('autobahn.twisted.websocket.connectWS')
     @patch('twisted.internet.reactor')
@@ -298,7 +313,7 @@ class TestWatchdogSleep:
         # Use a short total_seconds so it runs once
         # Patch time.time to ensure it's always advanced beyond threshold
         current_time = time.time()
-        with patch('common_lib.time.time', side_effect=[current_time + 150, current_time + 151, current_time + 152]):
+        with patch('common_lib.time.time', side_effect=_fake_clock(current_time + 150)):
             common_lib.watchdog_sleep(
                 total_seconds=30, check_interval=30, stale_threshold=60
             )
@@ -327,7 +342,7 @@ class TestWatchdogSleep:
 
         # Act
         current_time = time.time()
-        with patch('common_lib.time.time', side_effect=[current_time + 150, current_time + 151, current_time + 152]):
+        with patch('common_lib.time.time', side_effect=_fake_clock(current_time + 150)):
             common_lib.watchdog_sleep(
                 total_seconds=30, check_interval=30, stale_threshold=60
             )
@@ -420,7 +435,7 @@ class TestWatchdogSleep:
 
         # Act - should not raise
         current_time = time.time()
-        with patch('common_lib.time.time', side_effect=[current_time + 150, current_time + 151, current_time + 152]):
+        with patch('common_lib.time.time', side_effect=_fake_clock(current_time + 150)):
             common_lib.watchdog_sleep(
                 total_seconds=30, check_interval=30, stale_threshold=60
             )
@@ -478,14 +493,12 @@ class TestWatchdogSleep:
         mock_sleep.side_effect = side_effect_sleep
 
         # Act
-        # Provide time values: first few are stale, then one is fresh
+        # Ticks start stale (last_tick_time is 120s behind the clock's start)
+        # and go fresh when side_effect_sleep resets it on iteration 4. A
+        # monotonic clock is what carries that; a scripted list of six values
+        # could not, because logging draws from the same patched time.time.
         curr = time.time()
-        # iteration 1: curr+150 (stale)
-        # iteration 2: curr+180 (stale)
-        # iteration 3: curr+210 (stale)
-        # iteration 4: curr+500 (but we reset last_tick_time to now in side_effect_sleep)
-        time_values = [curr + 150, curr + 180, curr + 210, curr + 500, curr + 510, curr + 520]
-        with patch('common_lib.time.time', side_effect=time_values):
+        with patch('common_lib.time.time', side_effect=_fake_clock(curr + 150)):
             common_lib.watchdog_sleep(
                 total_seconds=90, check_interval=30, stale_threshold=60,
                 max_reconnect_attempts=3

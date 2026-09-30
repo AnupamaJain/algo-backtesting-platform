@@ -1184,10 +1184,13 @@ def _extract_symbol_info(symbol: str) -> dict:
     """
     import re
     
-    # First, check if symbol ends with CE or PE (most common case)
-    if symbol.endswith('CE'):
+    # An option symbol ends in CE or PE *after its strike*, so the suffix
+    # alone is not enough to identify one: RELIANCE ends in "CE" and was
+    # being booked as a call on the largest stock on the exchange. Require
+    # the strike digits.
+    if re.search(r'\d(CE)$', symbol):
         option_type = 'CE'
-    elif symbol.endswith('PE'):
+    elif re.search(r'\d(PE)$', symbol):
         option_type = 'PE'
     elif symbol.endswith('FUT'):
         option_type = 'FUT'
@@ -1314,10 +1317,18 @@ def load_todays_orders() -> list:
 # Survivor algo tags - used to filter orders by algo source
 SURVIVOR_ALGO_TAGS = ["Trending_Market_Code", "Trend_Mkt_SENSEX", "Trend_Mkt_Stock"]
 
-# Wave Extractor algo tags - used to filter orders by algo source
-# Includes: Gap-Odr_Manual (manual gap scripts), Gap-Odr_Auto (auto gap scripts),
-# Scraper (ticker_single_scraper_new.py), Unknown (default when tag not set)
+# Wave Extractor algo tags, for logic that must key off an *explicit* tag:
+# Gap-Odr_Manual (manual gap scripts), Gap-Odr_Auto (auto gap scripts),
+# Scraper (ticker_single_scraper_new.py). The fill cooldown uses this one and
+# must not fire on an order that merely failed to carry a tag.
 WAVE_EXTRACTOR_ALGO_TAGS = ["Gap-Odr_Manual", "Gap-Odr_Auto", "Scraper"]
+
+# The same tags plus the default. Every order-placing function here takes
+# tag_recv="Unknown", so an order placed without an explicit tag is saved as
+# "Unknown" -- and reporting that left it out dropped those orders from the
+# Wave Extractor's own order history, which is where a manual order is most
+# expected to appear.
+WAVE_EXTRACTOR_ORDER_TAGS = WAVE_EXTRACTOR_ALGO_TAGS + ["Unknown"]
 
 
 def load_survivor_orders() -> list:
@@ -1355,7 +1366,7 @@ def load_wave_extractor_orders() -> list:
     all_orders = load_todays_orders()
     wave_extractor_orders = [
         order for order in all_orders
-        if order.get('algo_source', '') in WAVE_EXTRACTOR_ALGO_TAGS
+        if order.get('algo_source', '') in WAVE_EXTRACTOR_ORDER_TAGS
     ]
     return wave_extractor_orders
 

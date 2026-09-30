@@ -152,15 +152,19 @@ def reread_greeks_config(config_path: str | None = None) -> None:
     library, shadow, tolerance = _load_config(config_path)
     with _lock:
         if library == "opengreeks" and _opengreeks_bs is None:
-            # Primary backend: attempt opengreeks import, fallback to mibian if missing in dev environment
-            try:
-                _opengreeks_bs = _import_opengreeks()
-            except GreeksBackendError as import_err:
-                logger.warning(
-                    "opengreeks backend requested but unavailable (%s); falling back to mibian",
-                    import_err,
-                )
-                _backend = "mibian"
+            # Primary backend: no fallback. A silent substitution here would
+            # price every option on a different engine than the one that was
+            # configured, while get_active_backend() went on reporting the
+            # configured name -- and these greeks drive delta rebalancing.
+            #
+            # There was a fallback that set _backend = "mibian" here. It never
+            # took effect: `_backend = library` below overwrote it
+            # unconditionally a few lines later, so the only thing it
+            # achieved was a log line claiming a fallback that had not
+            # happened, followed by one announcing a switch TO the backend
+            # that was missing. configfile.ini.example documents this path as
+            # fail-loud, and it is again.
+            _opengreeks_bs = _import_opengreeks()
         elif shadow and _opengreeks_bs is None:
             # Shadow backend is diagnostic only: a broken/missing opengreeks
             # must never prevent the app from booting on mibian.

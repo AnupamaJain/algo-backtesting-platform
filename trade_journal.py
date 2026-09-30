@@ -9,6 +9,7 @@ dashboard.
 import json
 import os
 import glob
+from collections import Counter
 import logging
 from datetime import datetime, date, timedelta
 from common_lib import get_ist_now
@@ -680,10 +681,18 @@ def reconcile_with_zerodha(kite_client, target_date: date) -> dict:
     existing_order_ids: set[str] = {
         str(o["order_id"]) for o in existing_orders if o.get("order_id")
     }
-    existing_fuzzy_keys: set = {
+    # Fuzzy keys are built ONLY from records written before the order_id
+    # field existed. A record that has an order_id is matched exactly above,
+    # so including it here could only ever cause a false match.
+    #
+    # Counted, not a set: one legacy record absorbs exactly one incoming
+    # fill, so two genuinely distinct orders of the same symbol, side and
+    # size on the same day cannot both be swallowed by it.
+    legacy_fuzzy_keys: Counter = Counter(
         (o["symbol"], o["transaction_type"], int(o.get("quantity", 0)))
         for o in existing_orders
-    }
+        if not o.get("order_id")
+    )
 
     for trade in zerodha_trades:
         trade_order_id = str(trade.get("order_id", ""))
@@ -697,11 +706,27 @@ def reconcile_with_zerodha(kite_client, target_date: date) -> dict:
 
         # Only journal F&O trades (NFO = NSE F&O, BFO = BSE F&O).
         # Equity/ETF trades on NSE/BSE are out of scope for the trade journal.
+        #
+        # An *absent* exchange is not the same as a cash-segment one. Treating
+        # it as "not F&O" silently dropped fills during reconciliation, which
+        # is the one job here: a missing leg in the journal reads as a
+        # position that was never opened. When the field is absent, fall back
+        # to the symbol, which carries the strike and right for every option.
         trade_exchange = trade.get("exchange", "")
-        if trade_exchange not in ("NFO", "BFO"):
+        if trade_exchange:
+            is_fno = trade_exchange in ("NFO", "BFO")
+        else:
+            is_fno = _extract_symbol_info(symbol)["option_type"] in ("CE", "PE", "FUT")
+            if is_fno:
+                logging.info(
+                    "reconcile_with_zerodha: %s carried no exchange; "
+                    "journalling it as F&O on the strength of the symbol",
+                    symbol,
+                )
+        if not is_fno:
             logging.debug(
                 "reconcile_with_zerodha: skipping non-FNO trade %s on exchange=%s",
-                symbol, trade_exchange,
+                symbol, trade_exchange or "(absent)",
             )
             continue
 
@@ -730,14 +755,15 @@ def reconcile_with_zerodha(kite_client, target_date: date) -> dict:
             skipped += 1
             continue
 
-        # Fuzzy dedup: backward-compat ONLY for trades with no order_id.
-        # Two different orders can legitimately share the same (symbol, type, qty)
-        # on the same day, so we must never apply this check when order_id is present.
-        if not trade_order_id:
-            fuzzy_key = (symbol, transaction_type, quantity)
-            if fuzzy_key in existing_fuzzy_keys:
-                skipped += 1
-                continue
+        # Fuzzy dedup against legacy records. This has to run whether or not
+        # the *incoming* trade carries an order_id, because what is missing
+        # one is the record already on disk: skipping the check there added a
+        # second copy of a fill the journal already held.
+        fuzzy_key = (symbol, transaction_type, quantity)
+        if legacy_fuzzy_keys.get(fuzzy_key):
+            legacy_fuzzy_keys[fuzzy_key] -= 1
+            skipped += 1
+            continue
 
         # Determine fill timestamp; fall back to IST now
         fill_ts = trade.get("fill_timestamp") or trade.get("order_timestamp")

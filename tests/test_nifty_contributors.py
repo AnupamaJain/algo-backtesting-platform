@@ -100,7 +100,8 @@ def test_contributors_flask_routes(client: Any) -> None:
     response_api = client.get("/cas_tracker/api/contributors")
     response_dates = client.get("/cas_tracker/api/contributors/dates")
     response_history = client.get("/cas_tracker/api/contributors/history?date=2026-08-06")
-    response_asset = client.get("/assets/contributors_social_share.png")
+    response_asset = client.get("/assets/favicon.png")
+    response_missing = client.get("/assets/never-shipped.png")
 
     # Assert
     assert response_page.status_code == 200
@@ -117,6 +118,9 @@ def test_contributors_flask_routes(client: Any) -> None:
     assert "history" in response_history.get_json()
 
     assert response_asset.status_code == 200
+    assert response_asset.mimetype == "image/png"
+    # and an asset we do not ship 404s rather than erroring
+    assert response_missing.status_code == 404
 
 
 
