@@ -350,6 +350,48 @@
   </p>
 </section>
 
+<!-- ══════════════ the market, animated from the database ══════════════ -->
+{% if market_clips %}
+<section class="wrap mclip-section">
+  <div class="sec-head">
+    <h2>Ten years of the market, in three passes</h2>
+    <span class="faint">drawn from this database · not live</span>
+  </div>
+  <p class="muted lead-narrow">
+    Each clip is rendered from the same rows the pages above read — so a
+    clip cannot show a market this platform did not record. They are
+    animations of history rather than anything happening now.
+  </p>
+
+  <div class="mclip" id="mclip">
+    <div class="mclip-tabs" role="tablist" aria-label="Market clips">
+      {% for slug, title, blurb, stat in market_clips %}
+      <button role="tab" class="mclip-tab{{ ' on' if loop.first }}"
+              data-clip="{{ loop.index0 }}"
+              aria-selected="{{ 'true' if loop.first else 'false' }}">
+        <b>{{ title }}</b>
+        <span class="num">{{ stat }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <div class="mclip-stage">
+      {% for slug, title, blurb, stat in market_clips %}
+      <figure class="mclip-pane{{ ' on' if loop.first }}" data-pane="{{ loop.index0 }}">
+        <video poster="{{ asset('video/' ~ slug ~ '-poster.jpg') }}"
+               muted loop playsinline preload="none"
+               aria-label="{{ title }} — {{ blurb }}">
+          <source src="{{ asset('video/' ~ slug ~ '.webm') }}" type="video/webm">
+          <source src="{{ asset('video/' ~ slug ~ '.mp4') }}" type="video/mp4">
+        </video>
+        <figcaption>{{ blurb }}</figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════ the terminal, every screen ══════════════ -->
 {% if terminal_screens %}
 <section class="wrap term-section">
@@ -2480,6 +2522,82 @@
   document.addEventListener("visibilitychange", function () {
     if (document.hidden && !video.paused) video.pause();
   });
+})();
+
+/* ── the market clips ────────────────────────────────────────────────
+   One plays at a time, the tabs switch which, and the set advances on
+   its own so a reader who does nothing still sees all three. Any tab
+   press stops the advancing for good.
+
+   Each is preload="none" behind a poster of its own final frame, so a
+   reader who never reaches this section fetches none of the three, and
+   one who does fetches only the one playing. */
+(function () {
+  var root = document.getElementById("mclip");
+  if (!root) return;
+  var tabs = Array.prototype.slice.call(root.querySelectorAll(".mclip-tab"));
+  var panes = Array.prototype.slice.call(root.querySelectorAll(".mclip-pane"));
+  if (!tabs.length || tabs.length !== panes.length) return;
+
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var at = 0, advancing = !reduce, timer = null, onScreen = false;
+
+  function video(i) { return panes[i].querySelector("video"); }
+
+  function show(i, autoplay) {
+    at = (i + panes.length) % panes.length;
+    tabs.forEach(function (t, n) {
+      t.classList.toggle("on", n === at);
+      t.setAttribute("aria-selected", n === at ? "true" : "false");
+    });
+    panes.forEach(function (pane, n) {
+      pane.classList.toggle("on", n === at);
+      var v = video(n);
+      if (n !== at) { if (!v.paused) v.pause(); }
+      else if (autoplay && onScreen && !reduce) {
+        var a = v.play();
+        if (a && a.catch) a.catch(function () {});
+      }
+    });
+  }
+
+  function stopAdvancing() {
+    advancing = false;
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+  function startAdvancing() {
+    if (!advancing || timer || reduce) return;
+    // Longer than a clip, so each is seen through before the next.
+    timer = setInterval(function () { show(at + 1, true); }, 18000);
+  }
+
+  tabs.forEach(function (tab, i) {
+    tab.addEventListener("click", function () { stopAdvancing(); show(i, true); });
+  });
+
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        onScreen = entry.isIntersecting;
+        if (onScreen) { show(at, true); startAdvancing(); }
+        else {
+          var v = video(at);
+          if (v && !v.paused) v.pause();
+          if (timer) { clearInterval(timer); timer = null; }
+        }
+      });
+    }, { threshold: 0.35 }).observe(root);
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    var v = video(at);
+    if (document.hidden) {
+      if (v && !v.paused) v.pause();
+      if (timer) { clearInterval(timer); timer = null; }
+    } else if (onScreen) { show(at, true); startAdvancing(); }
+  });
+
+  show(0, false);
 })();
 </script>
 {% endblock %}

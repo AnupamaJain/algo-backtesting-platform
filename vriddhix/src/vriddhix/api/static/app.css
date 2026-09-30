@@ -1834,3 +1834,25 @@ html:not(.js) .type-word, .type-in.typed .type-word { opacity: 1; }
 .refuse-card { transition: border-color .2s, transform .25s; }
 .refuse-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); transform: translateY(-2px); }
 .lineage-step:hover .lineage-dot { border-color: var(--accent); }
+
+/* ── market clips ────────────────────────────────────────────────── */
+.mclip-section { margin-top: 64px; }
+.mclip { margin-top: 24px; display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 820px) { .mclip { grid-template-columns: minmax(0, 1fr); } }
+.mclip-tabs { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 820px) { .mclip-tabs { flex-direction: row; overflow-x: auto; scrollbar-width: none; } .mclip-tabs::-webkit-scrollbar { display: none; } .mclip-tab { flex: 0 0 auto; } }
+.mclip-tab {
+  text-align: left; padding: 12px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+  font: inherit; transition: border-color .18s, background .18s, transform .18s;
+}
+.mclip-tab:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); transform: translateX(2px); }
+.mclip-tab b { display: block; color: var(--text); font-size: .88rem; margin-bottom: 3px; }
+.mclip-tab .num { font-size: .72rem; color: var(--faint); }
+.mclip-tab.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--panel)); }
+.mclip-tab.on .num { color: var(--accent); }
+.mclip-stage { position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.mclip-pane { margin: 0; display: none; }
+.mclip-pane.on { display: block; }
+.mclip-pane video { display: block; width: 100%; height: auto; background: var(--bg); }
+.mclip-pane figcaption { padding: 12px 14px; font-size: .84rem; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--line); }

@@ -391,6 +391,32 @@ def _rotation(session, as_of) -> list[dict]:
     return sorted(out, key=lambda r: (order.get(r["quadrant"], 9), r["rank"] or 99))
 
 
+#: Clips of the market itself, rendered from this database rather than
+#: filmed off a screen: each frame is drawn from the same rows the pages
+#: read, so a clip cannot show a market the platform did not record.
+#:
+#: They are animations of history, not footage of anything live, and the
+#: captions say so — a chart that sweeps looks like something happening
+#: now if you let it.
+MARKET_CLIPS = [
+    ("market-regime", "Eight years of regime",
+     "Every scored session since 2018, with the five-component score and "
+     "the band it put the market in. Two thousand one hundred and sixty-one "
+     "of them.",
+     "2,161 sessions"),
+    ("market-rotation", "Money moving between sectors",
+     "Relative strength against momentum, twenty sectors, equal-weighted "
+     "within each. Leading, improving, weakening, lagging — and how slowly "
+     "a sector really crosses between them.",
+     "20 sectors · 10 years"),
+    ("market-ledger", "Every breakout, and what followed",
+     "Each square is one resolved breakout, green if it held above its "
+     "pivot and red if it closed back below. The rate settles where it "
+     "settles; nothing here is dropped for spoiling it.",
+     "3,611 resolved"),
+]
+
+
 #: Every page of the trading terminal, captured at 2x from the running
 #: instance through the same sign-in and gateway a reader would use. The
 #: whole surface rather than a flattering subset: a product shown in three
@@ -1027,6 +1053,7 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "global_results": _global_results(),
             "use_cases": _use_cases(session),
             "terminal_screens": TERMINAL_SCREENS,
+            "market_clips": MARKET_CLIPS,
             "contract_count": _contract_count(),
             "clips": APP_CLIPS,
             "surface": _regime_surface(session),

@@ -1,0 +1,203 @@
+<!doctype html><meta charset="utf-8">
+<title>clip studio</title>
+<style>
+  html,body{margin:0;background:#0a0d16;overflow:hidden}
+  canvas{display:block}
+</style>
+<canvas id="c" width="1280" height="720"></canvas>
+<script>
+// Clip studio. Draws real market history onto a canvas so it can be
+// recorded. Nothing here invents a number: every point comes from
+// market.json, exported from the database this application scans into.
+const P = new URLSearchParams(location.search);
+const WHICH = P.get("clip") || "regime";
+const C = document.getElementById("c"), X = C.getContext("2d");
+const W = C.width, H = C.height;
+
+const INK="#0a0d16", PANEL="#10141f", LINE="#232c40", TEXT="#e7ecf6",
+      MUTED="#94a3b8", FAINT="#64748b", ACCENT="#22d3ee",
+      BULL="#34d399", BEAR="#fb7185", WARN="#fbbf24";
+
+const REGIME_FILL = {
+  STRONG_BULL:"#22c55e", BULL:"#4ade80", NEUTRAL:"#64748b",
+  BEAR:"#fb7185", STRONG_BEAR:"#e11d48", UNKNOWN:"#334155",
+};
+
+let DATA=null, t0=null, done=false;
+const DURATION = 15000;   // ms of animation per clip
+
+function bg(){
+  X.fillStyle = INK; X.fillRect(0,0,W,H);
+  const g = X.createRadialGradient(W*0.2,0,0, W*0.2,0, W*0.9);
+  g.addColorStop(0,"rgba(34,211,238,0.10)"); g.addColorStop(1,"rgba(34,211,238,0)");
+  X.fillStyle = g; X.fillRect(0,0,W,H);
+}
+function label(text, x, y, size, colour, weight, align){
+  X.fillStyle = colour || TEXT; X.textAlign = align || "left";
+  X.font = (weight||600)+" "+size+"px ui-sans-serif, system-ui, -apple-system, sans-serif";
+  X.fillText(text, x, y);
+}
+function mono(text, x, y, size, colour, align){
+  X.fillStyle = colour || TEXT; X.textAlign = align || "left";
+  X.font = "600 "+size+"px ui-monospace, SFMono-Regular, Menlo, monospace";
+  X.fillText(text, x, y);
+}
+function chrome(title, sub){
+  label(title, 54, 66, 30, TEXT, 700);
+  label(sub, 54, 96, 15, MUTED, 500);
+  label("read from this database · nothing simulated", W-54, 96, 13, FAINT, 500, "right");
+}
+
+// ── 1. regime, every scored session ────────────────────────────────
+function regimeFrame(p){
+  const rows = DATA.regime, n = rows.length;
+  const upto = Math.max(2, Math.floor(n * p));
+  const L=54, R=W-54, T=150, B=H-92, w=R-L, h=B-T;
+
+  bg(); chrome("Market regime, every session since 2018",
+               "Five weighted components, with hysteresis — or an explicit refusal to score");
+
+  // regime bands underneath
+  for (let i=0;i<upto;i++){
+    const x = L + (i/(n-1))*w, nx = L + ((i+1)/(n-1))*w;
+    X.globalAlpha = 0.20;
+    X.fillStyle = REGIME_FILL[rows[i].regime] || REGIME_FILL.UNKNOWN;
+    X.fillRect(x, T, Math.max(nx-x+0.6, 1), h);
+  }
+  X.globalAlpha = 1;
+
+  // gridlines at 25/50/75
+  X.strokeStyle = LINE; X.lineWidth = 1;
+  [25,50,75].forEach(v=>{
+    const y = B - (v/100)*h;
+    X.beginPath(); X.moveTo(L,y); X.lineTo(R,y); X.stroke();
+    mono(String(v), L-10, y+4, 12, FAINT, "right");
+  });
+
+  // the score itself
+  X.beginPath();
+  for (let i=0;i<upto;i++){
+    const x = L + (i/(n-1))*w;
+    const y = B - (Math.max(0,Math.min(100, rows[i].regime_score))/100)*h;
+    i ? X.lineTo(x,y) : X.moveTo(x,y);
+  }
+  X.strokeStyle = ACCENT; X.lineWidth = 2.4; X.lineJoin="round"; X.stroke();
+
+  const cur = rows[upto-1];
+  const cx = L + ((upto-1)/(n-1))*w;
+  const cy = B - (Math.max(0,Math.min(100,cur.regime_score))/100)*h;
+  X.beginPath(); X.arc(cx, cy, 6, 0, Math.PI*2);
+  X.fillStyle = ACCENT; X.fill();
+
+  // readout
+  const box = {x:L, y:B+22, w:w, h:46};
+  X.fillStyle = PANEL; X.strokeStyle = LINE;
+  X.beginPath(); X.roundRect(box.x, box.y, box.w, box.h, 10); X.fill(); X.stroke();
+  mono(cur.date, box.x+16, box.y+30, 17, TEXT);
+  label(cur.regime.replace("_"," "), box.x+180, box.y+30, 17,
+        REGIME_FILL[cur.regime]||MUTED, 700);
+  mono(cur.regime_score.toFixed(1), box.x+400, box.y+30, 17, ACCENT);
+  label("score", box.x+455, box.y+30, 13, FAINT, 500);
+  if (cur.pct_above_ema_50 != null){
+    mono(cur.pct_above_ema_50.toFixed(0)+"%", box.x+560, box.y+30, 17, MUTED);
+    label("above 50-day", box.x+615, box.y+30, 13, FAINT, 500);
+  }
+  mono(upto.toLocaleString()+" sessions", box.w+box.x-16, box.y+30, 15, FAINT, "right");
+}
+
+// ── 2. sector rotation ─────────────────────────────────────────────
+function rotationFrame(p){
+  const rows = DATA.rotation;
+  const dates = [...new Set(rows.map(r=>r.date))];
+  const at = Math.min(dates.length-1, Math.floor(dates.length * p));
+  const today = dates[at];
+  const shown = rows.filter(r=>r.date===today);
+
+  bg(); chrome("Where the money is rotating",
+               "Relative strength against momentum, 20 sectors, equal-weighted");
+
+  const L=300, R=W-300, T=150, B=H-96, w=R-L, h=B-T;
+  // quadrants
+  X.fillStyle = "rgba(52,211,153,0.05)"; X.fillRect(L+w/2, T, w/2, h/2);
+  X.fillStyle = "rgba(251,113,133,0.05)"; X.fillRect(L, T+h/2, w/2, h/2);
+  X.strokeStyle = LINE; X.lineWidth=1;
+  X.beginPath(); X.moveTo(L+w/2,T); X.lineTo(L+w/2,B); X.moveTo(L,T+h/2); X.lineTo(R,T+h/2); X.stroke();
+  label("LEADING",   R-14, T+24,   12, BULL,  700, "right");
+  label("IMPROVING", L+14, T+24,   12, ACCENT,700);
+  label("WEAKENING", R-14, B-12,   12, WARN,  700, "right");
+  label("LAGGING",   L+14, B-12,   12, BEAR,  700);
+
+  shown.forEach(s=>{
+    const x = L + (Math.max(0,Math.min(100, s.rs_score))/100)*w;
+    const y = B - (Math.max(0,Math.min(100, (s.momentum_score+50)))/100)*h;
+    const colour = s.quadrant==="LEADING"?BULL : s.quadrant==="LAGGING"?BEAR
+                 : s.quadrant==="IMPROVING"?ACCENT : WARN;
+    X.beginPath(); X.arc(x,y,7,0,Math.PI*2);
+    X.fillStyle = colour; X.globalAlpha=.85; X.fill(); X.globalAlpha=1;
+    label(s.sector.slice(0,18), x+12, y+4, 11, MUTED, 600);
+  });
+
+  const box={x:L, y:B+22, w:w, h:44};
+  X.fillStyle=PANEL; X.strokeStyle=LINE;
+  X.beginPath(); X.roundRect(box.x,box.y,box.w,box.h,10); X.fill(); X.stroke();
+  mono(today, box.x+16, box.y+29, 17, TEXT);
+  mono(shown.length+" sectors ranked", box.x+box.w-16, box.y+29, 15, FAINT, "right");
+}
+
+// ── 3. the breakout ledger ─────────────────────────────────────────
+function ledgerFrame(p){
+  const rows = DATA.ledger, n = rows.length;
+  const upto = Math.max(1, Math.floor(n * p));
+
+  bg(); chrome("Every breakout, and what happened next",
+               "Failures are kept — a hit rate over survivors is the most flattering lie a tool can tell");
+
+  let failed=0;
+  const L=54, R=W-54, T=176, B=H-150, w=R-L, h=B-T;
+  const cols = 90, cell = w/cols;
+  for (let i=0;i<upto;i++){
+    if (rows[i].failed) failed++;
+    const cx = L + (i%cols)*cell, cy = T + Math.floor(i/cols)*cell;
+    X.fillStyle = rows[i].failed ? BEAR : BULL;
+    X.globalAlpha = rows[i].failed ? .78 : .62;
+    X.fillRect(cx+1, cy+1, cell-2.4, cell-2.4);
+  }
+  X.globalAlpha=1;
+
+  const rate = upto ? (failed/upto*100) : 0;
+  const box={x:L, y:B+26, w:w, h:74};
+  X.fillStyle=PANEL; X.strokeStyle=LINE;
+  X.beginPath(); X.roundRect(box.x,box.y,box.w,box.h,10); X.fill(); X.stroke();
+
+  mono(rate.toFixed(1)+"%", box.x+20, box.y+50, 34, BEAR);
+  label("closed back below the pivot", box.x+150, box.y+42, 14, MUTED, 500);
+  mono(failed.toLocaleString()+" of "+upto.toLocaleString()+" resolved", box.x+150, box.y+62, 13, FAINT);
+
+  // held/failed split bar
+  const bx = box.x+box.w-430, bw=410;
+  X.fillStyle=LINE; X.beginPath(); X.roundRect(bx, box.y+28, bw, 14, 7); X.fill();
+  X.fillStyle=BULL; X.beginPath(); X.roundRect(bx, box.y+28, bw*(1-rate/100), 14, 7); X.fill();
+  label("held", bx, box.y+60, 12, BULL, 600);
+  label("failed", bx+bw, box.y+60, 12, BEAR, 600, "right");
+  mono(rows[upto-1].date, box.x+box.w-20, box.y+22, 13, FAINT, "right");
+}
+
+const FRAMES = { regime: regimeFrame, rotation: rotationFrame, ledger: ledgerFrame };
+
+function tick(now){
+  if (t0 === null) t0 = now;
+  let p = (now - t0) / DURATION;
+  if (p >= 1) { p = 1; done = true; }
+  // ease so the sweep settles rather than stopping dead
+  const e = 1 - Math.pow(1 - p, 1.6);
+  FRAMES[WHICH](Math.max(0.004, e));
+  if (!done) requestAnimationFrame(tick);
+  else { document.title = "done"; }
+}
+
+fetch("market.json").then(r=>r.json()).then(d=>{
+  DATA = d;
+  document.title = "ready";
+  requestAnimationFrame(tick);
+});
+</script>

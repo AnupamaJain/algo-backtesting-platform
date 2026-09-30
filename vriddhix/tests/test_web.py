@@ -1845,3 +1845,49 @@ def test_the_terminal_clip_is_real_and_cheap_to_ignore(client):
 
     # Autoplay is blocked on most phones; the button has to exist.
     assert 'id="term-play"' in body
+
+
+def test_the_market_clips_are_shown_as_history_not_as_live(client):
+    """A chart that sweeps looks like something happening now if you let it.
+
+    These are animations of stored rows, so the section has to say that:
+    a reader who thinks they are watching a live feed has been misled by
+    the format rather than by any individual claim.
+    """
+    body = client.get("/").text
+    assert "mclip-section" in body
+    assert "not live" in body
+    assert "animations of history" in body
+
+
+def test_every_market_clip_has_its_three_files(client):
+    from vriddhix.api.routers.pages import MARKET_CLIPS
+
+    assert len(MARKET_CLIPS) == 3
+    for slug, title, blurb, stat in MARKET_CLIPS:
+        for name, minimum in ((f"{slug}.mp4", 60_000),
+                              (f"{slug}.webm", 60_000),
+                              (f"{slug}-poster.jpg", 8_000)):
+            asset = client.get(f"/static/video/{name}")
+            assert asset.status_code == 200, name
+            assert len(asset.content) > minimum, f"{name} looks empty"
+        assert title in body_of(client) and stat in body_of(client)
+
+
+def body_of(client, _cache={}):
+    if "body" not in _cache:
+        _cache["body"] = client.get("/").text
+    return _cache["body"]
+
+
+def test_no_clip_downloads_before_it_is_wanted(client):
+    """Three clips and a walkthrough is a megabyte. A reader who never
+    scrolls that far should fetch none of it."""
+    body = client.get("/").text
+    # every <video> on the page
+    import re
+    videos = re.findall(r"<video[^>]*>", body)
+    assert videos, "no video elements"
+    for tag in videos:
+        assert 'preload="none"' in tag, tag[:90]
+        assert "poster=" in tag, tag[:90]
