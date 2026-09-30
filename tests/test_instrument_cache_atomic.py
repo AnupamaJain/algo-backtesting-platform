@@ -106,6 +106,24 @@ def _table_exists(db_path: str, table: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
+
+@pytest.fixture(autouse=True)
+def _sync_from_the_mocked_broker(monkeypatch, tmp_path):
+    """These tests are about the atomic swap, not about the source.
+
+    sync_instruments prefers Dhan's published scrip master, which is
+    complete and needs no session. That would bypass the mocked
+    kite.instruments() these tests hand it, so the master is pointed
+    somewhere empty and the documented fallback -- the broker's own list --
+    is what gets swapped.
+    """
+    import instrument_cache
+
+    monkeypatch.setattr(
+        instrument_cache, "DHAN_SCRIP_MASTER", str(tmp_path / "no-master.csv")
+    )
+
+
 class TestSyncInstrumentsSuccess:
     """sync_instruments() should atomically populate the live table."""
 

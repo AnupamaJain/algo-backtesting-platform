@@ -407,6 +407,141 @@ def _populate_market_holidays(conn: sqlite3.Connection, years: list[int]) -> Non
 # ---------------------------------------------------------------------------
 
 
+#: NSE writes a weekly contract's month as one character (1-9, then O, N, D)
+#: and spells a monthly one. The same rule builds the symbols the terminal
+#: offers, so what a dropdown lists is what this table holds.
+_WEEKLY_MONTH_CODE = {
+    1: "1", 2: "2", 3: "3", 4: "4", 5: "5", 6: "6",
+    7: "7", 8: "8", 9: "9", 10: "O", 11: "N", 12: "D",
+}
+
+DHAN_SCRIP_MASTER = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "quant_backtester", "state", "dhan_scrip_master.csv",
+)
+
+
+def instruments_from_dhan_master(path: Optional[str] = None) -> List[Dict[str, Any]]:
+    """The full contract master, in the shape sync_instruments inserts.
+
+    The sync used to read kite.instruments(), which under the adapter
+    layer returns the configured universe and nothing else -- 23 cash rows,
+    with no segment, expiry or strike, because the shim's instrument dict
+    never carried them. Every F&O query against this table therefore
+    matched nothing: no expiry dropdowns, no days_to_expiry, no theta, and
+    "Instrument NIFTY26O0623450CE not found in cache or database" from a
+    strategy asked to trade a contract the UI had just offered.
+
+    Dhan publishes the whole master as a CSV, cached on disk, needing no
+    broker session -- 121,000 F&O contracts and every NSE equity. That it
+    needs no session is the point: this table is what the app falls back
+    on when a token has expired, so building it must not require one.
+
+    Returns:
+        Instrument dicts keyed the way the instruments table expects.
+        Empty when the master has not been downloaded.
+    """
+    import pandas as pd
+
+    source = path or DHAN_SCRIP_MASTER
+    if not os.path.exists(source):
+        logger.warning("Dhan scrip master not found at %s", source)
+        return []
+
+    frame = pd.read_csv(source, low_memory=False)
+    wanted = frame[
+        frame["INSTRUMENT"].isin(["OPTIDX", "OPTSTK", "FUTIDX", "FUTSTK", "EQUITY"])
+        & frame["EXCH_ID"].isin(["NSE", "BSE"])
+    ]
+
+    out: List[Dict[str, Any]] = []
+    seen: set = set()
+
+    for row in wanted.itertuples(index=False):
+        try:
+            token = int(row.SECURITY_ID)
+        except (TypeError, ValueError):
+            continue
+        # instrument_token is the primary key and Dhan reuses ids across
+        # exchanges; first one wins rather than failing the whole insert.
+        if token in seen:
+            continue
+
+        underlying = str(row.UNDERLYING_SYMBOL or "").strip().upper()
+        if not underlying:
+            continue
+
+        kind = str(row.INSTRUMENT)
+        bse = row.EXCH_ID == "BSE"
+
+        if kind == "EQUITY":
+            if str(getattr(row, "SERIES", "")).strip().upper() != "EQ":
+                continue          # SM, BE and friends are not what is traded here
+            symbol = f"{underlying}-EQ"
+            expiry = strike = None
+            itype = "EQ"
+            segment = "BSE" if bse else "NSE"
+            exchange = "BSE" if bse else "NSE"
+        else:
+            expiry_raw = str(getattr(row, "SM_EXPIRY_DATE", "") or "")[:10]
+            if not expiry_raw:
+                continue
+            try:
+                expiry_date = datetime.datetime.strptime(expiry_raw, "%Y-%m-%d").date()
+            except ValueError:
+                continue
+
+            monthly = str(getattr(row, "EXPIRY_FLAG", "")).strip().upper() == "M"
+            yy = f"{expiry_date.year % 100:02d}"
+            prefix = (f"{underlying}{yy}{expiry_date.strftime('%b').upper()}" if monthly
+                      else f"{underlying}{yy}{_WEEKLY_MONTH_CODE[expiry_date.month]}"
+                           f"{expiry_date.day:02d}")
+
+            if kind.startswith("FUT"):
+                symbol, strike, itype = f"{prefix}FUT", None, "FUT"
+                segment = "BFO-FUT" if bse else "NFO-FUT"
+            else:
+                right = str(getattr(row, "OPTION_TYPE", "")).strip().upper()
+                if right not in ("CE", "PE"):
+                    continue
+                try:
+                    strike = float(row.STRIKE_PRICE)
+                except (TypeError, ValueError):
+                    continue
+                symbol, itype = f"{prefix}{int(strike)}{right}", right
+                segment = "BFO-OPT" if bse else "NFO-OPT"
+
+            expiry = expiry_raw
+            exchange = "BFO" if bse else "NFO"
+
+        try:
+            lot = int(float(getattr(row, "LOT_SIZE", 1) or 1))
+        except (TypeError, ValueError):
+            lot = 1
+        try:
+            # Dhan quotes the tick in paise.
+            tick = float(getattr(row, "TICK_SIZE", 5) or 5) / 100.0
+        except (TypeError, ValueError):
+            tick = 0.05
+
+        seen.add(token)
+        out.append({
+            "instrument_token": token,
+            "tradingsymbol": symbol,
+            "name": underlying,
+            "expiry": expiry,
+            "strike": strike,
+            "instrument_type": itype,
+            "lot_size": lot,
+            "segment": segment,
+            "exchange": exchange,
+            "tick_size": tick,
+        })
+
+    logger.info("Dhan scrip master: %d instruments ready to sync", len(out))
+    return out
+
+
 def sync_instruments(kite: Any) -> bool:  # type: ignore[type-arg]
     """Fetch all instruments from Zerodha and atomically refresh the DB.
 
@@ -474,7 +609,15 @@ def _sync_instruments_locked(kite: Any) -> bool:  # type: ignore[type-arg]
         # ------------------------------------------------------------------
         # Step 2 — Fetch fresh data from Zerodha
         # ------------------------------------------------------------------
-        instruments: List[Dict[str, Any]] = kite.instruments()
+        # Dhan's published master first: it is complete, needs no broker
+        # session, and carries the segment, expiry and strike that every
+        # F&O query here filters on. kite.instruments() under the adapter
+        # layer returns the configured universe with those fields dropped,
+        # which is how this table came to hold 23 rows and no F&O at all.
+        instruments: List[Dict[str, Any]] = instruments_from_dhan_master()
+        if not instruments:
+            logger.warning("scrip master unavailable; falling back to the broker's own list")
+            instruments = kite.instruments()
         records_synced = len(instruments)
         logger.info("Fetched %d instruments. Inserting into staging table...", records_synced)
 
@@ -1415,7 +1558,17 @@ def get_upcoming_expiries(underlying_name: str, count: int = 2) -> list[str]:
         )
         rows = cursor.fetchall()
         conn.close()
-        return [row["expiry"] for row in rows]
+        # The table declares `expiry DATE` and the connection enables
+        # PARSE_DECLTYPES, so sqlite3 hands back date objects -- not the
+        # strings this function's contract promises. Callers put these
+        # straight into JSON, where a date serialises as "Tue, 06 Oct 2026
+        # 00:00:00 GMT" and every expiry dropdown in the product filled up
+        # with HTTP timestamps.
+        return [
+            row["expiry"].isoformat() if hasattr(row["expiry"], "isoformat")
+            else str(row["expiry"])
+            for row in rows
+        ]
     except Exception as exc:
         logger.warning("get_upcoming_expiries(%s): %s", underlying_name, exc)
         return []
