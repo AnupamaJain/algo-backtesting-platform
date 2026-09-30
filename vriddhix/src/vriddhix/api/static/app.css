@@ -1627,3 +1627,15 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
   .lineage-step { opacity: 1; }
   .lineage-spine i { transform: scaleY(1); }
 }
+
+/* Five columns inside a third-width card is tighter than the longest
+   value in them. Cells never wrap -- a wrapped number in a right-aligned
+   column reads as two numbers -- so the table scrolls inside its own box
+   rather than overlapping or widening the card. */
+.gb-tablewrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.gb-table { font-size: .74rem; min-width: 330px; }
+.gb-table th, .gb-table td { padding: 5px 6px; white-space: nowrap; }
+.gb-table th { font-size: .6rem; letter-spacing: .05em; }
+/* No truncation: 'Dynamic Regime' clipped to 'Dynamic Reg…' reads as a
+   different portfolio. The wrapper scrolls instead. */
+.gb-table td:first-child { white-space: nowrap; }

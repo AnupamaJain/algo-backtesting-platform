@@ -42,7 +42,8 @@
       <svg class="ribbon" viewBox="0 0 100 20" preserveAspectRatio="none"
            role="img" aria-label="Market regime from {{ ribbon.first }} to {{ ribbon.last }}">
         {% for b in ribbon.bands %}
-        <rect x="{{ "%.4f"|format(b.x) }}" y="0"
+        <rect class="ribbon-band" data-x="{{ "%.4f"|format(b.x) }}"
+              x="{{ "%.4f"|format(b.x) }}" y="0"
               width="{{ "%.4f"|format(b.w + 0.02) }}" height="20"
               fill="{{ b.fill }}"><title>{{ b.regime }} · {{ b.from }} → {{ b.to }}</title></rect>
         {% endfor %}
@@ -453,14 +454,15 @@
       {% endif %}
 
       {% if w.portfolios %}
+      <div class="gb-tablewrap">
       <table class="gb-table">
         <thead>
           <tr>
             <th>Portfolio</th>
-            <th class="r">₹10L became</th>
+            <th class="r">₹10L →</th>
             <th class="r">Annual</th>
             <th class="r">Sharpe</th>
-            <th class="r">Worst fall</th>
+            <th class="r">Max DD</th>
           </tr>
         </thead>
         <tbody>
@@ -475,9 +477,10 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       <p class="gb-note faint">
         Marked row is the best <b>risk-adjusted</b> result, which is not
-        always the biggest number.
+        always the biggest number. ₹10L → is what ten lakh became.
       </p>
       {% endif %}
     </article>
@@ -1799,10 +1802,18 @@
 
   // -- the smallest 4x4 library that does this job --------------------
   function ident() { return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; }
+  // Column-major, because that is what WebGL reads and what perspective()
+  // and translate() below are written in. This was row-major for a while:
+  // every matrix was individually correct, the multiply disagreed with all
+  // of them, and the panels were transformed off screen -- a canvas that
+  // was running, clearing and drawing perfectly into a place nobody could
+  // see. C[c][r] = sum_k A[k][r] * B[c][k].
   function mul(a, b) {
     var o = new Array(16);
-    for (var r = 0; r < 4; r++) for (var c = 0; c < 4; c++) {
-      o[r*4+c] = a[r*4]*b[c] + a[r*4+1]*b[4+c] + a[r*4+2]*b[8+c] + a[r*4+3]*b[12+c];
+    for (var c = 0; c < 4; c++) {
+      for (var r = 0; r < 4; r++) {
+        o[c*4+r] = a[r]*b[c*4] + a[4+r]*b[c*4+1] + a[8+r]*b[c*4+2] + a[12+r]*b[c*4+3];
+      }
     }
     return o;
   }
@@ -1811,6 +1822,7 @@
     return [f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0];
   }
   function translate(x, y, z) { var m = ident(); m[12]=x; m[13]=y; m[14]=z; return m; }
+  // Column-major: m[col*4 + row].
   function rotY(a) { var c=Math.cos(a), s=Math.sin(a); var m=ident(); m[0]=c; m[2]=-s; m[8]=s; m[10]=c; return m; }
   function rotX(a) { var c=Math.cos(a), s=Math.sin(a); var m=ident(); m[5]=c; m[6]=s; m[9]=-s; m[10]=c; return m; }
 
@@ -2145,6 +2157,46 @@
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
   update();
+})();
+
+/* ── the regime ribbon lays itself down, left to right ───────────────
+   Every band is in the markup with its real position and colour, so the
+   history is complete before any of this runs and complete if none of it
+   does. What the script adds is the order of arrival: each band is held
+   flat against the baseline and released in the order it happened, so
+   the ribbon is built the way the sessions were -- earliest first --
+   rather than appearing all at once as a finished object.
+
+   Eight years of sessions is a lot of bands, so the stagger is capped:
+   past a few hundred the delay per band would run into minutes. */
+(function () {
+  var bands = document.querySelectorAll(".ribbon-band");
+  if (!bands.length) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+
+  var svg = bands[0].ownerSVGElement;
+  if (!svg) return;
+
+  var TOTAL = 1400;                       // ms for the whole sweep
+  Array.prototype.forEach.call(bands, function (band) {
+    var at = parseFloat(band.dataset.x) || 0;     // 0..100 across the ribbon
+    band.style.transformBox = "fill-box";
+    band.style.transformOrigin = "bottom";
+    band.style.transform = "scaleY(0)";
+    band.style.transition = "transform 420ms cubic-bezier(.3,.8,.3,1) "
+                          + Math.round((at / 100) * TOTAL) + "ms";
+  });
+
+  new IntersectionObserver(function (entries, io) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      Array.prototype.forEach.call(bands, function (band) {
+        band.style.transform = "scaleY(1)";
+      });
+      io.unobserve(entry.target);
+    });
+  }, { threshold: 0.3 }).observe(svg);
 })();
 </script>
 {% endblock %}
