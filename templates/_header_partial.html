@@ -16,6 +16,50 @@
     font-family: var(--sans);
     box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   }
+
+  /* Cross-application navigation. Always visible: the three surfaces are
+     one product, and moving between them should not need a menu first. */
+  #app-crosslinks {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 14px;
+    min-width: 0;
+  }
+  #app-crosslinks a,
+  #app-nav-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #app-crosslinks a:hover,
+  #app-nav-back:hover { background: var(--raised); color: var(--text); }
+  #app-crosslinks a[aria-current="page"] {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+  }
+  #app-crosslinks .sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 6px;
+  }
+  /* On a narrow window the module switcher and badges matter more. */
+  @media (max-width: 900px) {
+    #app-crosslinks a span, #app-nav-back span { display: none; }
+    #app-crosslinks { margin-left: 8px; }
+  }
   #app-global-header .header-left {
     display: flex;
     align-items: center;
@@ -364,9 +408,24 @@
 
 <header id="app-global-header">
   <a href="{{ root }}/home" class="header-left">
-    <i class="fas fa-home"></i>
+    <svg class="ico"><use href="#i-home"/></svg>
     Trading System
   </a>
+
+  {# Where you are and where else you can go, without opening a menu.
+     These lived in the Modules dropdown, which meant every move between
+     the three apps cost a click to discover it first. #}
+  <nav id="app-crosslinks" aria-label="Applications">
+    <button type="button" id="app-nav-back" title="Back" onclick="history.back()">
+      <svg class="ico"><use href="#i-arrow-left"/></svg>
+      <span>Back</span>
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <a href="{{ PRAMANA_URL }}/app" data-app="workspace">Workspace</a>
+    <a href="{{ root }}/home" data-app="terminal">Terminal</a>
+    <a href="{{ PRAMANA_URL }}/go/lab" data-app="lab">Lab</a>
+  </nav>
+
   <div class="header-right">
     <span id="app-header-mode-badge" style="display:none; font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; white-space:nowrap;"></span>
     <span id="app-header-session-badge">⏳ Checking...</span>
@@ -676,4 +735,13 @@
   setInterval(updateAppHeaderSession, 60000);
   setInterval(updateAppHeaderNotifs, 30000);
 })();
+
+  // The terminal is the current app on every page that carries this header.
+  (function () {
+    var here = document.querySelector('#app-crosslinks a[data-app="terminal"]');
+    if (here) here.setAttribute("aria-current", "page");
+    var back = document.getElementById("app-nav-back");
+    // history.length is 1 on a fresh tab: nothing to go back to.
+    if (back && window.history.length <= 1) back.style.display = "none";
+  })();
 </script>
