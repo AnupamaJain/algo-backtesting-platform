@@ -591,7 +591,7 @@ def signup_page(request: Request):
 
     return TEMPLATES.TemplateResponse(
         request, "signup.html",
-        {**_seo(request, "/signup"), "page": "signup",
+        {**_seo(request, "/signup"), "page": "signup", "force_theme": "dark",
          "min_password": MIN_PASSWORD_LENGTH},
     )
 
@@ -602,7 +602,7 @@ def login_page(request: Request):
 
     return TEMPLATES.TemplateResponse(
         request, "signup.html",
-        {**_seo(request, "/login"), "page": "login", "mode": "login",
+        {**_seo(request, "/login"), "page": "login", "force_theme": "dark", "mode": "login",
          "min_password": MIN_PASSWORD_LENGTH},
     )
 
@@ -710,7 +710,7 @@ def go(target: str, request: Request):
     # omitted it rendered as a 500.
     return TEMPLATES.TemplateResponse(
         request, "go.html",
-        {**_seo(request, f"/go/{target}"), "target": target, "page": "go"},
+        {**_seo(request, f"/go/{target}"), "target": target, "page": "go", "force_theme": "dark"},
     )
 
 
@@ -740,7 +740,7 @@ def workspace(request: Request, session: SessionDep, prov: ProvenanceDep):
             }),
             "as_of": prov.as_of,
             "is_stale": prov.is_stale,
-            "page": "app",
+            "page": "app", "force_theme": "dark",
         },
     )
 

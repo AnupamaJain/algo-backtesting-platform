@@ -403,6 +403,20 @@ app.register_blueprint(setup_bp)
 
 
 # Global Security Hook
+@app.context_processor
+def _inject_app_urls():
+    """Where the other two apps live, for every template.
+
+    Hardcoded 127.0.0.1 links work on one laptop and nowhere else. Behind a
+    proxy the three apps sit on three hostnames, and these are what the
+    header and the launcher point at.
+    """
+    return {
+        "PRAMANA_URL": os.environ.get("PRAMANA_PUBLIC_URL", "http://127.0.0.1:8787"),
+        "LAB_URL": os.environ.get("LAB_PUBLIC_URL", "http://127.0.0.1:4300"),
+    }
+
+
 @app.before_request
 def enforce_auth():
     """Enforce authentication for all routes except login, static, and the API blueprint.

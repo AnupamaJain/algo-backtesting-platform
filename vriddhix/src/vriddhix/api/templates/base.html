@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="en">
+{# App surfaces force the product theme; the landing page keeps its own. #}
+<html lang="en"{% if force_theme %} data-theme="{{ force_theme }}"{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -44,8 +45,11 @@
   // Applied before first paint: a flash of the wrong theme is the first
   // thing a reader notices and the last thing they forgive.
   try {
-    var t = localStorage.getItem("tathya-theme");
-    if (t) document.documentElement.setAttribute("data-theme", t);
+    // A page that forces its theme wins over a remembered preference.
+    if (!document.documentElement.hasAttribute("data-theme")) {
+      var t = localStorage.getItem("tathya-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+    }
   } catch (e) {}
 </script>
 </head>

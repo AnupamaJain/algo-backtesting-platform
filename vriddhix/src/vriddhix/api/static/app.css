@@ -21,37 +21,45 @@
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 
+
 :root:not([data-theme="light"]) {
   @media (prefers-color-scheme: dark) {
-    --bg:        #131211;
-    --surface:   #1b1a18;
-    --surface-2: #232120;
-    --border:    #322f2c;
-    --text:      #eceae6;
-    --muted:     #a49e96;
-    --faint:     #736d66;
-    --accent:    #d9a066;
-    --accent-soft:#2e2419;
-    --bull:      #4cb783;
-    --bear:      #e07a6c;
-    --warn:      #d6a63c;
+    /* The dark theme is the product theme: the same ink, panels and lines
+       the Strategy Lab and the terminal use, so the three app surfaces read
+       as one console. Light stays the landing page's own -- a marketing page
+       and a trading console are allowed to differ. */
+    --bg:        #0a0d16;
+    --surface:   #10141f;
+    --surface-2: #141a29;
+    --border:    #232c40;
+    --text:      #e7ecf6;
+    --muted:     #94a3b8;
+    --faint:     #64748b;
+    --accent:    #22d3ee;
+    --accent-soft:#0e2a33;
+    --bull:      #34d399;
+    --bear:      #fb7185;
+    --warn:      #fbbf24;
     --warn-soft: #2b2415;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg:        #131211;
-  --surface:   #1b1a18;
-  --surface-2: #232120;
-  --border:    #322f2c;
-  --text:      #eceae6;
-  --muted:     #a49e96;
-  --faint:     #736d66;
-  --accent:    #d9a066;
-  --accent-soft:#2e2419;
-  --bull:      #4cb783;
-  --bear:      #e07a6c;
-  --warn:      #d6a63c;
+  /* The product palette -- identical to the Strategy Lab and the terminal
+     so the three app surfaces read as one console. Kept in one block; a
+     second copy earlier in the file was silently losing to this one. */
+  --bg:        #0a0d16;
+  --surface:   #10141f;
+  --surface-2: #141a29;
+  --border:    #232c40;
+  --text:      #e7ecf6;
+  --muted:     #94a3b8;
+  --faint:     #64748b;
+  --accent:    #22d3ee;
+  --accent-soft:#0e2a33;
+  --bull:      #34d399;
+  --bear:      #fb7185;
+  --warn:      #fbbf24;
   --warn-soft: #2b2415;
 }
 
@@ -1172,3 +1180,7 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
 .nav-apps { display: flex; gap: 14px; padding-right: 14px; border-right: 1px solid var(--border); }
 .nav-apps a { color: var(--muted); text-decoration: none; font-size: .9rem; }
 .nav-apps a:hover { color: var(--text); }
+
+/* The product accent is bright; primary buttons take dark ink on it. */
+:root[data-theme="dark"] .btn-primary,
+:root:not([data-theme="light"]) .btn-primary { color: var(--accent-ink, #0a0d16); }

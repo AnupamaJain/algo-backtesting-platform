@@ -8,9 +8,9 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f1117;
-      color: #e2e8f0;
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
     }
     .home-container {
@@ -21,12 +21,12 @@
     .home-title {
       font-size: 22px;
       font-weight: 600;
-      color: #f6ad55;
+      color: var(--warn);
       margin-bottom: 4px;
     }
     .home-subtitle {
       font-size: 13px;
-      color: #718096;
+      color: var(--muted);
       margin-bottom: 32px;
     }
     .category-section {
@@ -37,10 +37,10 @@
       font-weight: 700;
       letter-spacing: 1.2px;
       text-transform: uppercase;
-      color: #718096;
+      color: var(--muted);
       margin-bottom: 12px;
       padding-bottom: 6px;
-      border-bottom: 1px solid #2d3748;
+      border-bottom: 1px solid var(--border);
     }
     .card-grid {
       display: grid;
@@ -48,8 +48,8 @@
       gap: 12px;
     }
     .module-card {
-      background: #1a1f2e;
-      border: 1px solid #2d3748;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 10px;
       padding: 18px 16px;
       text-decoration: none;
@@ -61,8 +61,8 @@
       cursor: pointer;
     }
     .module-card:hover {
-      border-color: #f6ad55;
-      background: #1e2535;
+      border-color: var(--warn);
+      background: var(--surface-2);
       transform: translateY(-2px);
     }
     .module-card .card-icon {
@@ -72,11 +72,11 @@
     .module-card .card-name {
       font-size: 14px;
       font-weight: 600;
-      color: #e2e8f0;
+      color: var(--text);
     }
     .module-card .card-desc {
       font-size: 11px;
-      color: #718096;
+      color: var(--muted);
       line-height: 1.4;
     }
   </style>
@@ -92,9 +92,9 @@
   <div class="category-section" id="launch-section">
     <div class="category-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       Launch
-      <span id="launch-broker" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#1e2535;color:#a0aec0">…</span>
+      <span id="launch-broker" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface-2);color:var(--muted)">…</span>
       <span id="launch-mode" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px"></span>
-      <a href="/lab-strategies" id="launch-lab" style="margin-left:auto;font-size:11px;color:#63b3ed;text-decoration:none">Backtest these in the Strategy Lab ↗</a>
+      <a href="/lab-strategies" id="launch-lab" style="margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none">Backtest these in the Strategy Lab ↗</a>
     </div>
     <div id="launch-grid" class="card-grid">
       <div class="card-desc" style="padding:12px">Loading strategies…</div>
@@ -221,7 +221,7 @@
   var brokerEl = document.getElementById("launch-broker");
   var modeEl = document.getElementById("launch-mode");
   var labLink = document.getElementById("launch-lab");
-  labLink.href = "http://127.0.0.1:4300/console/strategies?universe=india";
+  labLink.href = "{{ PRAMANA_URL }}/go/lab";
 
   function esc(t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
@@ -231,17 +231,17 @@
     brokerEl.textContent = d.broker;
     modeEl.textContent = d.live_trading ? "LIVE — real money" : "PAPER";
     modeEl.style.background = d.live_trading ? "#742a2a" : "#2a4365";
-    modeEl.style.color = d.live_trading ? "#feb2b2" : "#90cdf4";
+    modeEl.style.color = d.live_trading ? "#feb2b2" : "var(--accent)";
 
     grid.innerHTML = d.strategies.map(function (s) {
-      var state = !s.installed ? '<span style="color:#fc8181">missing files</span>'
-                : s.running ? '<span style="color:#68d391">● running</span>'
-                : '<span style="color:#718096">idle</span>';
+      var state = !s.installed ? '<span style="color:var(--bear)">missing files</span>'
+                : s.running ? '<span style="color:var(--bull)">● running</span>'
+                : '<span style="color:var(--muted)">idle</span>';
       var href = s.dashboard || "#";
       return '<a href="' + esc(href) + '" class="module-card">'
         + '<div class="card-name">' + esc(s.name) + ' <span style="font-size:10px;font-weight:500;margin-left:6px">' + state + '</span></div>'
         + '<div class="card-desc">' + esc(s.summary) + '</div>'
-        + '<div class="card-desc" style="margin-top:6px;color:#4a5568">' + esc(s.entry) + '</div>'
+        + '<div class="card-desc" style="margin-top:6px;color:var(--faint)">' + esc(s.entry) + '</div>'
         + '</a>';
     }).join("") || '<div class="card-desc" style="padding:12px">No Indian strategies installed.</div>';
   }).catch(function () {

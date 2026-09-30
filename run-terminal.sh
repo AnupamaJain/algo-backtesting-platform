@@ -15,6 +15,8 @@ LOG="$ROOT/logs/flask_app.log"
 # real Dhan prices -- no order can leave the building, and the vendor is Dhan
 # rather than Zerodha. common_lib reads this; without it the strategies
 # default to Flattrade.
+export PRAMANA_PUBLIC_URL="${PRAMANA_PUBLIC_URL:-http://127.0.0.1:8787}"
+export LAB_PUBLIC_URL="${LAB_PUBLIC_URL:-http://127.0.0.1:4300}"
 export BROKER_NAME="${BROKER_NAME:-paper_dhan}"
 
 # Same shared secret the research platform reads. Absent, /sso does not exist.

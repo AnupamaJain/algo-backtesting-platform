@@ -1,0 +1,13 @@
+/* One palette for the product. Identical values live in the Strategy Lab
+   (globals.css @theme) and in Pramana's dark theme (app.css), so the three
+   app surfaces read as one console. Edit all three together. */
+:root {
+  --bg: #0a0d16; --surface: #10141f; --surface-2: #141a29; --raised: #1a2136;
+  --border: #232c40; --border-soft: #1a2233;
+  --text: #e7ecf6; --muted: #94a3b8; --faint: #64748b;
+  --accent: #22d3ee; --accent-ink: #0a0d16;
+  --bull: #34d399; --bear: #fb7185; --warn: #fbbf24;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Code", monospace;
+}
+body { font-family: var(--sans); background: var(--bg); color: var(--text); }

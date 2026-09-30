@@ -1,17 +1,18 @@
 {% include "_csrf_shim.html" ignore missing %}
+<link rel="stylesheet" href="/static/theme.css">
 <style>
   #app-global-header {
     position: sticky;
     top: 0;
     z-index: 1000;
     height: 45px;
-    background: #1a1f2e;
-    border-bottom: 1px solid #2d3748;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--sans);
     box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   }
   #app-global-header .header-left {
@@ -19,7 +20,7 @@
     align-items: center;
     gap: 10px;
     text-decoration: none;
-    color: #f6ad55;
+    color: var(--warn);
     font-weight: 600;
     font-size: 15px;
     white-space: nowrap;
@@ -37,8 +38,8 @@
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 12px;
-    background: #2d3748;
-    color: #a0aec0;
+    background: var(--border);
+    color: var(--muted);
     white-space: nowrap;
   }
   #app-header-session-badge.connected {
@@ -48,7 +49,7 @@
   }
   #app-header-session-badge.disconnected {
     background: rgba(252,129,129,0.15);
-    color: #fc8181;
+    color: var(--bear);
     border: 1px solid rgba(252,129,129,0.3);
   }
   #app-header-connect-btn {
@@ -69,19 +70,19 @@
   #app-header-bell-wrapper {
     position: relative;
     cursor: pointer;
-    color: #a0aec0;
+    color: var(--muted);
     font-size: 16px;
     line-height: 1;
   }
   #app-header-bell-wrapper:hover {
-    color: #e2e8f0;
+    color: var(--text);
   }
   #app-header-notif-badge {
     display: none;
     position: absolute;
     top: -6px;
     right: -7px;
-    background: #fc8181;
+    background: var(--bear);
     color: white;
     font-size: 9px;
     font-weight: 700;
@@ -99,8 +100,8 @@
     top: 42px;
     right: 0;
     width: 320px;
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     z-index: 2000;
@@ -114,19 +115,19 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 14px 10px;
-    border-bottom: 1px solid #2d3748;
+    border-bottom: 1px solid var(--border);
     font-size: 13px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--text);
   }
   #app-header-notif-panel .notif-panel-close {
     cursor: pointer;
-    color: #718096;
+    color: var(--muted);
     font-size: 15px;
     line-height: 1;
     padding: 2px 4px;
   }
-  #app-header-notif-panel .notif-panel-close:hover { color: #e2e8f0; }
+  #app-header-notif-panel .notif-panel-close:hover { color: var(--text); }
   #app-header-notif-panel .notif-list {
     max-height: 320px;
     overflow-y: auto;
@@ -144,14 +145,14 @@
     margin-top: 2px;
     flex-shrink: 0;
   }
-  #app-header-notif-panel .notif-icon.error   { color: #fc8181; }
-  #app-header-notif-panel .notif-icon.warning { color: #f6ad55; }
-  #app-header-notif-panel .notif-icon.info    { color: #63b3ed; }
+  #app-header-notif-panel .notif-icon.error   { color: var(--bear); }
+  #app-header-notif-panel .notif-icon.warning { color: var(--warn); }
+  #app-header-notif-panel .notif-icon.info    { color: var(--accent); }
   #app-header-notif-panel .notif-body { flex: 1; min-width: 0; }
   #app-header-notif-panel .notif-title {
     font-size: 12px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--text);
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
@@ -159,7 +160,7 @@
   }
   #app-header-notif-panel .notif-text {
     font-size: 11px;
-    color: #718096;
+    color: var(--muted);
     line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
@@ -167,7 +168,7 @@
   }
   #app-header-notif-panel .notif-time {
     font-size: 10px;
-    color: #4a5568;
+    color: var(--faint);
     white-space: nowrap;
     flex-shrink: 0;
     margin-top: 3px;
@@ -176,11 +177,11 @@
     padding: 24px 14px;
     text-align: center;
     font-size: 12px;
-    color: #4a5568;
+    color: var(--faint);
   }
   #app-header-notif-panel .notif-panel-footer {
     padding: 8px 14px;
-    border-top: 1px solid #2d3748;
+    border-top: 1px solid var(--border);
   }
   #app-header-notif-panel .notif-item-actions {
     display: flex;
@@ -206,13 +207,13 @@
   #app-header-notif-panel .notif-btn-complete:hover:not(:disabled) { background: rgba(72,187,120,0.22); }
   #app-header-notif-panel .notif-btn-ignore {
     background: rgba(113,128,150,0.12);
-    color: #718096;
+    color: var(--muted);
     border-color: rgba(113,128,150,0.3);
   }
   #app-header-notif-panel .notif-btn-ignore:hover:not(:disabled) { background: rgba(113,128,150,0.22); }
   #app-header-notif-panel .notif-btn-open {
     background: rgba(246,173,85,0.12);
-    color: #f6ad55;
+    color: var(--warn);
     border-color: rgba(246,173,85,0.3);
     text-decoration: none;
     display: inline-block;
@@ -221,11 +222,11 @@
   #app-header-notif-view-all {
     font-size: 11px;
     font-weight: 600;
-    color: #63b3ed;
+    color: var(--accent);
     text-decoration: none;
     display: inline-block;
   }
-  #app-header-notif-view-all:hover { color: #90cdf4; }
+  #app-header-notif-view-all:hover { color: var(--accent); }
 
   /* Actions dropdown */
   #app-header-actions-btn {
@@ -234,7 +235,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #f6ad55;
+    color: var(--warn);
     font-size: 16px;
     line-height: 1;
     padding: 4px 6px;
@@ -251,8 +252,8 @@
     top: 32px;
     right: 0;
     width: 200px;
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     z-index: 2000;
@@ -265,7 +266,7 @@
   .actions-section-header {
     font-size: 10px;
     font-weight: 700;
-    color: #4a5568;
+    color: var(--faint);
     letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 8px 14px 4px;
@@ -274,7 +275,7 @@
   }
   .actions-divider {
     height: 1px;
-    background: #2d3748;
+    background: var(--border);
     margin: 4px 0;
   }
   .actions-item {
@@ -288,8 +289,8 @@
     transition: background 0.15s;
   }
   .actions-item:hover {
-    background: #2d3748;
-    color: #e2e8f0;
+    background: var(--border);
+    color: var(--text);
   }
   .actions-item i {
     font-size: 12px;
@@ -298,11 +299,11 @@
     flex-shrink: 0;
   }
   .actions-item.danger {
-    color: #fc8181;
+    color: var(--bear);
   }
   .actions-item.danger:hover {
     background: rgba(252,129,129,0.1);
-    color: #fc8181;
+    color: var(--bear);
   }
 
   /* Modules dropdown */
@@ -312,7 +313,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #63b3ed;
+    color: var(--accent);
     font-size: 16px;
     line-height: 1;
     padding: 4px 8px;
@@ -321,7 +322,7 @@
     gap: 6px;
   }
   #app-header-modules-btn:hover {
-    color: #90cdf4;
+    color: var(--accent);
     background: rgba(99, 179, 237, 0.12);
   }
   #app-header-modules-btn .module-label {
@@ -335,8 +336,8 @@
     left: 50%;
     transform: translateX(-50%);
     width: 220px;
-    background: #1a1f2e;
-    border: 1px solid #2d3748;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     z-index: 2000;
@@ -383,8 +384,8 @@
         <a href="/covered_calls/" class="actions-item"><i class="fas fa-umbrella"></i> Covered Calls</a>
         <div class="actions-divider"></div>
         <div class="actions-section-header">Apps</div>
-        <a href="http://127.0.0.1:8787/app" class="actions-item"><i class="fas fa-flask"></i> Research workspace</a>
-        <a href="http://127.0.0.1:8787/go/lab" class="actions-item"><i class="fas fa-vial"></i> Strategy Lab</a>
+        <a href="{{ PRAMANA_URL }}/app" class="actions-item"><i class="fas fa-flask"></i> Research workspace</a>
+        <a href="{{ PRAMANA_URL }}/go/lab" class="actions-item"><i class="fas fa-vial"></i> Strategy Lab</a>
       </div>
     </div>
 
@@ -677,13 +678,13 @@
         if (data.live_trading) {
           badge.textContent = '🔴 LIVE';
           badge.style.background = 'rgba(252,129,129,0.15)';
-          badge.style.color = '#fc8181';
+          badge.style.color = 'var(--bear)';
           badge.style.border = '1px solid rgba(252,129,129,0.4)';
           badge.title = 'Live trading is ENABLED — orders are sent to the broker with real money.';
         } else {
           badge.textContent = '🟡 DRY-RUN';
           badge.style.background = 'rgba(246,173,85,0.15)';
-          badge.style.color = '#f6ad55';
+          badge.style.color = 'var(--warn)';
           badge.style.border = '1px solid rgba(246,173,85,0.4)';
           badge.title = 'Dry-run mode — order placement is simulated. Set [safety] live_trading = true in configfile.ini to trade for real.';
         }
