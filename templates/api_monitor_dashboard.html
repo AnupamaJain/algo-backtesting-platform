@@ -10,19 +10,19 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f4f4f9;
-            color: #333;
+            background:var(--bg);
+            color:var(--text);
         }
 
         h1 {
             font-size: 1.5rem;
             margin-bottom: 6px;
-            color: #1a1a2e;
+            color:var(--text);
         }
 
         .subtitle {
             font-size: 0.85rem;
-            color: #666;
+            color:var(--muted);
             margin-bottom: 20px;
         }
 
@@ -38,7 +38,7 @@
 
         .refresh-info {
             font-size: 0.8rem;
-            color: #888;
+            color:var(--muted);
             margin-left: auto;
         }
 
@@ -51,7 +51,7 @@
         }
 
         .card {
-            background: #fff;
+            background:var(--surface);
             border-radius: 10px;
             padding: 16px 18px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -66,7 +66,7 @@
 
         .card .label {
             font-size: 0.75rem;
-            color: #888;
+            color:var(--muted);
             margin-top: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -87,20 +87,20 @@
 
         .section-header h2 {
             font-size: 1rem;
-            color: #1a1a2e;
+            color:var(--text);
         }
 
         .badge {
             font-size: 0.7rem;
-            background: #e2e8f0;
-            color: #555;
+            background:var(--raised);
+            color:var(--muted);
             border-radius: 20px;
             padding: 2px 8px;
         }
 
         /* Tables */
         .table-wrap {
-            background: #fff;
+            background:var(--surface);
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             margin-bottom: 28px;
@@ -122,17 +122,17 @@
             white-space: nowrap;
         }
 
-        tbody tr:nth-child(even) { background: #f9fafb; }
-        tbody tr:hover { background: #eef2ff; }
+        tbody tr:nth-child(even) { background:var(--surface-2); }
+        tbody tr:hover { background:var(--raised); }
 
         td {
             padding: 8px 14px;
-            border-bottom: 1px solid #eee;
+            border-bottom:1px solid var(--border);
             vertical-align: middle;
         }
 
         .mono { font-family: 'Courier New', monospace; font-size: 0.78rem; }
-        .muted { color: #aaa; }
+        .muted { color:var(--faint); }
 
         .pill {
             display: inline-block;
@@ -198,7 +198,7 @@
 
         .auto-refresh-label {
             font-size: 0.8rem;
-            color: #666;
+            color:var(--muted);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -206,7 +206,7 @@
 
         #last-updated {
             font-size: 0.78rem;
-            color: #aaa;
+            color:var(--faint);
         }
 
         /* Day tabs */
@@ -223,19 +223,19 @@
             padding: 5px 12px;
             font-size: 0.8rem;
             font-weight: 600;
-            background: #fff;
-            color: #555;
+            background:var(--surface);
+            color:var(--muted);
             transition: background 0.15s, color 0.15s;
         }
 
-        .day-tab:hover { background: #eef2ff; }
+        .day-tab:hover { background:var(--raised); }
         .day-tab.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
         .day-tab.live-tab.active { background: #38a169; border-color: #38a169; }
 
         #recent-count-badge {
             font-size: 0.7rem;
-            background: #e2e8f0;
-            color: #555;
+            background: var(--raised);
+            color: var(--text);
             border-radius: 20px;
             padding: 2px 8px;
         }

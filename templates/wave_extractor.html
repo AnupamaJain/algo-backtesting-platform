@@ -11,8 +11,8 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            background-color: #f4f4f9;
-            color: #333;
+            background-color:var(--bg);
+            color:var(--text);
         }
 
         /* Modal Styles */
@@ -30,7 +30,7 @@
         }
 
         .modal-content {
-            background-color: #ffffff;
+            background-color:var(--surface);
             margin: 5% auto;
             padding: 30px;
             border: none;
@@ -53,7 +53,7 @@
         }
 
         .close {
-            color: #aaa;
+            color:var(--faint);
             float: right;
             font-size: 24px;
             font-weight: bold;
@@ -62,7 +62,7 @@
 
         .close:hover,
         .close:focus {
-            color: #333;
+            color:var(--text);
             text-decoration: none;
             cursor: pointer;
         }
@@ -70,7 +70,7 @@
         .modal h2 {
             margin-top: 0;
             margin-bottom: 25px;
-            color: #2c3e50;
+            color:var(--text);
             font-size: 24px;
             border-bottom: 2px solid #f0f2f5;
             padding-bottom: 15px;
@@ -94,7 +94,7 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #555;
+            color:var(--muted);
             font-size: 14px;
         }
 
@@ -102,12 +102,12 @@
         .form-group input[type="number"] {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
+            border:1px solid var(--border);
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 15px;
             transition: border-color 0.2s, box-shadow 0.2s;
-            background-color: #fafafa;
+            background-color:var(--surface-2);
         }
 
         .form-group input[type="text"]:focus,
@@ -115,12 +115,12 @@
             border-color: #3498db;
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
             outline: none;
-            background-color: #fff;
+            background-color:var(--surface);
         }
 
         .form-group input[readonly] {
-            background-color: #e9ecef;
-            color: #6c757d;
+            background-color:var(--raised);
+            color:var(--muted);
             cursor: not-allowed;
         }
 
@@ -173,7 +173,7 @@
         }
 
         .btn-raw {
-            color: #6c757d;
+            color:var(--muted);
         }
 
         .btn-restart {
@@ -208,7 +208,7 @@
         }
 
         h1 {
-            color: #2c3e50;
+            color:var(--text);
         }
 
         .container {
@@ -217,7 +217,7 @@
         }
 
         .card {
-            background: white;
+            background:var(--surface);
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -234,17 +234,17 @@
         td {
             padding: 8px 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom:1px solid var(--border);
             font-size: 14px;
         }
 
         th {
-            background-color: #f8f9fa;
+            background-color:var(--surface-2);
             font-weight: 600;
         }
 
         tr:hover {
-            background-color: #f1f1f1;
+            background-color: rgba(255,255,255,0.05);
         }
 
         .status-indicator {
@@ -270,7 +270,7 @@
         }
         .we-pnl-pos  { color: #28a745; }
         .we-pnl-neg  { color: #e74c3c; }
-        .we-pos-neutral { color: #888; }
+        .we-pos-neutral { color:var(--muted); }
         .we-fill-badge { color: #a78bfa; }
         .we-stats-cell {
             font-size: 11px;
@@ -308,7 +308,7 @@
         .input-compact {
             width: 100%;
             padding: 4px 8px;
-            border: 1px solid #ddd;
+            border:1px solid var(--border);
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 13px;
@@ -327,7 +327,7 @@
         }
 
         .modal-content {
-            background-color: #fefefe;
+            background-color:var(--surface);
             margin: 5% auto;
             padding: 0;
             border: 1px solid #888;
@@ -342,23 +342,23 @@
 
         .modal-header {
             padding: 15px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom:1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #fff;
+            background-color:var(--surface);
             border-radius: 8px 8px 0 0;
         }
 
         .modal-body {
             padding: 20px;
             overflow-y: auto;
-            background-color: #f4f4f9;
+            background-color:var(--bg);
             flex: 1;
         }
 
         .close-btn {
-            color: #aaa;
+            color:var(--faint);
             float: right;
             font-size: 28px;
             font-weight: bold;
@@ -417,7 +417,7 @@
             width: 14px;
             left: 3px;
             bottom: 3px;
-            background-color: white;
+            background-color:var(--surface);
             transition: .4s;
             border-radius: 50%;
         }
@@ -459,7 +459,7 @@
         }
 
         th.active-sort {
-            background-color: #e3f2fd;
+            background-color:var(--raised);
             color: #1976d2;
         }
 
@@ -468,7 +468,7 @@
         /* Price adjustment controls */
         .arrow-btn {
             border: 1px solid #bbb;
-            background: #fafafa;
+            background:var(--surface-2);
             cursor: pointer;
             font-size: 10px;
             padding: 1px 6px;
@@ -478,7 +478,7 @@
             vertical-align: middle;
             transition: background 0.15s;
         }
-        .arrow-btn:hover { background: #e0e0e0; }
+        .arrow-btn:hover { background:var(--raised); }
 
         .btn-save-price {
             border: 1px solid #1976D2;
@@ -501,7 +501,7 @@
             cursor: pointer;
             font-size: 12px;
             padding: 0 3px;
-            color: #aaa;
+            color:var(--faint);
             vertical-align: middle;
             transition: color 0.15s;
         }
@@ -541,7 +541,7 @@
             cursor: pointer;
             padding: 0 3px;
             font-size: 13px;
-            color: #888;
+            color:var(--muted);
             vertical-align: middle;
             line-height: 1;
         }
@@ -553,7 +553,7 @@
         }
         .we-mult-badge.active  { color: #ffb74d; }
         .we-mult-badge.cooled  { color: #ef5350; }
-        .we-mult-badge.neutral { color: #666; }
+        .we-mult-badge.neutral { color:var(--muted); }
     </style>
 </head>
 
@@ -582,7 +582,7 @@
                             <input type="checkbox" id="weGapModeToggle" onchange="onWeGapModeToggle(this.checked)">
                             <span class="slider"></span>
                         </label>
-                        <span id="weGapModeLabelAuto" style="color:#888;">Auto by Move</span>
+                        <span id="weGapModeLabelAuto" style="color:var(--muted);">Auto by Move</span>
                     </span>
                 </h2>
                 <div>
@@ -647,9 +647,9 @@
                         <th onclick="sortTable(1)">Symbol</th>
                         <th onclick="sortTable(2)">Status</th>
                         <th onclick="sortTable(3)">B:S Price</th>
-                        <th onclick="sortTable(4)">LTP <span style="font-size:10px;color:#888;">(+ pos)</span></th>
+                        <th onclick="sortTable(4)">LTP <span style="font-size:10px;color:var(--muted);">(+ pos)</span></th>
                         <th onclick="sortTable(5)">Gap (B:S)</th>
-                        <th onclick="sortTable(6)">Qty (B:S) <span style="font-size:10px;color:#888;">(+ fills)</span></th>
+                        <th onclick="sortTable(6)">Qty (B:S) <span style="font-size:10px;color:var(--muted);">(+ fills)</span></th>
                         <th>Stats</th>
                         <th onclick="sortTable(7)">Last Update</th>
                         <th>Actions</th>
@@ -670,12 +670,12 @@
                     <button class="btn btn-primary" onclick="loadWeConfig()">Refresh</button>
                 </div>
             </div>
-            <p style="color: #666; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+            <p style="color: var(--muted); font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
                 Algo-level parameters for the Wave Extractor. Changes take effect on next <code>place_duo_order()</code> call — no restart needed.
             </p>
             <div id="weSettingsBody">
                 <!-- per-underlying tabs will be rendered here by JS -->
-                <p style="color: #888; text-align: center;">Loading…</p>
+                <p style="color: var(--muted); text-align: center;">Loading…</p>
             </div>
         </div>
 
@@ -688,7 +688,7 @@
                     <button class="btn btn-primary" onclick="refreshDeltaConfig()">Refresh</button>
                 </div>
             </div>
-            <p style="color: #666; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+            <p style="color: var(--muted); font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
                 <b>Default</b> limits apply to any expiry without a specific override. Leave per-expiry inputs blank to inherit Default.
                 Live Delta updates from running instances — rows highlighted red are in breach.
             </p>
@@ -705,7 +705,7 @@
                 </thead>
                 <tbody id="deltaTableBody">
                     <tr>
-                        <td colspan="6" style="text-align:center; color:#888;">Loading config…</td>
+                        <td colspan="6" style="text-align:center; color:var(--muted);">Loading config…</td>
                     </tr>
                 </tbody>
             </table>
@@ -717,7 +717,7 @@
                 <h2 style="margin: 0;">🧪 Amplitude Testbed</h2>
                 <span id="ampDteIndicator" style="font-size: 12px; color: #aaa; font-weight: 500;"></span>
             </div>
-            <p style="color: #666; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+            <p style="color: var(--muted); font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
                 Preview-only: shows what buy/sell gap the IV+gamma amplitude formula would suggest.
                 Does <b>not</b> start, modify, or affect any running instance. DTE is holiday-aware
                 (excludes declared NSE holidays, not just weekends).
@@ -764,7 +764,7 @@
                     <input type="number" step="1" id="amp_hard_ceiling_pct" value="90" oninput="ampRenderTable()">
                 </div>
             </div>
-            <p style="color: #888; font-size: 12px; margin-top: -5px;">
+            <p style="color: var(--muted); font-size: 12px; margin-top: -5px;">
                 Hard Ceiling caps the suggested gap so it can never reach or exceed the option's own LTP —
                 a buy gap ≥ LTP would imply a negative/zero buy price, which Kite would reject.
             </p>
@@ -777,7 +777,7 @@
                 <h2 style="margin: 0;">📊 Today's Order Tracking</h2>
                 <button class="btn btn-primary" onclick="refreshOrderTracking()">Refresh</button>
             </div>
-            <p style="color: #666; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+            <p style="color: var(--muted); font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
                 Shows orders executed by the Wave Extractor algo only. Resets daily at midnight.
             </p>
 
@@ -797,7 +797,7 @@
                 </thead>
                 <tbody id="ceSummaryBody">
                     <tr>
-                        <td colspan="7" style="text-align:center; color: #888;">No CE orders today</td>
+                        <td colspan="7" style="text-align:center; color: var(--muted);">No CE orders today</td>
                     </tr>
                 </tbody>
             </table>
@@ -818,13 +818,13 @@
                 </thead>
                 <tbody id="peSummaryBody">
                     <tr>
-                        <td colspan="7" style="text-align:center; color: #888;">No PE orders today</td>
+                        <td colspan="7" style="text-align:center; color: var(--muted);">No PE orders today</td>
                     </tr>
                 </tbody>
             </table>
 
             <!-- Detailed Orders Table -->
-            <h3 style="color: #333; margin-top: 25px; margin-bottom: 10px;">📋 All Executed Orders</h3>
+            <h3 style="color: var(--text); margin-top: 25px; margin-bottom: 10px;">📋 All Executed Orders</h3>
             <table class="table table-bordered" id="ordersTable">
                 <thead>
                     <tr>
@@ -838,7 +838,7 @@
                 </thead>
                 <tbody id="ordersTableBody">
                     <tr>
-                        <td colspan="6" style="text-align:center; color: #888;">No orders executed today</td>
+                        <td colspan="6" style="text-align:center; color: var(--muted);">No orders executed today</td>
                     </tr>
                 </tbody>
             </table>
@@ -948,7 +948,7 @@
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <h3 style="margin: 0;">Positions for <span id="lp-selected-expiry"></span></h3>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; color: #555;">Show All Strikes</span>
+                            <span style="font-size: 13px; color: var(--muted);">Show All Strikes</span>
                             <label class="switch">
                                 <input type="checkbox" id="lp-all-strikes-toggle" onchange="onToggleAllStrikes()">
                                 <span class="slider"></span>
@@ -956,7 +956,7 @@
                         </div>
                     </div>
                     <div id="lp-all-strikes-info"
-                        style="display: none; font-size: 12px; color: #888; margin-bottom: 10px;"></div>
+                        style="display: none; font-size: 12px; color: var(--muted); margin-bottom: 10px;"></div>
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -982,7 +982,7 @@
                 <span class="close" onclick="closeGapSettingsModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p style="font-size: 12px; color: #888; margin-top: 0;">
+                <p style="font-size: 12px; color: var(--muted); margin-top: 0;">
                     For each underlying, set the expected down/up move (points) that should trigger a leg.
                     Buy/Sell gap for CE/PE symbols is then computed via option greeks reprice instead of a
                     flat 25% of premium. Leave both fields blank to keep the default 25% behavior.
@@ -1073,7 +1073,7 @@
 
         // ── Multiplier badge + tooltip ──────────────────────────────────────────
         function buildMultCell(mult) {
-            if (!mult || (!mult.effective_buy_mult && !mult.effective_sell_mult)) return '<span style="color:#555;">—</span>';
+            if (!mult || (!mult.effective_buy_mult && !mult.effective_sell_mult)) return '<span style="color:var(--muted);">—</span>';
             const eb = mult.effective_buy_mult  ?? 1;
             const es = mult.effective_sell_mult ?? 1;
             const buyCooled  = mult.buy_cooldown;
@@ -1197,7 +1197,7 @@
 
             if (!expiry) { resultDiv.innerHTML = ''; return; }
 
-            resultDiv.innerHTML = '<p style="color:#888;">Loading…</p>';
+            resultDiv.innerHTML = '<p style="color:var(--muted);">Loading…</p>';
             try {
                 const params = new URLSearchParams({
                     underlying, expiry,
@@ -1234,7 +1234,7 @@
             const hardCeilingPct = (parseFloat(document.getElementById('amp_hard_ceiling_pct').value) || 90) / 100;
 
             if (!ampRows.length) {
-                resultDiv.innerHTML = `<p style="color:#888;">${positionsOnly ? 'No open positions for this underlying/expiry.' : 'No strikes found.'}</p>`;
+                resultDiv.innerHTML = `<p style="color:var(--muted);">${positionsOnly ? 'No open positions for this underlying/expiry.' : 'No strikes found.'}</p>`;
                 return;
             }
 
@@ -1298,7 +1298,7 @@
         function updateSummaryTable(tbodyId, summaryData, type) {
             const tbody = document.getElementById(tbodyId);
             if (summaryData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: #888;">No ${type} orders today</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--muted);">No ${type} orders today</td></tr>`;
                 return;
             }
 
@@ -1306,7 +1306,7 @@
             summaryData.forEach(item => {
                 const pnlDisplay = item.realized_pnl !== null
                     ? formatPnL(item.realized_pnl)
-                    : '<span style="color: #888;">NA</span>';
+                    : '<span style="color: var(--muted);">NA</span>';
                 html += `
                     <tr>
                         <td>${item.symbol}</td>
@@ -1369,7 +1369,7 @@
         function updateOrdersTable(orders) {
             const tbody = document.getElementById('ordersTableBody');
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: #888;">No orders executed today</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--muted);">No orders executed today</td></tr>';
                 return;
             }
 
@@ -1431,7 +1431,7 @@
                 if (tokenInputTarget) {
                     tokenInputTarget.value = event.data.token;
                     // Flash success
-                    tokenInputTarget.style.backgroundColor = '#e8f5e9';
+                    tokenInputTarget.style.backgroundColor = 'rgba(52,211,153,0.14)';
                     setTimeout(() => tokenInputTarget.style.backgroundColor = '', 1000);
 
                     if (tokenInputTarget.id === 'lp_request_token') {
@@ -1450,8 +1450,8 @@
                 <td><input type="text" class="input-compact symbol-input" placeholder="e.g. NIFTY24DEC20000CE"><div class="we-run-warn"></div></td>
                 <td><input type="number" class="input-compact buy-gap-input" value="${Math.round((12.6 * currentBuyGapPercent / 25) * 10) / 10}"></td>
                 <td><input type="number" class="input-compact sell-gap-input" value="${Math.round((12.6 * currentSellGapPercent / 25) * 10) / 10}"></td>
-                <td><input type="number" class="input-compact buy-qty-input" value="300"><div class="open-qty-hint" style="font-size:10px;color:#888;margin-top:2px;min-height:14px;"></div></td>
-                <td><input type="number" class="input-compact sell-qty-input" value="300"><div class="open-qty-hint" style="font-size:10px;color:#888;margin-top:2px;min-height:14px;"></div></td>
+                <td><input type="number" class="input-compact buy-qty-input" value="300"><div class="open-qty-hint" style="font-size:10px;color:var(--muted);margin-top:2px;min-height:14px;"></div></td>
+                <td><input type="number" class="input-compact sell-qty-input" value="300"><div class="open-qty-hint" style="font-size:10px;color:var(--muted);margin-top:2px;min-height:14px;"></div></td>
                 <td style="text-align: center;">
                     <label class="switch">
                         <input type="checkbox" class="gtt-input">
@@ -1681,7 +1681,7 @@
                         ? `<td style="font-weight:bold; vertical-align:middle; border-top: 2px solid #ccc;">${underlying}</td>`
                         : `<td style="border-top: none;"></td>`;
                     const expiryCell = isDefault
-                        ? `<td style="color:#555; font-style:italic; border-top: 2px solid #ccc;">Default</td>`
+                        ? `<td style="color:var(--muted); font-style:italic; border-top: 2px solid #ccc;">Default</td>`
                         : `<td style="font-family:monospace;">${expiry}</td>`;
                     const deltaStyle = isDefault ? 'color:#aaa;' : '';
 
@@ -1694,7 +1694,7 @@
                         <td><button class="btn btn-primary btn-sm" onclick="saveDeltaConfig('${underlying}','${expiry}')">Save</button></td>
                     `;
 
-                    if (isDefault) tr.style.backgroundColor = '#e8f4fd';
+                    if (isDefault) tr.style.backgroundColor = 'rgba(34,211,238,0.08)';
 
                     // Insert in correct DOM order
                     if (prevTr) {
@@ -1829,11 +1829,11 @@
                 html += `
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
                     <span style="width:90px; font-weight:600;">${u}</span>
-                    <label style="font-size:12px; color:#888;">Down (pts)
+                    <label style="font-size:12px; color:var(--muted);">Down (pts)
                         <input type="number" id="gap_${u}_down" value="${movePoints.down ?? ''}" placeholder="25% default"
                             style="width:90px; padding:3px 6px; border-radius:4px; border:1px solid #444; background:#1e1e1e; color:#e0e0e0; margin-left:4px;">
                     </label>
-                    <label style="font-size:12px; color:#888;">Up (pts)
+                    <label style="font-size:12px; color:var(--muted);">Up (pts)
                         <input type="number" id="gap_${u}_up" value="${movePoints.up ?? ''}" placeholder="25% default"
                             style="width:90px; padding:3px 6px; border-radius:4px; border:1px solid #444; background:#1e1e1e; color:#e0e0e0; margin-left:4px;">
                     </label>
@@ -2028,7 +2028,7 @@
                 // Step multiplier scale table
                 html += `
                 <div style="margin-bottom:18px;">
-                    <h4 style="margin-bottom:8px; color:#90caf9;">Step Multiplier Scale <span style="font-size:11px; color:#888;">[buy_mult, sell_mult]</span></h4>
+                    <h4 style="margin-bottom:8px; color:#90caf9;">Step Multiplier Scale <span style="font-size:11px; color:var(--muted);">[buy_mult, sell_mult]</span></h4>
                     <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:6px;">`;
 
                 WE_STEP_KEYS.forEach(rawStep => {
@@ -2048,7 +2048,7 @@
                 // Delta multiplier
                 html += `
                 <div style="margin-bottom:18px;">
-                    <h4 style="margin-bottom:8px; color:#90caf9;">Delta Multiplier <span style="font-size:11px; color:#888;">continuous gap widening as portfolio delta grows</span></h4>
+                    <h4 style="margin-bottom:8px; color:#90caf9;">Delta Multiplier <span style="font-size:11px; color:var(--muted);">continuous gap widening as portfolio delta grows</span></h4>
                     <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px;">
                         <label style="display:inline-flex; align-items:center; gap:6px;">
                             Soft limit δ: <input type="number" id="we_${u}_dm_soft" value="${dm.soft_limit ?? 500}"
@@ -2068,7 +2068,7 @@
                 // Velocity guard
                 html += `
                 <div style="margin-bottom:18px;">
-                    <h4 style="margin-bottom:8px; color:#90caf9;">Velocity Guard <span style="font-size:11px; color:#888;">widen gap when underlying moves fast</span></h4>
+                    <h4 style="margin-bottom:8px; color:#90caf9;">Velocity Guard <span style="font-size:11px; color:var(--muted);">widen gap when underlying moves fast</span></h4>
                     <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px;">
                         <label style="display:inline-flex; align-items:center; gap:6px;">
                             Window (min): <input type="number" id="we_${u}_vg_window" value="${vg.window_minutes ?? 15}"
@@ -2088,7 +2088,7 @@
                 // Fill cooldown
                 html += `
                 <div style="margin-bottom:18px;">
-                    <h4 style="margin-bottom:8px; color:#90caf9;">Fill Cooldown <span style="font-size:11px; color:#888;">suppress side after rapid consecutive fills</span></h4>
+                    <h4 style="margin-bottom:8px; color:#90caf9;">Fill Cooldown <span style="font-size:11px; color:var(--muted);">suppress side after rapid consecutive fills</span></h4>
                     <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px;">
                         <label style="display:inline-flex; align-items:center; gap:6px;">
                             Window (min): <input type="number" id="we_${u}_fc_window" value="${fc.window_minutes ?? 10}"
@@ -2108,7 +2108,7 @@
                 // Cross-instance limits
                 html += `
                 <div style="margin-bottom:18px;">
-                    <h4 style="margin-bottom:8px; color:#90caf9;">Cross-Instance Limits <span style="font-size:11px; color:#888;">total net qty across all running instances</span></h4>
+                    <h4 style="margin-bottom:8px; color:#90caf9;">Cross-Instance Limits <span style="font-size:11px; color:var(--muted);">total net qty across all running instances</span></h4>
                     <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:13px;">
                         <label style="display:inline-flex; align-items:center; gap:6px;">
                             Max CE net qty: <input type="number" id="we_${u}_ci_ce" value="${ci.max_ce_net_qty ?? 600}"
@@ -2123,7 +2123,7 @@
 
                 // Save button
                 html += `
-                <div style="text-align:right; border-top:1px solid #333; padding-top:12px;">
+                <div style="text-align:right; border-top:1px solid var(--border); padding-top:12px;">
                     <button class="btn btn-success" onclick="saveWeConfig('${u}')">Save ${u}</button>
                 </div>`;
 
@@ -2327,7 +2327,7 @@
                 // Level 1: Underlying header
                 const isCollapsed = collapsedState[u];
                 const trHeader = document.createElement('tr');
-                trHeader.style.backgroundColor = '#e3f2fd';
+                trHeader.style.backgroundColor = 'rgba(34,211,238,0.12)';
                 trHeader.style.cursor = 'pointer';
                 trHeader.onclick = () => toggleSection(u);
                 trHeader.innerHTML = `
@@ -2352,11 +2352,11 @@
                     const expId = u + '-' + ts;
                     const isExpCollapsed = collapsedState[expId];
                     const trExp = document.createElement('tr');
-                    trExp.style.backgroundColor = '#f1f8e9';
+                    trExp.style.backgroundColor = 'rgba(52,211,153,0.10)';
                     trExp.style.cursor = 'pointer';
                     trExp.onclick = (e) => { e.stopPropagation(); toggleSection(expId); };
                     trExp.innerHTML = `
-                        <td colspan="14" style="padding-left: 30px; font-weight: 600; color: #555;">
+                        <td colspan="14" style="padding-left: 30px; font-weight: 600; color: var(--muted);">
                             <span style="display:inline-block; width:20px;">${isExpCollapsed ? '▶' : '▼'}</span>
                             Expiry: ${label}
                         </td>
@@ -2386,14 +2386,14 @@
                         const adj = pendingAdjustments[groupKey];
                         const buyPctStr = (adj.buyPct >= 0 ? '+' : '') + adj.buyPct + '%';
                         const sellPctStr = (adj.sellPct >= 0 ? '+' : '') + adj.sellPct + '%';
-                        const buyPctColor = adj.buyPct > 0 ? '#e67e00' : adj.buyPct < 0 ? '#e74c3c' : '#555';
-                        const sellPctColor = adj.sellPct > 0 ? '#e67e00' : adj.sellPct < 0 ? '#e74c3c' : '#555';
+                        const buyPctColor = adj.buyPct > 0 ? '#e67e00' : adj.buyPct < 0 ? '#e74c3c' : 'var(--muted)';
+                        const sellPctColor = adj.sellPct > 0 ? '#e67e00' : adj.sellPct < 0 ? '#e74c3c' : 'var(--muted)';
 
                         // Level 3 header row with price adjustment controls
                         const groupPids = rows.map(r => r.pid).filter(Boolean);
                         const groupLabel = `${u} ${label} ${optType}`;
                         const trOpt = document.createElement('tr');
-                        trOpt.style.backgroundColor = '#fff9c4';
+                        trOpt.style.backgroundColor = 'rgba(251,191,36,0.13)';
                         trOpt.style.cursor = 'pointer';
                         trOpt.id = `opt-header-${groupKey}`;
                         trOpt.innerHTML = `
@@ -2403,12 +2403,12 @@
                                     <span style="display:inline-block; width:20px;">${isOptCollapsed ? '▶' : '▼'}</span>
                                     ${optType}
                                 </span>
-                                <span style="font-size:12px; color:#666; margin-right:3px;">Buy:</span>
+                                <span style="font-size:12px; color:var(--muted); margin-right:3px;">Buy:</span>
                                 <button class="arrow-btn" onclick="event.stopPropagation(); adjustGroupPrice('${groupKey}', 'buy', 1)" title="Increase buy price by 1%">▲</button>
                                 <span id="adj-buy-${groupKey}" style="font-weight:bold; min-width:42px; display:inline-block; text-align:center; color:${buyPctColor};">${buyPctStr}</span>
                                 <button class="arrow-btn" onclick="event.stopPropagation(); adjustGroupPrice('${groupKey}', 'buy', -1)" title="Decrease buy price by 1%">▼</button>
                                 <span style="margin: 0 8px; color:#ccc;">|</span>
-                                <span style="font-size:12px; color:#666; margin-right:3px;">Sell:</span>
+                                <span style="font-size:12px; color:var(--muted); margin-right:3px;">Sell:</span>
                                 <button class="arrow-btn" onclick="event.stopPropagation(); adjustGroupPrice('${groupKey}', 'sell', 1)" title="Increase sell price by 1%">▲</button>
                                 <span id="adj-sell-${groupKey}" style="font-weight:bold; min-width:42px; display:inline-block; text-align:center; color:${sellPctColor};">${sellPctStr}</span>
                                 <button class="arrow-btn" onclick="event.stopPropagation(); adjustGroupPrice('${groupKey}', 'sell', -1)" title="Decrease sell price by 1%">▼</button>
@@ -2439,7 +2439,7 @@
                                 const seg = isBFO ? (isFut ? 'BFO-FUT' : 'BFO-OPT') : (isFut ? 'NFO-FUT' : 'NFO-OPT');
                                 symbolHtml = `<a href="https://kite.zerodha.com/markets/ext/chart/web/tvc/${seg}/${sym}/${instance.instrument_token}" target="_blank" style="text-decoration:none; color:#3498db; font-weight:bold;">${sym} ↗</a>`;
                             }
-                            if (instance.last_price) symbolHtml += ` <span style="font-size:12px; color:#555;">(${instance.last_price})</span>`;
+                            if (instance.last_price) symbolHtml += ` <span style="font-size:12px; color:var(--muted);">(${instance.last_price})</span>`;
                             if (instance.duplicate) {
                                 symbolHtml += ` <span class="we-dup-badge" title="Multiple live processes for this symbol — each places its own legs. Stop the extra one (PID ${instance.pid}).">DUPLICATE</span>`;
                             }
@@ -2470,7 +2470,7 @@
                             }
 
                             // Restriction colouring
-                            let buyColor = '#333', sellColor = '#333';
+                            let buyColor = 'var(--text)', sellColor = 'var(--text)';
                             if (instance.restrictions) {
                                 if (instance.restrictions.buy == 1) { buyColor = '#e74c3c'; sellColor = '#2ecc71'; }
                                 if (instance.restrictions.sell == 1) { sellColor = '#e74c3c'; }
@@ -2606,7 +2606,7 @@
             const span = document.getElementById(`adj-${side}-${groupKey}`);
             if (span) {
                 span.textContent = pctStr;
-                span.style.color = pct > 0 ? '#e67e00' : pct < 0 ? '#e74c3c' : '#555';
+                span.style.color = pct > 0 ? '#e67e00' : pct < 0 ? '#e74c3c' : 'var(--muted)';
             }
         }
 
@@ -2718,8 +2718,8 @@
                     pendingAdjustments[groupKey] = { buyPct: 0, sellPct: 0 };
                     const buySpan = document.getElementById(`adj-buy-${groupKey}`);
                     const sellSpan = document.getElementById(`adj-sell-${groupKey}`);
-                    if (buySpan) { buySpan.textContent = '+0%'; buySpan.style.color = '#555'; }
-                    if (sellSpan) { sellSpan.textContent = '+0%'; sellSpan.style.color = '#555'; }
+                    if (buySpan) { buySpan.textContent = '+0%'; buySpan.style.color = 'var(--muted)'; }
+                    if (sellSpan) { sellSpan.textContent = '+0%'; sellSpan.style.color = 'var(--muted)'; }
 
                     // Clear manual edit mode for all symbols in this group
                     groupInstances.forEach(inst => {
@@ -3503,7 +3503,7 @@
 
                 // Group header row
                 const headerTr = document.createElement('tr');
-                headerTr.style.backgroundColor = color === 'ce' ? '#e3f2fd' : '#fce4ec';
+                headerTr.style.backgroundColor = color === 'ce' ? 'rgba(34,211,238,0.12)' : 'rgba(244,114,182,0.12)';
                 headerTr.innerHTML = `
                     <td colspan="4" style="font-weight: bold; font-size: 14px; color: ${color === 'ce' ? '#1565c0' : '#c62828'}; padding: 10px 12px;">
                         ${color === 'ce' ? '📈' : '📉'} ${label}
@@ -3635,7 +3635,7 @@
             targetRow.querySelector('.token-input').value = '';
 
             // Highlight
-            targetRow.style.backgroundColor = '#e8f5e9';
+            targetRow.style.backgroundColor = 'rgba(52,211,153,0.14)';
             setTimeout(() => targetRow.style.backgroundColor = '', 1000);
 
             // Reference Info Display
@@ -3645,7 +3645,7 @@
                 infoDiv = document.createElement('div');
                 infoDiv.className = 'ref-info';
                 infoDiv.style.fontSize = '10px';
-                infoDiv.style.color = '#555';
+                infoDiv.style.color = 'var(--muted)';
                 infoDiv.style.marginTop = '2px';
                 symbolCell.appendChild(infoDiv);
             }

@@ -196,7 +196,7 @@
 
         .status-text {
             font-size: 14px;
-            color: #aaa;
+            color:var(--faint);
         }
 
         .status-text strong {
@@ -217,7 +217,7 @@
         .tick-time {
             margin-left: auto;
             font-size: 12px;
-            color: #666;
+            color:var(--muted);
         }
 
         /* ---- Charts ---- */
@@ -233,7 +233,7 @@
             padding: 12px 16px;
             font-size: 13px;
             font-weight: 600;
-            color: #888;
+            color:var(--muted);
             text-transform: uppercase;
             letter-spacing: 1.5px;
             background: rgba(255, 255, 255, 0.02);
@@ -272,7 +272,7 @@
         .loading {
             text-align: center;
             padding: 60px;
-            color: #666;
+            color:var(--muted);
         }
 
         .loading i {
@@ -296,7 +296,7 @@
             gap: 20px;
             padding: 10px 16px;
             font-size: 12px;
-            color: #888;
+            color:var(--muted);
             background: rgba(255, 255, 255, 0.02);
         }
 
@@ -328,7 +328,7 @@
         }
 
         .sr-table th {
-            color: #666;
+            color:var(--muted);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -404,7 +404,7 @@
         <!-- Stochastic RSI Chart -->
         <div class="card">
             <h2><i class="fas fa-wave-square"></i> Stochastic RSI
-                <span style="font-size:12px; color:#666; font-weight:400; margin-left:8px;">
+                <span style="font-size:12px; color:var(--muted); font-weight:400; margin-left:8px;">
                     K:3, D:3, RSI:14, Stoch:14
                 </span>
             </h2>
@@ -440,7 +440,7 @@
                 </thead>
                 <tbody id="srTableBody">
                     <tr>
-                        <td colspan="3" style="text-align:center;color:#555;">No data yet</td>
+                        <td colspan="3" style="text-align:center;color:var(--muted);">No data yet</td>
                     </tr>
                 </tbody>
             </table>
@@ -729,7 +729,7 @@
         function updateSRTable(data) {
             const tbody = document.getElementById('srTableBody');
             if (!data.length) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#555;">No data yet</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);">No data yet</td></tr>';
                 return;
             }
             tbody.innerHTML = data.map(row => `
@@ -781,7 +781,7 @@
                     btn.style.display = 'none';
                 } else {
                     badge.textContent = '🔴 Not Connected';
-                    badge.style.background = '#fce4ec';
+                    badge.style.background = 'rgba(244,114,182,0.12)';
                     badge.style.color = '#c62828';
                     btn.style.display = 'inline-block';
                 }
@@ -801,7 +801,7 @@
                     pendingSessionConnect = true;
                     const badge = document.getElementById('sessionBadge');
                     badge.textContent = '🔄 Logging in...';
-                    badge.style.background = '#e3f2fd';
+                    badge.style.background = 'rgba(34,211,238,0.12)';
                     badge.style.color = '#1565c0';
                     window.open(data.login_url, 'zerodha_login', 'width=450,height=600');
                 } else {

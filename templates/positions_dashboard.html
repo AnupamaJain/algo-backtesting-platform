@@ -156,7 +156,7 @@
 
         .stat-label {
             font-size: 12px;
-            color: #888;
+            color:var(--muted);
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 8px;
@@ -200,7 +200,7 @@
         th {
             background: rgba(255, 255, 255, 0.05);
             font-weight: 600;
-            color: #888;
+            color:var(--muted);
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -245,7 +245,7 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #888;
+            color:var(--muted);
         }
 
         .loading i {
@@ -300,7 +300,7 @@
 
         .nifty-spot {
             font-size: 14px;
-            color: #888;
+            color:var(--muted);
             margin-left: auto;
         }
 
@@ -336,7 +336,7 @@
         }
 
         .section-description {
-            color: #888;
+            color:var(--muted);
             font-size: 13px;
             margin: -10px 0 20px 0;
         }
@@ -349,7 +349,7 @@
             align-items: center;
             gap: 6px;
             font-size: 13px;
-            color: #888;
+            color:var(--muted);
             white-space: nowrap;
         }
 
@@ -380,7 +380,7 @@
             font-size: 0.78rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #888;
+            color:var(--muted);
             margin-bottom: 12px;
             font-weight: 600;
         }
@@ -390,14 +390,14 @@
             align-items: center;
             padding: 5px 0;
         }
-        .analysis-label { font-size: 0.83rem; color: #aaa; }
+        .analysis-label { font-size: 0.83rem; color:var(--faint); }
         .analysis-value { font-size: 0.95rem; font-weight: 600; font-family: monospace; }
         .analysis-divider { border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }
         .analysis-section-title {
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #555;
+            color:var(--muted);
             margin-bottom: 4px;
             margin-top: 20px;
         }
@@ -492,7 +492,7 @@
             <div class="header-row" style="margin-bottom: 6px;">
                 <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
                     <h2 style="margin: 0;"><i class="fas fa-chart-bar"></i> Open Positions by Expiry</h2>
-                    <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #888; white-space: nowrap;">
+                    <span style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); white-space: nowrap;">
                         Min Days:
                         <input type="number" id="expiryMinDays" value="0" min="0" max="365" step="1"
                             title="Exclude expiries with fewer than this many days remaining"
@@ -969,7 +969,7 @@
                         </tr>
                     `).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888;">No positions found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">No positions found</td></tr>';
                 }
 
                 loadingEl.style.display = 'none';

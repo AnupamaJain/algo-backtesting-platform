@@ -133,7 +133,7 @@
       letter-spacing: 0.03em;
     }
     .strike-pill.muted {
-      color: #718096;
+      color:var(--muted);
       border-color: #2d3748;
     }
     .strike-otm-pct {
@@ -164,7 +164,7 @@
     }
     .bid-val { color: #48bb78; font-weight: 600; }
     .ask-val { color: #fc8181; font-weight: 600; }
-    .bidask-label { color: #718096; font-size: 10px; text-transform: uppercase; }
+    .bidask-label { color:var(--muted); font-size: 10px; text-transform: uppercase; }
 
     /* ---- price input ---- */
     .price-input {
@@ -230,7 +230,7 @@
     .section-refresh-btn.spinning i { animation: spin 0.7s linear infinite; }
 
     /* ---- loading / empty states ---- */
-    .state-row td { text-align: center; padding: 40px; color: #4a5568; font-size: 13px; }
+    .state-row td { text-align: center; padding: 40px; color:var(--muted); font-size: 13px; }
     .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid #2d3748; border-top-color: #f6ad55; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -271,7 +271,7 @@
     <button class="btn btn-primary" onclick="loadDashboard()">
       <i class="fas fa-sync-alt"></i> Refresh
     </button>
-    <a href="/covered_calls/debug" style="margin-left:8px;font-size:11px;color:#718096;text-decoration:none;" title="See why stocks are included/excluded">
+    <a href="/covered_calls/debug" style="margin-left:8px;font-size:11px;color:var(--muted);text-decoration:none;" title="See why stocks are included/excluded">
       <i class="fas fa-bug"></i> Debug Holdings
     </a>
   </div>
@@ -603,8 +603,8 @@
   }
 
   function formatBidAsk(bid, ask, mid) {
-    var b = bid > 0 ? '<span class="bid-val">₹' + fmt(bid, 2) + '</span>' : '<span style="color:#4a5568">—</span>';
-    var a = ask > 0 ? '<span class="ask-val">₹' + fmt(ask, 2) + '</span>' : '<span style="color:#4a5568">—</span>';
+    var b = bid > 0 ? '<span class="bid-val">₹' + fmt(bid, 2) + '</span>' : '<span style="color:var(--muted)">—</span>';
+    var a = ask > 0 ? '<span class="ask-val">₹' + fmt(ask, 2) + '</span>' : '<span style="color:var(--muted)">—</span>';
     var m = (mid > 0) ? ' <span class="bidask-label">Mid</span><span style="color:#e2b714;font-weight:600">₹' + fmt(mid, 2) + '</span>' : '';
     return '<span class="bidask-label">B</span>' + b + ' <span class="bidask-label">A</span>' + a + m;
   }
@@ -643,9 +643,9 @@
     // Action cell
     var actionCell = '';
     if (row.status === 'ACTIVE') {
-      actionCell = '<span style="color:#718096;font-size:11px">Sold ' + (acc ? acc.short_qty : '—') + ' shares</span>';
+      actionCell = '<span style="color:var(--muted);font-size:11px">Sold ' + (acc ? acc.short_qty : '—') + ' shares</span>';
     } else if (candidates.length === 0) {
-      actionCell = '<span style="color:#718096;font-size:11px">No candidates (min ₹' + fmt(cfg.min_premium, 0) + '/lot)</span>';
+      actionCell = '<span style="color:var(--muted);font-size:11px">No candidates (min ₹' + fmt(cfg.min_premium, 0) + '/lot)</span>';
     } else {
       var selectedIdx = _selectedIdx[row.symbol] || 0;
       var displayCandidate = candidates[selectedIdx] || first;
@@ -717,7 +717,7 @@
       + '<td>' + (p.lots || '—') + '</td>'
       + '<td>₹' + fmt(p.limit_price || 0, 2) + '</td>'
       + '<td class="pnl-pos">' + fmtRs(estPremium) + '</td>'
-      + '<td style="font-size:11px;color:#718096">' + placedAt + '</td>'
+      + '<td style="font-size:11px;color:var(--muted)">' + placedAt + '</td>'
       + '</tr>';
   }
 
@@ -756,13 +756,13 @@
       : '<span style="font-size:11px;color:#a0aec0">' + (acc.tradingsymbol || '—') + '</span>';
     var strikeCell  = isMultiLeg ? '—' : '₹' + fmt(acc.strike || 0, 0);
     var avgSellCell = isMultiLeg
-      ? '₹' + fmt(acc.avg_sell_price || 0, 2) + '<span style="color:#718096;font-size:9px"> wt.avg</span>'
+      ? '₹' + fmt(acc.avg_sell_price || 0, 2) + '<span style="color:var(--muted);font-size:9px"> wt.avg</span>'
       : '₹' + fmt(acc.avg_sell_price || 0, 2);
     var ccLtpCell   = isMultiLeg ? '—' : '₹' + fmt(acc.ltp || 0, 2);
 
     var mainRow = '<tr>'
       + '<td><b>' + row.symbol + '</b></td>'
-      + '<td>' + fmt(row.holding_qty, 0) + ' <span style="color:#718096;font-size:10px">(' + fmt(row.lot_size, 0) + '/lot)</span></td>'
+      + '<td>' + fmt(row.holding_qty, 0) + ' <span style="color:var(--muted);font-size:10px">(' + fmt(row.lot_size, 0) + '/lot)</span></td>'
       + '<td>₹' + fmt(row.ltp, 1) + '</td>'
       + '<td>₹' + fmt(row.avg_price, 1) + '</td>'
       + '<td class="' + pnlClass(hPnl) + '">' + pnlSign(hPnl) + fmtRs(hPnl) + '</td>'
@@ -773,7 +773,7 @@
       + '<td class="pnl-pos">' + avgSellCell + '</td>'
       + '<td>' + ccLtpCell + '</td>'
       + '<td class="' + pnlClass(ccPnl) + '">' + pnlSign(ccPnl) + fmtRs(ccPnl) + '</td>'
-      + '<td>' + fmt(acc.short_qty || 0, 0) + ' <span style="color:#718096;font-size:10px">(' + fmt(acc.lots_covered || 0, 0) + ' lots)</span></td>'
+      + '<td>' + fmt(acc.short_qty || 0, 0) + ' <span style="color:var(--muted);font-size:10px">(' + fmt(acc.lots_covered || 0, 0) + ' lots)</span></td>'
       + '</tr>';
 
     if (!isMultiLeg) return mainRow;
@@ -795,7 +795,7 @@
     var subTable = '<tr>'
       + '<td colspan="13" style="padding:0 0 8px 32px;border-top:none">'
       + '<table style="width:auto;font-size:11px;border-collapse:collapse">'
-      + '<thead><tr style="color:#718096">'
+      + '<thead><tr style="color:var(--muted)">'
       + '<th style="padding:2px 8px;font-weight:500">Tradingsymbol</th>'
       + '<th style="padding:2px 8px;font-weight:500">Strike</th>'
       + '<th style="padding:2px 8px;font-weight:500">Expiry</th>'

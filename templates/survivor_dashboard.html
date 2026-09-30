@@ -10,8 +10,8 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            background-color: #f4f4f9;
-            color: #333;
+            background-color:var(--bg);
+            color:var(--text);
         }
 
         .container {
@@ -20,7 +20,7 @@
         }
 
         h1 {
-            color: #2c3e50;
+            color:var(--text);
             display: flex;
             align-items: center;
             gap: 15px;
@@ -40,7 +40,7 @@
         }
 
         .card {
-            background: white;
+            background:var(--surface);
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -49,7 +49,7 @@
 
         .card h2 {
             margin-top: 0;
-            color: #2c3e50;
+            color:var(--text);
             border-bottom: 2px solid #f0f2f5;
             padding-bottom: 15px;
         }
@@ -63,8 +63,8 @@
 
         .toggle-btn {
             padding: 12px 30px;
-            border: 2px solid #ddd;
-            background: white;
+            border:2px solid var(--border);
+            background:var(--surface);
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
@@ -107,7 +107,7 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #555;
+            color:var(--muted);
             font-size: 14px;
         }
 
@@ -115,7 +115,7 @@
         .form-group select {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
+            border:1px solid var(--border);
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 15px;
@@ -130,8 +130,8 @@
         }
 
         .form-group input[readonly] {
-            background-color: #e9ecef;
-            color: #6c757d;
+            background-color:var(--raised);
+            color:var(--muted);
         }
 
         .input-row {
@@ -146,7 +146,7 @@
 
         .input-row span {
             font-weight: bold;
-            color: #666;
+            color:var(--muted);
         }
 
         /* Token Input */
@@ -161,21 +161,21 @@
 
         .token-input-container button {
             padding: 12px 16px;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
+            background:var(--raised);
+            border:1px solid var(--border);
             border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
         }
 
         .token-input-container button:hover {
-            background: #e0e0e0;
+            background:var(--raised);
         }
 
         /* Compact inputs for table layout */
         .input-compact {
             padding: 6px 8px;
-            border: 1px solid #ddd;
+            border:1px solid var(--border);
             border-radius: 4px;
             font-size: 13px;
             transition: border-color 0.2s;
@@ -187,8 +187,8 @@
         }
 
         .input-compact[readonly] {
-            background-color: #f5f5f5;
-            color: #666;
+            background-color:var(--surface-2);
+            color:var(--muted);
         }
 
         #survivorInputTable td {
@@ -249,17 +249,17 @@
         td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            border-bottom:1px solid var(--border);
         }
 
         th {
-            background-color: #f8f9fa;
+            background-color:var(--surface-2);
             font-weight: 600;
-            color: #555;
+            color:var(--muted);
         }
 
         tr:hover {
-            background-color: #f8f9fa;
+            background-color:var(--surface-2);
         }
 
         /* Status Indicators */
@@ -338,7 +338,7 @@
         }
 
         .modal-content {
-            background-color: #fff;
+            background-color:var(--surface);
             margin: 5% auto;
             padding: 0;
             width: 80%;
@@ -352,7 +352,7 @@
 
         .modal-header {
             padding: 15px 20px;
-            border-bottom: 1px solid #eee;
+            border-bottom:1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -361,19 +361,19 @@
         .modal-body {
             padding: 20px;
             overflow-y: auto;
-            background: #f4f4f9;
+            background:var(--bg);
         }
 
         .close-btn {
             font-size: 28px;
-            color: #aaa;
+            color:var(--faint);
             cursor: pointer;
             background: none;
             border: none;
         }
 
         .close-btn:hover {
-            color: #333;
+            color:var(--text);
         }
 
         pre {
@@ -391,7 +391,7 @@
         /* Helper text */
         .helper-text {
             font-size: 12px;
-            color: #888;
+            color:var(--muted);
             margin-top: 5px;
         }
 
@@ -439,7 +439,7 @@
             <!-- Toggle Row (Line 1) -->
             <div style="display: flex; gap: 25px; align-items: center; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 13px; font-weight: 600; color: #555;">Instrument:</span>
+                    <span style="font-size: 13px; font-weight: 600; color: var(--muted);">Instrument:</span>
                     <select id="indexSelector" onchange="onIndexSelectorChange(this.value)"
                         style="padding: 6px 10px; font-size: 13px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; min-width: 140px;">
                         <option value="NIFTY" selected>NIFTY</option>
@@ -463,7 +463,7 @@
                         onchange="onCustomStockChange(this.value)">
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 13px; font-weight: 600; color: #555;">Mode:</span>
+                    <span style="font-size: 13px; font-weight: 600; color: var(--muted);">Mode:</span>
                     <div class="toggle-group" style="margin: 0;">
                         <button type="button" class="toggle-btn active" onclick="selectMode('sell')" id="mode-sell"
                             style="padding: 6px 14px; font-size: 13px;">Sell Only</button>
@@ -486,7 +486,7 @@
                         <th style="padding: 6px 8px; font-size: 12px;">Gap (PE:CE)</th>
                         <th style="padding: 6px 8px; font-size: 12px;">Reset Gap</th>
                         <th style="padding: 6px 8px; font-size: 12px;">Qty <span id="lotSizeHint"
-                                style="color: #888; font-size: 10px;">(5L=375)</span></th>
+                                style="color: var(--muted); font-size: 10px;">(5L=375)</span></th>
                         <th style="padding: 6px 8px; font-size: 12px;">Start Pts (PE:CE)</th>
                         <th style="padding: 6px 8px; width: 50px;"></th>
                     </tr>
@@ -504,7 +504,7 @@
                             <div style="display: flex; gap: 3px; align-items: center;">
                                 <input type="number" id="distancePE" class="input-compact" value="200"
                                     style="width: 55px;">
-                                <span style="color: #888;">:</span>
+                                <span style="color: var(--muted);">:</span>
                                 <input type="number" id="distanceCE" class="input-compact" value="200"
                                     style="width: 55px;">
                             </div>
@@ -520,7 +520,7 @@
                         <td>
                             <div style="display: flex; gap: 3px; align-items: center;">
                                 <input type="number" id="gapPE" class="input-compact" value="18" style="width: 45px;">
-                                <span style="color: #888;">:</span>
+                                <span style="color: var(--muted);">:</span>
                                 <input type="number" id="gapCE" class="input-compact" value="18" style="width: 45px;">
                             </div>
                         </td>
@@ -528,7 +528,7 @@
                             <div style="display: flex; gap: 3px; align-items: center;">
                                 <input type="number" id="resetGapPE" class="input-compact" value="36"
                                     style="width: 45px;">
-                                <span style="color: #888;">:</span>
+                                <span style="color: var(--muted);">:</span>
                                 <input type="number" id="resetGapCE" class="input-compact" value="36"
                                     style="width: 45px;">
                             </div>
@@ -537,7 +537,7 @@
                             <div style="display: flex; gap: 3px; align-items: center;">
                                 <input type="number" id="quantityPE" class="input-compact" value="375"
                                     style="width: 55px;">
-                                <span style="color: #888;">:</span>
+                                <span style="color: var(--muted);">:</span>
                                 <input type="number" id="quantityCE" class="input-compact" value="375"
                                     style="width: 55px;">
                             </div>
@@ -546,7 +546,7 @@
                             <div style="display: flex; gap: 3px; align-items: center;">
                                 <input type="number" id="startPointPE" class="input-compact" value="0"
                                     style="width: 55px;" title="0 = use current price">
-                                <span style="color: #888;">:</span>
+                                <span style="color: var(--muted);">:</span>
                                 <input type="number" id="startPointCE" class="input-compact" value="0"
                                     style="width: 55px;" title="0 = use current price">
                             </div>
@@ -566,7 +566,7 @@
                     </tr>
                 </tbody>
             </table>
-            <div style="font-size: 11px; color: #888;">Start Points: Set to 0 to use current index value. PE should be ≥
+            <div style="font-size: 11px; color: var(--muted);">Start Points: Set to 0 to use current index value. PE should be ≥
                 CE.</div>
         </div>
 
@@ -575,7 +575,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="border: none; padding: 0; margin: 0;">Running Instances</h2>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="color: #888; font-size: 13px;">Auto-refreshes every 10 seconds</span>
+                    <span style="color: var(--muted); font-size: 13px;">Auto-refreshes every 10 seconds</span>
                     <button class="btn btn-warning" onclick="deleteAllStoppedInstances()"
                         style="padding: 8px 16px; font-size: 13px;">Delete All Stopped</button>
                 </div>
@@ -597,7 +597,7 @@
                 </thead>
                 <tbody id="instancesBody">
                     <tr>
-                        <td colspan="9" style="text-align: center; color: #888;">No running instances</td>
+                        <td colspan="9" style="text-align: center; color: var(--muted);">No running instances</td>
                     </tr>
                 </tbody>
             </table>
@@ -610,7 +610,7 @@
                 <button class="btn btn-primary" onclick="refreshSurvivorOrders()"
                     style="padding: 8px 16px; font-size: 13px;">Refresh</button>
             </div>
-            <p style="color: #888; font-size: 12px; margin: 10px 0;">Orders executed by Survivor algo today. Resets
+            <p style="color: var(--muted); font-size: 12px; margin: 10px 0;">Orders executed by Survivor algo today. Resets
                 daily at midnight.</p>
             <table id="survivorOrdersTable">
                 <thead>
@@ -626,7 +626,7 @@
                 </thead>
                 <tbody id="survivorOrdersBody">
                     <tr>
-                        <td colspan="7" style="text-align: center; color: #888;">No orders executed today</td>
+                        <td colspan="7" style="text-align: center; color: var(--muted);">No orders executed today</td>
                     </tr>
                 </tbody>
             </table>
@@ -795,7 +795,7 @@
         function updateSurvivorOrdersTable(orders) {
             const tbody = document.getElementById('survivorOrdersBody');
             if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: #888;">No orders executed today</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--muted);">No orders executed today</td></tr>';
                 return;
             }
 
@@ -1098,7 +1098,7 @@
             instances.forEach((inst, idx) => { inst._copyIdx = idx; _survivorInstances[idx] = inst; });
 
             if (instances.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #888;">No running instances</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--muted);">No running instances</td></tr>';
                 return;
             }
 
@@ -1344,7 +1344,7 @@
 
                 if (events.length === 0) {
                     document.getElementById('eventsTableBody').innerHTML =
-                        '<tr><td colspan="12" style="text-align:center;color:#888;padding:20px">No events yet</td></tr>';
+                        '<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px">No events yet</td></tr>';
                     return;
                 }
 

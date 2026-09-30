@@ -1,6 +1,23 @@
-/* One palette for the product. Identical values live in the Strategy Lab
+/* The trading terminal's design system.
+   =====================================
+
+   One palette for the product. Identical values live in the Strategy Lab
    (globals.css @theme) and in Pramana's dark theme (app.css), so the three
-   app surfaces read as one console. Edit all three together. */
+   app surfaces read as one console. Edit all three together.
+
+   This file is linked from _header_partial.html, which is the first element
+   inside <body> -- so it loads AFTER each page's own <style> block and wins
+   at equal specificity. That is deliberate and is what lets one stylesheet
+   retheme twenty-two hand-styled pages without touching them or resorting
+   to !important. Page rules with genuinely higher specificity still win,
+   which is the right way round: a page that means something specific keeps
+   it, and everything structural comes from here.
+
+   The rules below are grouped by what they fix. Most exist because these
+   pages were written light -- white cards, #f4f4f9 bodies -- and inherited
+   light text from this file, which put near-white text on near-white
+   surfaces and made whole tables of live positions invisible. */
+
 :root {
   --bg: #0a0d16; --surface: #10141f; --surface-2: #141a29; --raised: #1a2136;
   --border: #232c40; --border-soft: #1a2233;
@@ -9,5 +26,119 @@
   --bull: #34d399; --bear: #fb7185; --warn: #fbbf24;
   --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Code", monospace;
+
+  /* Tells the browser to render native widgets -- scrollbars, select
+     dropdowns, date pickers, spinners -- dark. Without it a themed page
+     still opens a white dropdown list. */
+  color-scheme: dark;
 }
-body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---- Surfaces --------------------------------------------------------
+   Cards were white. With light text inherited from here, every value on
+   them disappeared. */
+.card, .panel, .box, .section-card, .table-wrap, .content-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* ---- Tables ----------------------------------------------------------
+   The row hover was #f1f1f1: passing the mouse over a row of live
+   positions turned it white and erased it. */
+th {
+  background: var(--surface-2);
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+td { border-bottom: 1px solid var(--border-soft); }
+tr:hover, tbody tr:hover { background: var(--raised); }
+tbody tr:nth-child(even) { background: transparent; }
+th.active-sort { background: var(--raised); color: var(--accent); }
+
+/* ---- Form controls ---------------------------------------------------
+   Native inputs stayed white on every dark page. */
+input, select, textarea {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+}
+input::placeholder, textarea::placeholder { color: var(--faint); }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+input[readonly], input:disabled, select:disabled, textarea:disabled {
+  background: var(--raised);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+option { background: var(--surface-2); color: var(--text); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
+/* ---- Modals ----------------------------------------------------------
+   Light dialogs with light text: a confirmation you could not read. */
+.modal-content, .modal-body, .modal-header, .modal-footer {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.modal-header, .modal-footer { border-color: var(--border); }
+
+/* ---- Inactive controls -----------------------------------------------
+   An unselected toggle was dark text on what is now a dark surface. */
+.toggle-btn, .tab, .day-tab {
+  background: var(--raised);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.toggle-btn.active, .tab.active, .day-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+/* ---- Status chips ----------------------------------------------------
+   Pastel fills meant for a white page. Tinted translucent on dark keeps
+   the same semantics and passes contrast. */
+.badge, .pill, .chip { background: var(--raised); color: var(--text); }
+.status-ok, .pill-ok, .badge-success {
+  background: color-mix(in srgb, var(--bull) 16%, transparent); color: var(--bull);
+}
+.status-err, .pill-err, .badge-danger {
+  background: color-mix(in srgb, var(--bear) 16%, transparent); color: var(--bear);
+}
+.status-warn, .pill-429, .warning-box, .badge-warning {
+  background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn);
+}
+
+/* ---- Text ------------------------------------------------------------ */
+a { color: var(--accent); }
+code, pre, .mono, .num { font-family: var(--mono); }
+hr { border: 0; border-top: 1px solid var(--border); }
+
+/* ---- Scrollbars ------------------------------------------------------ */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+
+/* ---- Button ink ------------------------------------------------------
+   White on a mid-tone fill measures badly: white on #f39c12 is 2.19:1 and
+   on #10b981 is 2.54:1, both under the 4.5:1 floor. Saturated warm and
+   green fills take dark ink; only the dark red fill keeps white. */
+.btn-warning, .btn-success, .btn-info, .btn-accent {
+  color: var(--accent-ink);
+}
+
+/* A green or amber fill anywhere takes dark ink, whatever the class is
+   called: white on #10b981 measures 2.54:1. */
+.btn[style*="10b981"], .btn-green, .btn-analyze { color: var(--accent-ink); }

@@ -272,7 +272,7 @@
             line-height: 1;
             transition: background 0.15s;
         }
-        .btn-iv:hover { background: var(--warning); border-color: var(--warning); color: #000; }
+        .btn-iv:hover { background: var(--warning); border-color: var(--warning); color:var(--text); }
 
         /* ── Loading overlay ───────────────────────────────────────────────── */
         #loading-overlay {
@@ -1181,7 +1181,7 @@
                 btn.style.display = 'none';
             } else {
                 badge.textContent = '🔴 Not Connected';
-                badge.style.background = '#fce4ec';
+                badge.style.background = 'rgba(244,114,182,0.12)';
                 badge.style.color = '#c62828';
                 btn.style.display = 'inline-block';
             }
@@ -1201,7 +1201,7 @@
                 pendingSessionConnect = true;
                 const badge = document.getElementById('sessionBadge');
                 badge.textContent = '🔄 Logging in...';
-                badge.style.background = '#e3f2fd';
+                badge.style.background = 'rgba(34,211,238,0.12)';
                 badge.style.color = '#1565c0';
                 window.open(data.login_url, 'zerodha_login', 'width=450,height=600');
             } else {

@@ -32,7 +32,7 @@
     .page-title { display: flex; align-items: center; gap: 10px; }
     .page-title h1 { font-size: 20px; font-weight: 700; color: #f6ad55; }
     .page-title .page-icon { font-size: 20px; color: #f6ad55; }
-    .page-subtitle { font-size: 12px; color: #718096; margin-top: 4px; line-height: 1.5; }
+    .page-subtitle { font-size: 12px; color:var(--muted); margin-top: 4px; line-height: 1.5; }
 
     .status-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .status-pill {
@@ -50,7 +50,7 @@
     .btn-refresh:hover { background: rgba(99,179,237,0.16); }
     .btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
 
-    .meta-row { display:flex; gap:20px; margin-bottom:20px; font-size:12px; color:#718096; flex-wrap:wrap; }
+    .meta-row { display:flex; gap:20px; margin-bottom:20px; font-size:12px; color:var(--muted); flex-wrap:wrap; }
 
     .section-title {
       font-size: 13px; font-weight: 700; color: #a0aec0; text-transform: uppercase;
@@ -63,13 +63,13 @@
     .all-clear-card { background: rgba(72,187,120,0.06); border: 1px solid rgba(72,187,120,0.2); }
     .all-clear-card i { font-size: 36px; color: #48bb78; margin-bottom: 14px; }
     .all-clear-card .title { font-size: 15px; font-weight: 700; color: #48bb78; margin-bottom: 6px; }
-    .all-clear-card .subtitle { font-size: 13px; color: #718096; }
+    .all-clear-card .subtitle { font-size: 13px; color:var(--muted); }
     .error-card { background: rgba(252,129,129,0.06); border: 1px solid rgba(252,129,129,0.2); }
     .error-card i { color: #fc8181; font-size: 26px; margin-bottom: 10px; }
     .error-card .title { font-size: 14px; font-weight: 700; color: #fc8181; margin-bottom: 4px; }
-    .error-card .detail { font-size: 12px; color: #718096; font-family: monospace; }
+    .error-card .detail { font-size: 12px; color:var(--muted); font-family: monospace; }
 
-    .empty-note { font-size: 12px; color: #4a5568; padding: 12px 4px; }
+    .empty-note { font-size: 12px; color:var(--muted); padding: 12px 4px; }
 
     /* Symbol row card */
     .symbol-card {
@@ -96,7 +96,7 @@
     .badge-qty { background: rgba(99,179,237,0.14); color: #63b3ed; border: 1px solid rgba(99,179,237,0.3); }
     .badge-sources { background: rgba(246,173,85,0.14); color: #f6ad55; border: 1px solid rgba(246,173,85,0.3); }
 
-    .collapse-icon { transition: transform 0.15s; color: #718096; }
+    .collapse-icon { transition: transform 0.15s; color:var(--muted); }
     .symbol-card.collapsed .collapse-icon { transform: rotate(-90deg); }
     .symbol-card.collapsed .symbol-body { display: none; }
 
@@ -115,7 +115,7 @@
 
     .symbol-body { padding: 4px 18px 16px; }
     .source-group-title {
-      font-size: 11px; font-weight: 700; color: #718096; text-transform: uppercase;
+      font-size: 11px; font-weight: 700; color:var(--muted); text-transform: uppercase;
       letter-spacing: 0.05em; margin: 12px 0 8px;
     }
 
@@ -156,7 +156,7 @@
       width: 110px; padding: 6px 8px; font-size: 12px; border-radius: 6px;
       border: 1px solid #2d3748; background: #1a1f2e; color: #e2e8f0;
     }
-    .edit-form label { font-size: 10px; color: #718096; display: block; margin-bottom: 2px; }
+    .edit-form label { font-size: 10px; color:var(--muted); display: block; margin-bottom: 2px; }
     .edit-field { display: flex; flex-direction: column; }
 
     .position-row {
@@ -167,7 +167,7 @@
     /* Ignored table */
     .ignored-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .ignored-table th {
-      text-align: left; padding: 8px 12px; color: #718096; font-weight: 700;
+      text-align: left; padding: 8px 12px; color:var(--muted); font-weight: 700;
       font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
@@ -210,7 +210,7 @@
     #pg-toast.success { background: rgba(72,187,120,0.92); color: white; }
     #pg-toast.error   { background: rgba(252,129,129,0.92); color: white; }
 
-    .loading-state { text-align: center; padding: 48px; color: #4a5568; font-size: 14px; }
+    .loading-state { text-align: center; padding: 48px; color:var(--muted); font-size: 14px; }
     .loading-state i { font-size: 28px; margin-bottom: 12px; color: #2d3748; }
   </style>
 </head>
