@@ -1550,7 +1550,7 @@ def test_the_global_funnel_is_read_from_the_pipeline_not_typed_in():
         pytest.skip("no backtest output in this checkout")
 
     g = _global_results()
-    assert g and len(g["windows"]) == 2
+    assert g and len(g["windows"]) >= 2
 
     import json
 

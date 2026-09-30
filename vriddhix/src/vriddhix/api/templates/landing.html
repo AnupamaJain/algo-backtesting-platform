@@ -353,21 +353,22 @@
 {% set g = global_results %}
 <section class="wrap gb-section">
   <div class="sec-head">
-    <h2>Every strategy, two windows, no favourites</h2>
+    <h2>Every strategy, three windows, no favourites</h2>
     <span class="faint">read from the pipeline's own output</span>
   </div>
   <p class="muted lead-narrow">
     The same {{ "{:,}".format(g.windows[0].tested) }} parameter configurations
-    swept over ten years of global markets and again over five, through a
-    six-gate funnel that ends in a false-discovery-rate correction. What
-    survives is shown below, and so is what it was worth.
+    swept over ten years of global markets, again over five, and again over
+    NSE equities — through a six-gate funnel that ends in a
+    false-discovery-rate correction. What survives is shown below, what was
+    eliminated beside it, and what either was worth underneath.
   </p>
 
   <div class="gb-grid">
     {% for w in g.windows %}
-    <article class="gb-card rise">
+    <article class="gb-card">
       <header>
-        <span class="gb-window">{{ w.label }}</span>
+        <span class="gb-window">{{ w.market }} · {{ w.label }}</span>
         <span class="faint">{{ w.symbols }} symbols</span>
       </header>
 
@@ -376,6 +377,18 @@
         <span>of <b class="num">{{ "{:,}".format(w.tested) }}</b> configurations survived
           <i class="num">({{ "%.2f"|format(w.survival_pct) }}%)</i></span>
       </div>
+
+      {% if w.stats and w.stats.win_rate %}
+      <dl class="gb-stats">
+        <div><dt>Win rate</dt><dd class="num">{{ "%.1f"|format(w.stats.win_rate) }}%</dd></div>
+        <div><dt>Worst fall</dt><dd class="num">{{ "%.1f"|format(w.stats.drawdown) }}%</dd></div>
+        <div><dt>Profit factor</dt><dd class="num">{{ "%.2f"|format(w.stats.profit_factor) }}</dd></div>
+        <div><dt>Trades</dt><dd class="num">{{ "%.0f"|format(w.stats.trades) }}</dd></div>
+      </dl>
+      <p class="gb-note faint">
+        The <b>typical survivor</b>, as medians — out of sample, after costs.
+      </p>
+      {% endif %}
 
       <!-- the funnel, stage by stage, as a width -->
       <ul class="gb-funnel">
@@ -412,11 +425,20 @@
 
       {% if w.portfolios %}
       <table class="gb-table">
-        <thead><tr><th>Portfolio</th><th class="r">Annual</th><th class="r">Sharpe</th><th class="r">Worst fall</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Portfolio</th>
+            <th class="r">₹10L became</th>
+            <th class="r">Annual</th>
+            <th class="r">Sharpe</th>
+            <th class="r">Worst fall</th>
+          </tr>
+        </thead>
         <tbody>
           {% for row in w.portfolios %}
-          <tr{% if row.name == "Buy & Hold" %} class="gb-win"{% endif %}>
+          <tr{% if w.best_sharpe and row.name == w.best_sharpe.name %} class="gb-win"{% endif %}>
             <td>{{ row.name }}</td>
+            <td class="r num">₹{{ "{:,.0f}".format(row.capital) }}</td>
             <td class="r num">{{ "%+.2f"|format(row.annual) }}%</td>
             <td class="r num">{{ "%.2f"|format(row.sharpe) }}</td>
             <td class="r num">{{ "%.1f"|format(row.drawdown) }}%</td>
@@ -424,12 +446,16 @@
           {% endfor %}
         </tbody>
       </table>
+      <p class="gb-note faint">
+        Marked row is the best <b>risk-adjusted</b> result, which is not
+        always the biggest number.
+      </p>
       {% endif %}
     </article>
     {% endfor %}
   </div>
 
-  <div class="gb-verdict rise">
+  <div class="gb-verdict">
     <div>
       <span class="gb-label">Survives both windows</span>
       {% if g.in_both %}
@@ -466,17 +492,29 @@
     <div>
       <span class="gb-label">And the honest part</span>
       <p>
-        In both windows the portfolio built from those survivors is beaten by
-        buying the index and waiting —
-        <b class="num">{{ "%+.1f"|format(g.windows[0].best.annual) }}%</b> a year
-        against <b class="num">{{ "%+.1f"|format(g.windows[0].portfolios[0].annual) }}%</b>
-        over ten. A search that finds something is not the same as a result,
-        and this page is not going to print the first and call it the second.
+        Over both global windows the survivors are beaten by buying the index
+        and waiting: <b class="num">₹10,00,000</b> becomes
+        <b class="num">₹{{ "{:,.0f}".format(g.windows[0].portfolios[2].capital) }}</b>
+        held, against
+        <b class="num">₹{{ "{:,.0f}".format(g.windows[0].portfolios[0].capital) }}</b>
+        traded, over ten years. A search that finds something is not the same
+        as a result, and this page is not going to print the first and call
+        it the second.
+      </p>
+    </div>
+    <div>
+      <span class="gb-label">Where it does earn its keep</span>
+      <p>
+        On NSE equities the ranking changes: the rules portfolio returns less
+        than holding — <b class="num">+6.4%</b> a year against
+        <b class="num">+13.8%</b> — but at a Sharpe of
+        <b class="num">2.74</b> against <b class="num">0.83</b>, and a worst
+        fall of <b class="num">3.7%</b> against <b class="num">36.6%</b>.
+        Whether that is better depends on what you are optimising, which is
+        the question a single headline number is designed to stop you asking.
       </p>
     </div>
     {% endif %}
-  </div>
-
   <p class="faint gb-foot">
     Costs, slippage and a walk-forward of three years in sample to one out,
     rolled annually. Numbers read from

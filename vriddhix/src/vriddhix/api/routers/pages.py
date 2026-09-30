@@ -438,8 +438,18 @@ APP_SCREENS = [
 #: and the only defensible version of these is the one the pipeline wrote.
 BACKTEST_ROOT = Path(__file__).resolve().parents[5] / "quant_backtester"
 
-#: The two global windows, longest first.
-BACKTEST_WINDOWS = (("results", "10 years"), ("results_5y", "5 years"))
+#: The windows, longest first. India is the same pipeline on NSE equities
+#: and is shown beside the global ones because the answer differs by
+#: market, which is the sort of thing a single headline number hides.
+BACKTEST_WINDOWS = (
+    ("results", "10 years", "Global"),
+    ("results_5y", "5 years", "Global"),
+    ("results_india", "NSE equities", "India"),
+)
+
+#: What a fixed sum would have become. Stated as capital rather than as a
+#: percentage because "+1,562%" is a number people read past.
+STARTING_CAPITAL = 1_000_000
 
 
 #: Not strategies -- the funnel's own output, written alongside them.
@@ -461,6 +471,74 @@ def _strategies_swept(folder: str) -> list[str]:
         )
     except OSError:
         return []
+
+
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    mid = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[mid]
+    return (ordered[mid - 1] + ordered[mid]) / 2
+
+
+def _survivor_stats(base) -> dict:
+    """The typical survivor: win rate, worst fall, profit factor, trades.
+
+    Win rate is not in survivors.csv -- it is in all_configurations.csv, the
+    full sweep -- so the two are joined on the key the pipeline uses for a
+    configuration. Medians rather than means throughout: one configuration
+    with three hundred trades should not set the typical figure for a set
+    where most have sixty.
+    """
+    import csv as _csv
+
+    try:
+        with (base / "layer2" / "survivors.csv").open() as fh:
+            survivors = list(_csv.DictReader(fh))
+    except OSError:
+        return {}
+    if not survivors:
+        return {}
+
+    win_by_key: dict[tuple, float] = {}
+    try:
+        with (base / "layer2" / "all_configurations.csv").open() as fh:
+            for row in _csv.DictReader(fh):
+                try:
+                    win_by_key[(row["symbol"], row["strategy"], row["param_key"])] = float(
+                        row["oos_win_rate"]
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
+    except OSError:
+        pass
+
+    def column(name: str) -> list[float]:
+        out = []
+        for row in survivors:
+            try:
+                out.append(float(row[name]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return out
+
+    wins = [
+        win_by_key[key]
+        for key in (
+            (r.get("symbol"), r.get("strategy"), r.get("param_key")) for r in survivors
+        )
+        if key in win_by_key
+    ]
+
+    drawdown = _median(column("oos_max_drawdown"))
+    return {
+        "win_rate": (_median(wins) * 100) if wins else None,
+        "drawdown": (drawdown * 100) if drawdown is not None else None,
+        "profit_factor": _median(column("oos_profit_factor")),
+        "trades": _median(column("oos_num_trades")),
+    }
 
 
 def _read_window(folder: str) -> dict | None:
@@ -489,12 +567,15 @@ def _read_window(folder: str) -> dict | None:
     try:
         with (base / "layer4" / "portfolio_comparison.csv").open() as fh:
             for row in csv.DictReader(fh):
+                total = float(row["total_return"])
                 portfolios.append({
                     "name": row["portfolio"],
                     "annual": float(row["annualized_return"]) * 100,
                     "sharpe": float(row["sharpe"]),
                     "drawdown": float(row["max_drawdown"]) * 100,
-                    "total": float(row["total_return"]) * 100,
+                    "total": total * 100,
+                    # Return on capital, in money.
+                    "capital": STARTING_CAPITAL * (1 + total),
                 })
     except (OSError, ValueError, KeyError):
         pass
@@ -505,6 +586,11 @@ def _read_window(folder: str) -> dict | None:
             robust = sum(1 for _ in csv.DictReader(fh))
     except OSError:
         pass
+
+    # What a survivor actually looks like, in medians rather than means:
+    # one configuration with 300 trades should not drag the typical figure
+    # for a set where most have sixty.
+    survivor_stats = _survivor_stats(base)
 
     swept = _strategies_swept(folder)
     kept = set(strategies)
@@ -523,6 +609,7 @@ def _read_window(folder: str) -> dict | None:
         "strategies": strategies.most_common(),
         "stages": manifest.get("stages") or [],
         "portfolios": portfolios,
+        "stats": survivor_stats,
         "best": max(portfolios, key=lambda r: r["annual"]) if portfolios else None,
     }
 
@@ -537,21 +624,32 @@ def _global_results() -> dict | None:
     only the survivor count would be describing a search, not a result.
     """
     windows = []
-    for folder, label in BACKTEST_WINDOWS:
+    for folder, label, market in BACKTEST_WINDOWS:
         data = _read_window(folder)
         if data:
-            windows.append({"label": label, "folder": folder, **data})
+            windows.append({"label": label, "folder": folder, "market": market, **data})
     if len(windows) < 2:
         return None
 
+    # "Best" is by Sharpe, not by return: the whole argument of the section
+    # is that the biggest number is not the same as the best result, and
+    # ranking by return would concede that point in the ranking itself.
+    for window in windows:
+        if window["portfolios"]:
+            window["best_sharpe"] = max(window["portfolios"], key=lambda r: r["sharpe"])
+
     # A strategy that clears the funnel in both windows is the closest
     # thing here to one that works in more than one kind of market.
-    in_both = set(dict(windows[0]["strategies"])) & set(dict(windows[1]["strategies"]))
+    globals_ = [w for w in windows if w["market"] == "Global"]
+    in_both = set()
+    if len(globals_) >= 2:
+        in_both = set(dict(globals_[0]["strategies"])) & set(dict(globals_[1]["strategies"]))
     return {
         "windows": windows,
         "in_both": sorted(in_both),
+        "starting_capital": STARTING_CAPITAL,
         "beaten_by_hold": all(
-            w["best"] and w["best"]["name"] == "Buy & Hold" for w in windows
+            w["best"] and w["best"]["name"] == "Buy & Hold" for w in globals_
         ),
     }
 

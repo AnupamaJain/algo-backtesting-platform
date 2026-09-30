@@ -1535,3 +1535,23 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
   margin-top: 8px; font-size: .8rem; color: var(--muted);
 }
 .gl-foot { margin-top: 12px; text-align: center; font-size: .78rem; }
+.gb-note { margin: 8px 0 0; font-size: .72rem; }
+.gb-note b { color: var(--muted); }
+/* Three windows now, so the grid wants a narrower minimum. */
+@media (min-width: 1100px) { .gb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* The typical survivor, four figures across. */
+.gb-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px; margin: 0 0 4px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--panel-2, #141a29);
+}
+.gb-stats div { min-width: 0; }
+.gb-stats dt {
+  font-size: .62rem; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gb-stats dd { margin: 0; font-size: .98rem; color: var(--text); font-weight: 600; }
+@media (max-width: 420px) { .gb-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
