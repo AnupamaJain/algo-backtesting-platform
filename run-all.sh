@@ -7,6 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cmd="${1:-start}"
 case "$cmd" in
   start|stop|restart|status)
+    echo "── Tick feed (one shared websocket) ──";          "$ROOT/run-ticker.sh" "$cmd"
     echo "── Terminal (trading, loopback :5010) ──";        "$ROOT/run-terminal.sh" "$cmd"
     echo "── Strategy Lab (backtesting, loopback :4300) ──"; "$ROOT/run-lab.sh" "$cmd"
     echo "── Pramana (gateway, research, account) ──";      (cd "$ROOT/vriddhix" && ./run.sh "$cmd")

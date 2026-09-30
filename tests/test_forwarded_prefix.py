@@ -163,3 +163,26 @@ def test_an_equity_is_never_mistaken_for_an_option():
     assert _is_option_symbol("NIFTY26O0623800CE")
     assert _is_option_symbol("RELIANCE24DEC2900CE")
     assert _is_option_symbol("SENSEX2620583200PE")
+
+
+def test_the_tick_feed_has_a_launcher_and_run_all_starts_it_first():
+    """Flattrade permits one websocket per client id.
+
+    Two processes that each open their own put the pair into a loop of
+    kicking each other off, and the strategy that loses gets no ticks:
+    "handshake refused (t=ck, s=NOT_OK)". ticker_daemon.py holds the single
+    connection and fans ticks over a local socket -- but nothing started
+    it, so it never held anything.
+    """
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    launcher = root / "run-ticker.sh"
+    assert launcher.exists(), "the tick feed has no launcher"
+    assert launcher.stat().st_mode & 0o111, "run-ticker.sh is not executable"
+
+    run_all = (root / "run-all.sh").read_text()
+    assert "run-ticker.sh" in run_all, "run-all.sh never starts the tick feed"
+    assert run_all.index("run-ticker.sh") < run_all.index("run-terminal.sh"), (
+        "the feed must be up before the strategies that share it"
+    )
