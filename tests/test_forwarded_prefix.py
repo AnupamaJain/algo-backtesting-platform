@@ -87,3 +87,42 @@ def test_a_job_whose_optional_module_is_absent_disables_itself():
         scheduler._job_delta_live_snapshot()
     finally:
         scheduler._MISSING_OPTIONAL.clear()
+
+
+def test_tradable_symbols_come_from_the_public_scrip_master(client):
+    """Contracts must be listable without a broker session.
+
+    The symbol boxes were free text with a worked example for a
+    placeholder, so a run began by typing a contract from memory. The scrip
+    master is a plain cached CSV, which matters: it is the one contract
+    source that still answers when a token has expired -- exactly when
+    someone is trying to work out what is wrong.
+    """
+    with client.session_transaction() as sess:
+        sess["app_authenticated"] = True
+
+    r = client.get("/api/tradable_symbols?name=NIFTY&limit=5")
+    assert r.status_code == 200, r.get_data(as_text=True)[:200]
+    body = r.get_json()
+
+    assert body["symbols"], "no contracts listed"
+    assert len(body["symbols"]) <= 5
+    assert body["expiry"].startswith("NIFTY")
+    assert body["days_to_expiry"] >= 0, "an expired contract was offered"
+
+    for row in body["symbols"]:
+        assert row["symbol"].startswith(body["expiry"])
+        assert row["option_type"] in ("CE", "PE")
+        assert row["symbol"].endswith(row["option_type"])
+        assert str(row["strike"]) in row["symbol"]
+
+    # nearest expiry first
+    days = [e["days_to_expiry"] for e in body["expiries"]]
+    assert days == sorted(days)
+
+
+def test_tradable_symbols_rejects_a_malformed_underlying(client):
+    """The name reaches a file lookup; it is validated, not trusted."""
+    with client.session_transaction() as sess:
+        sess["app_authenticated"] = True
+    assert client.get("/api/tradable_symbols?name=../../etc/passwd").status_code == 400

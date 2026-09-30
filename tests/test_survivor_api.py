@@ -13,6 +13,40 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+class _SpawnedProcess:
+    """Stands in for Popen, faithfully enough to be supervised.
+
+    poll() reports "still running": the start endpoint now waits briefly to
+    see whether a just-spawned strategy exits on its own, because it used
+    to answer "Started place_order_at_nifty.py" for processes that were
+    already gone -- killed by an expired broker session on their first
+    quote.
+    """
+
+    pid = 999001
+
+    def poll(self):
+        return None
+
+
+@pytest.fixture(autouse=True)
+def _never_launch_a_real_strategy(monkeypatch):
+    """Keep the suite from starting live trading processes.
+
+    These tests exercised the endpoint's contract -- validation, the status
+    file, the response shape -- but left subprocess.Popen alone, so every run
+    actually launched place_order_at_nifty.py against the configured
+    broker. It went unnoticed because the endpoint never looked at whether
+    the child survived, so a process that died a second later still read
+    as success.
+    """
+    import flask_app
+
+    monkeypatch.setattr(
+        flask_app.subprocess, "Popen", lambda *a, **k: _SpawnedProcess()
+    )
+
+
 @pytest.fixture
 def client():
     """Create a test client for the Flask app."""

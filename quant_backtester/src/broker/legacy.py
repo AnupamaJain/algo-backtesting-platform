@@ -221,6 +221,12 @@ class LegacyBrokerShim:
                 q = self._adapter.get_quote(symbol)
             except Exception as exc:  # noqa: BLE001 - one bad symbol must not kill a batch
                 logger.warning("quote failed for %s: %s", key, exc)
+                if len(wanted) == 1:
+                    # Nothing to salvage: this IS the result. Returning {}
+                    # here sent callers into `raw[symbol]` and a KeyError
+                    # that named only the symbol, throwing away a message
+                    # that said exactly which broker refused and why.
+                    raise
                 continue
             out[key] = _quote_to_dict(q)
         return out

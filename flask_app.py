@@ -2178,6 +2178,12 @@ def start_instance():
                     cmd, stdout=log_file, stderr=subprocess.STDOUT, start_new_session=True
                 )
             logging.info("start_instance: started %s (PID %s, force=%s)", symbol, process.pid, force)
+            failed = _confirm_process_started(
+                process, log_path, f"Wave Extractor instance for {symbol}"
+            )
+            if failed:
+                return jsonify(failed), 502
+
             return jsonify({"message": f"Started instance for {symbol}. Check logs for details.",
                             "pid": process.pid})
         except (OSError, subprocess.SubprocessError) as e:
@@ -3322,7 +3328,13 @@ def start_survivor_instance():
         
         with open(status_path, 'w') as f:
             json.dump(status_data, f, indent=2)
-        
+
+        failed = _confirm_process_started(
+            process, log_path, f"{script_name} for {symbol_initials}"
+        )
+        if failed:
+            return jsonify(failed), 502
+
         return jsonify({
             "message": f"Started {script_name} for {symbol_initials}",
             "pid": process.pid
@@ -3331,6 +3343,58 @@ def start_survivor_instance():
     except Exception as e:
         logging.error(f"Error starting survivor instance: {e}")
         return jsonify({"error": str(e)}), 500
+
+def _confirm_process_started(process, log_path: str, what: str, grace: float = 3.0):
+    """Give a just-spawned strategy a moment to die, and say so if it does.
+
+    Popen succeeds the instant the interpreter starts, so every start
+    endpoint reported "Started <script> for <symbol>" for processes that
+    were already gone a second later -- most often because a broker session
+    had expired and the first quote raised. The UI showed success, the
+    instance list showed a stopped row, and the actual reason sat in a log
+    file nobody had a reason to open.
+
+    Args:
+        process: The Popen handle just created.
+        log_path: Where its stdout/stderr were redirected.
+        what: Human description for the error message.
+        grace: Seconds to wait for an early exit.
+
+    Returns:
+        None if the process is still running, else an error dict naming the
+        most informative line from its log.
+    """
+    deadline = time.time() + grace
+    while time.time() < deadline and process.poll() is None:
+        time.sleep(0.15)
+
+    if process.poll() is None:
+        return None
+
+    reason = ""
+    try:
+        with open(log_path, "r", errors="replace") as fh:
+            lines = [ln.rstrip() for ln in fh.readlines() if ln.strip()]
+    except OSError:
+        lines = []
+
+    # The last "SomeError: message" line is the cause; a bare traceback tail
+    # is the next best thing.
+    for line in reversed(lines):
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_.]*(Error|Exception|Unavailable):", line):
+            reason = line
+            break
+    if not reason and lines:
+        reason = lines[-1]
+
+    logging.error("%s exited immediately (rc=%s): %s", what, process.returncode, reason)
+    return {
+        "error": f"{what} started but exited immediately.",
+        "reason": reason or "no output was written to the log",
+        "exit_code": process.returncode,
+        "log_file": os.path.basename(log_path),
+    }
+
 
 @app.route("/api/survivor/events/<int:pid>")
 def get_survivor_events(pid: int):
@@ -3498,6 +3562,124 @@ def _expiries_from_dhan(name: str, exchange: str) -> list[dict]:
         })
 
     return sorted(seen.values(), key=lambda row: row["days_to_expiry"])
+
+
+@app.route("/api/tradable_symbols")
+def get_tradable_symbols():
+    """Real, tradable option symbols for an underlying, from Dhan's scrip master.
+
+    The symbol boxes on the strategy pages were free text with a worked
+    example for a placeholder, so every run started by typing a contract
+    from memory -- and a contract that has rolled over is only discovered
+    when the strategy dies looking it up.
+
+    The scrip master is a public CSV, cached on disk, and needs no broker
+    session. That matters: it is the one contract source that still answers
+    when a token has expired, which is exactly when someone is trying to
+    work out what is wrong.
+
+    Query params:
+        name: underlying, e.g. NIFTY (default), SENSEX, RELIANCE.
+        exchange: NFO (default) or BFO.
+        expiry: optional contract prefix (e.g. NIFTY26O06) to pin one expiry;
+                defaults to the nearest.
+        limit: maximum symbols to return (default 400).
+
+    Returns:
+        JSON with `symbols` (nearest expiry first, then strike, CE before
+        PE), the `expiries` available, and which one was used.
+    """
+    from datetime import date as _date
+    from pathlib import Path as _Path
+
+    import pandas as pd
+
+    from quant_backtester.src.broker.dhan import DhanInstruments
+
+    name = (request.args.get("name") or "NIFTY").strip().upper()
+    exchange = (request.args.get("exchange") or "NFO").strip().upper()
+    want_prefix = (request.args.get("expiry") or "").strip().upper()
+    try:
+        limit = max(1, min(2000, int(request.args.get("limit", 400))))
+    except (TypeError, ValueError):
+        limit = 400
+
+    if not re.fullmatch(r"[A-Z0-9&_-]{1,32}", name):
+        return jsonify({"error": "invalid name"}), 400
+
+    source_exchange = "BSE" if exchange == "BFO" else "NSE"
+    instruments = DhanInstruments(
+        _Path(os.path.dirname(os.path.abspath(__file__))) / "quant_backtester" / "state"
+    )
+
+    frames = []
+    for kind in ("OPTIDX", "OPTSTK"):
+        try:
+            frame = instruments.option_chain(name, exchange=source_exchange, instrument=kind)
+        except Exception:  # noqa: BLE001 - a missing kind is not an error
+            continue
+        if len(frame):
+            frames.append(frame)
+    if not frames:
+        return jsonify({"symbols": [], "expiries": [], "expiry": None,
+                        "error": f"no option contracts listed for {name}"}), 404
+
+    chain = pd.concat(frames)
+    today = _date.today()
+
+    groups: dict[str, dict] = {}
+    for expiry_raw, group in chain.groupby(chain["SM_EXPIRY_DATE"].astype(str)):
+        try:
+            expiry = pd.to_datetime(expiry_raw).date()
+        except Exception:  # noqa: BLE001
+            continue
+        if expiry < today:
+            continue
+        monthly = str(group["EXPIRY_FLAG"].iloc[0]).strip().upper() == "M"
+        prefix = _contract_prefix(name, expiry, monthly)
+        groups.setdefault(prefix, {"prefix": prefix, "expiry": expiry,
+                                   "days": (expiry - today).days, "rows": group})
+
+    if not groups:
+        return jsonify({"symbols": [], "expiries": [], "expiry": None,
+                        "error": f"every listed {name} contract has expired"}), 404
+
+    ordered = sorted(groups.values(), key=lambda g: g["days"])
+    chosen = next((g for g in ordered if g["prefix"] == want_prefix), ordered[0])
+
+    rows = chosen["rows"]
+    symbols = []
+    for _, row in rows.iterrows():
+        try:
+            strike = int(float(row["STRIKE_PRICE"]))
+        except (TypeError, ValueError):
+            continue
+        right = str(row["OPTION_TYPE"]).strip().upper()
+        if right not in ("CE", "PE") or strike <= 0:
+            continue
+        symbols.append({
+            "symbol": f"{chosen['prefix']}{strike}{right}",
+            "strike": strike,
+            "option_type": right,
+            "lot_size": int(float(row["LOT_SIZE"])) if pd.notna(row.get("LOT_SIZE")) else None,
+        })
+
+    symbols.sort(key=lambda r: (r["strike"], r["option_type"]))
+    return jsonify({
+        "name": name,
+        "exchange": exchange,
+        "expiry": chosen["prefix"],
+        "expiry_date": chosen["expiry"].isoformat(),
+        "days_to_expiry": chosen["days"],
+        "count": len(symbols),
+        "symbols": symbols[:limit],
+        "expiries": [
+            {"prefix": g["prefix"], "expiry_date": g["expiry"].isoformat(),
+             "days_to_expiry": g["days"]}
+            for g in ordered[:12]
+        ],
+        "source": "dhan scrip master",
+    })
 
 
 @app.route("/api/survivor/symbol_expiries")

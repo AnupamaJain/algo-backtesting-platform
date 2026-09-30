@@ -84,6 +84,16 @@ class _DummyProcess:
 
     pid = 999999
 
+    def poll(self):
+        """Still running. Popen always offers this, so the double must too.
+
+        The start endpoint waits briefly to see whether a just-spawned
+        strategy dies on its own -- it reported "Started" for processes
+        that were already gone -- and a double without poll() stands in
+        for a Popen that cannot exist.
+        """
+        return None
+
 
 def _patch_scraper_spawn(monkeypatch, on_scraper_spawn):
     """Patch subprocess.Popen so scraper spawns hit ``on_scraper_spawn`` while

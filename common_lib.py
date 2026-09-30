@@ -866,6 +866,14 @@ def _resolve_flattrade_ticker_token(symbol: str):
     return token
 
 
+class QuoteUnavailable(RuntimeError):
+    """No configured source could price an instrument.
+
+    Distinct from a programming error: it means the brokers refused, almost
+    always because a session or access token has expired. Strategies catch
+    this to exit with a readable message instead of a traceback.
+    """
+
 def _get_index_quote_cached(symbol: str) -> dict:
     """Fetch an index spot quote with two-tier in-memory caching.
 
@@ -905,6 +913,17 @@ def _get_index_quote_cached(symbol: str) -> dict:
     logging.debug("index_quote_cache L3 fetch (kite API): %s", symbol)
     _increment_quote_stat(symbol, "l3_fetches")
     raw = kite.quote(symbol)
+    if symbol not in raw:
+        # The adapter answered without this symbol -- every quote source
+        # declined it. `raw[symbol]` raised KeyError('NSE:NIFTY 50') here,
+        # which told the reader the symbol and nothing else; the reason
+        # (expired Flattrade session, rejected Dhan token) had already been
+        # logged one layer down and was then discarded.
+        raise QuoteUnavailable(
+            f"No quote source could price {symbol}. The broker sessions are "
+            f"most likely expired: check `python quant_backtester/dhan_token.py "
+            f"--check` and the Flattrade session, then retry."
+        )
     quote_dict = raw[symbol]
 
     # Callers subscribe the WebSocket ticker to quote_dict['instrument_token']

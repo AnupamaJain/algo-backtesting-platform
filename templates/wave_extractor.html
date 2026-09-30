@@ -593,6 +593,8 @@
                 </div>
             </div>
 
+            <datalist id="tradableSymbols"></datalist>
+            <div id="symbolSourceNote" style="font-size:11px;color:var(--muted);margin:2px 0 6px;">Loading contracts…</div>
             <table id="inputTable">
                 <thead>
                     <tr>
@@ -1133,6 +1135,9 @@
 
         // Init
         document.addEventListener('DOMContentLoaded', function () {
+            // Fill the contract list before the first row appears, so the
+            // symbol box is usable the moment the page is.
+            loadTradableSymbols('NIFTY');
             addRow();
             loadDeltaConfig();   // load delta limits config independently of running instances
             loadWeConfig();      // load wave extractor algo settings
@@ -1443,11 +1448,48 @@
             }
         });
 
+        // ── Contract list ────────────────────────────────────────────────
+        // The symbol box used to be free text with a worked example for a
+        // placeholder, so a run began by typing a contract from memory --
+        // and a rolled-over contract is only discovered when the strategy
+        // dies looking it up. These come from Dhan's published scrip
+        // master, which is a plain cached CSV and needs no broker session:
+        // it still answers when a token has expired, which is exactly when
+        // someone is trying to work out what is wrong.
+        let _symbolsLoaded = false;
+
+        async function loadTradableSymbols(name) {
+            const list = document.getElementById('tradableSymbols');
+            const note = document.getElementById('symbolSourceNote');
+            if (!list) return;
+            try {
+                const res = await fetch('/api/tradable_symbols?name=' + encodeURIComponent(name || 'NIFTY') + '&limit=600');
+                const data = await res.json();
+                if (!res.ok || !data.symbols || !data.symbols.length) {
+                    if (note) note.textContent = data.error || 'No contracts listed.';
+                    return;
+                }
+                list.innerHTML = data.symbols
+                    .map(r => `<option value="${r.symbol}">${r.strike} ${r.option_type}</option>`)
+                    .join('');
+                _symbolsLoaded = true;
+                if (note) {
+                    note.textContent = `${data.count} ${data.name} contracts · expiry ${data.expiry_date}`
+                        + ` (${data.days_to_expiry}d) · ${data.source}`;
+                }
+                document.querySelectorAll('.symbol-input').forEach(el => {
+                    el.setAttribute('list', 'tradableSymbols');
+                });
+            } catch (e) {
+                if (note) note.textContent = 'Contract list unavailable: ' + e.message;
+            }
+        }
+
         function addRow() {
             const tbody = document.querySelector('#inputTable tbody');
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><input type="text" class="input-compact symbol-input" placeholder="e.g. NIFTY24DEC20000CE"><div class="we-run-warn"></div></td>
+                <td><input type="text" class="input-compact symbol-input" list="tradableSymbols" placeholder="Type or pick a contract" autocomplete="off"><div class="we-run-warn"></div></td>
                 <td><input type="number" class="input-compact buy-gap-input" value="${Math.round((12.6 * currentBuyGapPercent / 25) * 10) / 10}"></td>
                 <td><input type="number" class="input-compact sell-gap-input" value="${Math.round((12.6 * currentSellGapPercent / 25) * 10) / 10}"></td>
                 <td><input type="number" class="input-compact buy-qty-input" value="300"><div class="open-qty-hint" style="font-size:10px;color:var(--muted);margin-top:2px;min-height:14px;"></div></td>
@@ -2784,6 +2826,7 @@
             let errorCount = 0;
             let skippedCount = 0;
             const skippedSymbols = [];
+            const errorReasons = [];
 
             try {
                 // Set loading status
@@ -2859,6 +2902,10 @@
                             console.warn(`Skipped ${symbol}: ${result.message}`);
                         } else if (result.error) {
                             console.error(`Error starting ${symbol}: ${result.error}`);
+                            // Keep the reason the process gave; it is the
+                            // only thing that says why, and the summary
+                            // alert below otherwise reports a bare count.
+                            errorReasons.push(`${symbol}: ${result.reason || result.error}`);
                             errorCount++;
                         } else {
                             startedCount++;
@@ -2871,6 +2918,9 @@
 
                 if (startedCount > 0 || errorCount > 0 || skippedCount > 0) {
                     let summary = `Started: ${startedCount}, Errors: ${errorCount}`;
+                    if (errorReasons.length) {
+                        summary += `\n\n` + errorReasons.join('\n');
+                    }
                     if (skippedCount > 0) {
                         summary += `\nSkipped (already running): ${skippedSymbols.join(', ')}`;
                     }

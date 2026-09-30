@@ -1063,7 +1063,13 @@
                 const result = await response.json();
 
                 if (result.error) {
-                    alert('Error: ' + result.error);
+                    // A process that exited on its own carries the line from
+                    // its log that explains why -- usually an expired broker
+                    // session. Showing only the generic error hid it.
+                    var detail = result.reason ? '\n\n' + result.reason : '';
+                    var where = result.log_file ? '\n\nLog: ' + result.log_file : '';
+                    alert('Error: ' + result.error + detail + where);
+                    fetchStatus();
                 } else {
                     alert(result.message);
                     fetchStatus(); // Refresh the table
