@@ -766,54 +766,7 @@
 
         // ============ Kite Session Management ============
 
-        let pendingSessionConnect = false;
 
-        async function checkKiteSession() {
-            const badge = document.getElementById('sessionBadge');
-            const btn = document.getElementById('connectKiteBtn');
-            try {
-                const res = await fetch('/api/session_status');
-                const data = await res.json();
-                if (data.authenticated) {
-                    badge.textContent = '🟢 Kite Connected';
-                    badge.style.background = '#e8f5e9';
-                    badge.style.color = '#2e7d32';
-                    btn.style.display = 'none';
-                } else {
-                    badge.textContent = '🔴 Not Connected';
-                    badge.style.background = 'rgba(244,114,182,0.12)';
-                    badge.style.color = '#c62828';
-                    btn.style.display = 'inline-block';
-                }
-            } catch (e) {
-                badge.textContent = '⚠️ Error';
-                badge.style.background = '#fff3e0';
-                badge.style.color = '#e65100';
-                btn.style.display = 'inline-block';
-            }
-        }
-
-        async function connectKiteSession() {
-            try {
-                const res = await fetch('/api/get_login_url');
-                const data = await res.json();
-                if (data.login_url) {
-                    pendingSessionConnect = true;
-                    const badge = document.getElementById('sessionBadge');
-                    badge.textContent = '🔄 Logging in...';
-                    badge.style.background = 'rgba(34,211,238,0.12)';
-                    badge.style.color = '#1565c0';
-                    window.open(data.login_url, 'zerodha_login', 'width=450,height=600');
-                } else {
-                    alert('Could not get login URL');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Error fetching login URL');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', checkKiteSession);
     </script>
 
     <!-- Footer Navigation -->

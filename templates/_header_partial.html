@@ -471,35 +471,8 @@
       .catch(function() {});
   }
 
-  window.appHeaderConnectKite = function() {
-    fetch('/api/get_login_url')
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        if (!data.login_url) return;
-        var left = Math.round((screen.width - 520) / 2);
-        var top = Math.round((screen.height - 680) / 2);
-        window.open(
-          data.login_url,
-          'kite_login_popup',
-          'width=520,height=680,left=' + left + ',top=' + top
-        );
-        window.addEventListener('message', function handler(evt) {
-          if (evt.data && evt.data.type === 'ZERODHA_TOKEN' && evt.data.token) {
-            window.removeEventListener('message', handler);
-            fetch('/api/establish_session', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({request_token: evt.data.token})
-            }).then(function() {
-              updateAppHeaderSession();
-            }).catch(function() {
-              updateAppHeaderSession();
-            });
-          }
-        });
-      })
-      .catch(function() { alert('Could not get Kite login URL. Please try again.'); });
-  };
+  // The Zerodha OAuth popup lived here. Its button went with Zerodha,
+  // and Dhan and Flattrade authenticate from config/broker.yaml.
 
   // --- Notification panel ---
 

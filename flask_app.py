@@ -1214,7 +1214,7 @@ def gtt_monitor_debug():
         positions_raw = kite.positions()
         net_positions = positions_raw.get("net", [])
         nfo_positions = [
-            {k: p[k] for k in ("tradingsymbol", "exchange", "product", "quantity")}
+            {k: p.get(k, "") for k in ("tradingsymbol", "exchange", "product", "quantity")}
             for p in net_positions
             if p.get("quantity", 0) != 0
         ]
@@ -1910,11 +1910,25 @@ def establish_session():
 
 @app.route("/api/get_login_url")
 def get_login_url():
+    """Report that there is no interactive broker login to send the user to.
+
+    This drove Zerodha's OAuth popup. Dhan and Flattrade both authenticate
+    from config/broker.yaml without a browser round trip, so no adapter
+    implements login_url() any more and the call raised AttributeError --
+    returned to the caller as a 500 whose body named an internal class.
+    """
+    kite = _broker_client(kite_api_key)
+    if not hasattr(kite, "login_url"):
+        return jsonify({
+            "login_url": None,
+            "message": "This broker authenticates from config/broker.yaml; "
+                       "there is no login page to open.",
+        })
     try:
-        kite = _broker_client(kite_api_key)
         return jsonify({"login_url": kite.login_url()})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        logging.exception("get_login_url failed")
+        return jsonify({"error": "Could not build a broker login URL."}), 500
 
 
 @app.route("/get_request_token")

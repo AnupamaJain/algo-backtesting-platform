@@ -123,8 +123,12 @@
     async function registerWebPush() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
+            // register() never touches fetch or XHR, so the prefix shim
+            // cannot reach it: behind the gateway this asked the gateway's
+            // own root for the worker and got a 404 on every page.
             const reg = await navigator.serviceWorker.register(
-                '/notifications/static/sw.js', { scope: '/' }
+                window.appUrl('/notifications/static/sw.js'),
+                { scope: (window.APP_ROOT || '') + '/' }
             );
 
             const keyResp = await fetch('/notifications/vapid-public-key');

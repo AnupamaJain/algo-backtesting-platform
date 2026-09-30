@@ -604,6 +604,11 @@ def _position_to_dict(p: UnifiedPosition) -> dict:
         "quantity": int(p.quantity),
         "average_price": _f(p.average_price),
         "last_price": _f(p.last_price),
+        # Exchange is not part of the unified position. Legacy callers read
+        # the key unconditionally -- /gtt_monitor/debug did p["exchange"]
+        # and answered 500 -- so it is present and reported as unknown
+        # rather than invented, matching self_exchange() for orders.
+        "exchange": "",
         "pnl": _f(p.unrealized_pnl) + _f(p.realized_pnl),
         "unrealised": _f(p.unrealized_pnl),
         "realised": _f(p.realized_pnl),

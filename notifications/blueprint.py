@@ -30,7 +30,10 @@ notifications_bp = Blueprint(
     __name__,
     url_prefix="/notifications",
     static_folder="static",
-    static_url_path="/notifications/static",
+    # Relative to url_prefix, not absolute: "/notifications/static" here
+    # produced /notifications/notifications/static/... and every request for
+    # the service worker 404'd.
+    static_url_path="/static",
     template_folder="templates",
 )
 
@@ -261,11 +264,21 @@ def serve_notification_sound():
     Returns:
         The .wav audio file for use in the in-app toast player.
     """
-    sound_path = os.path.join(_VIBHU_DIR, "notification.wav")
-    if not os.path.exists(sound_path):
-        logger.warning("Notification sound file not found at: %s", sound_path)
-        return Response("Sound file not found", status=404)
-    return send_file(sound_path, mimetype="audio/wav")
+    # The shipped alert lives with the blueprint. A notification.wav at the
+    # repo root still wins, so anyone who replaced the sound keeps theirs.
+    candidates = [
+        os.path.join(_VIBHU_DIR, "notification.wav"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "alert.wav"),
+    ]
+    for sound_path in candidates:
+        if os.path.exists(sound_path):
+            return send_file(sound_path, mimetype="audio/wav")
+
+    # Nothing to play is not an error worth logging on every page load: the
+    # toast still shows, it just arrives silently. 204 keeps it out of the
+    # browser console, where a 404 here appeared fourteen times per crawl.
+    logger.debug("No notification sound available; toasts will be silent")
+    return Response(status=204)
 
 
 @notifications_bp.route("/test", methods=["POST"])
