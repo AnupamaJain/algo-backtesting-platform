@@ -282,6 +282,112 @@
 </section>
 {% endif %}
 
+<!-- ══════════════ global backtest, both windows ══════════════ -->
+{% if global_results %}
+{% set g = global_results %}
+<section class="wrap gb-section">
+  <div class="sec-head">
+    <h2>Every strategy, two windows, no favourites</h2>
+    <span class="faint">read from the pipeline's own output</span>
+  </div>
+  <p class="muted lead-narrow">
+    The same {{ "{:,}".format(g.windows[0].tested) }} parameter configurations
+    swept over ten years of global markets and again over five, through a
+    six-gate funnel that ends in a false-discovery-rate correction. What
+    survives is shown below, and so is what it was worth.
+  </p>
+
+  <div class="gb-grid">
+    {% for w in g.windows %}
+    <article class="gb-card rise">
+      <header>
+        <span class="gb-window">{{ w.label }}</span>
+        <span class="faint">{{ w.symbols }} symbols</span>
+      </header>
+
+      <div class="gb-headline">
+        <b class="num">{{ "{:,}".format(w.survivors) }}</b>
+        <span>of <b class="num">{{ "{:,}".format(w.tested) }}</b> configurations survived
+          <i class="num">({{ "%.2f"|format(w.survival_pct) }}%)</i></span>
+      </div>
+
+      <!-- the funnel, stage by stage, as a width -->
+      <ul class="gb-funnel">
+        {% for st in w.stages %}
+        <li>
+          <span class="gb-stage">{{ st.name }}</span>
+          <span class="gb-bar">
+            <i style="width: {{ "%.2f"|format(st.survived / w.tested * 100) }}%"></i>
+          </span>
+          <span class="gb-n num">{{ "{:,}".format(st.survived) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div class="gb-strats">
+        <span class="gb-label">Strategies left</span>
+        {% for name, count in w.strategies[:5] %}
+        <span class="gb-chip">{{ name }} <i class="num">{{ count }}</i></span>
+        {% endfor %}
+      </div>
+
+      {% if w.portfolios %}
+      <table class="gb-table">
+        <thead><tr><th>Portfolio</th><th class="r">Annual</th><th class="r">Sharpe</th><th class="r">Worst fall</th></tr></thead>
+        <tbody>
+          {% for row in w.portfolios %}
+          <tr{% if row.name == "Buy & Hold" %} class="gb-win"{% endif %}>
+            <td>{{ row.name }}</td>
+            <td class="r num">{{ "%+.2f"|format(row.annual) }}%</td>
+            <td class="r num">{{ "%.2f"|format(row.sharpe) }}</td>
+            <td class="r num">{{ "%.1f"|format(row.drawdown) }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+
+  <div class="gb-verdict rise">
+    <div>
+      <span class="gb-label">Survives both windows</span>
+      {% if g.in_both %}
+      <p>
+        {% for name in g.in_both %}<b>{{ name }}</b>{% if not loop.last %} and {% endif %}{% endfor %}
+        — the only {{ "strategies" if g.in_both|length > 1 else "strategy" }} to clear
+        the funnel over five years <em>and</em> ten. Everything else that
+        passed one window failed the other.
+      </p>
+      {% else %}
+      <p>Nothing cleared the funnel in both windows.</p>
+      {% endif %}
+    </div>
+    {% if g.beaten_by_hold %}
+    <div>
+      <span class="gb-label">And the honest part</span>
+      <p>
+        In both windows the portfolio built from those survivors is beaten by
+        buying the index and waiting —
+        <b class="num">{{ "%+.1f"|format(g.windows[0].best.annual) }}%</b> a year
+        against <b class="num">{{ "%+.1f"|format(g.windows[0].portfolios[0].annual) }}%</b>
+        over ten. A search that finds something is not the same as a result,
+        and this page is not going to print the first and call it the second.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  <p class="faint gb-foot">
+    Costs, slippage and a walk-forward of three years in sample to one out,
+    rolled annually. Numbers read from
+    <code>results/</code> and <code>results_5y/</code> at render — nothing
+    here is typed into the page.
+  </p>
+</section>
+{% endif %}
+
 <!-- ══════════════ measured results ══════════════ -->
 {% if results %}
 <section class="wrap">

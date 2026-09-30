@@ -1529,3 +1529,76 @@ def test_the_hero_stands_on_a_real_screen(client):
     assert "/static/screens/term-home.png" in css
     shot = client.get("/static/screens/term-home.png")
     assert shot.status_code == 200 and len(shot.content) > 8000
+
+
+# ---------------------------------------------------------------------------
+# The global backtest, on the landing page
+# ---------------------------------------------------------------------------
+
+
+def test_the_global_funnel_is_read_from_the_pipeline_not_typed_in():
+    """A number typed into a template is a claim, not a result."""
+    from vriddhix.api.routers.pages import BACKTEST_ROOT, _global_results
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    g = _global_results()
+    assert g and len(g["windows"]) == 2
+
+    import json
+
+    for window in g["windows"]:
+        manifest = json.loads(
+            (BACKTEST_ROOT / window["folder"] / "layer2" / "manifest.json").read_text()
+        )
+        assert window["tested"] == manifest["num_configurations_tested"]
+        assert window["survivors"] == manifest["num_survivors"]
+        assert window["stages"], "the funnel has no stages"
+
+
+def test_the_landing_shows_both_windows_and_what_survived_both(client):
+    from vriddhix.api.routers.pages import BACKTEST_ROOT, _global_results
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    g = _global_results()
+    body = client.get("/").text
+
+    assert "10 years" in body and "5 years" in body
+    assert f"{g['windows'][0]['tested']:,}" in body, "the configuration count is not shown"
+    for name in g["in_both"]:
+        assert name in body, f"{name} survives both windows but is not named"
+
+
+def test_the_page_says_when_holding_the_index_won(client):
+    """The survivors lose to buying and waiting, in both windows.
+
+    A page that showed the survivor count and stopped would be describing
+    a search and calling it a result. This is the number that makes the
+    section honest, so it has to be on the page.
+    """
+    from vriddhix.api.routers.pages import BACKTEST_ROOT, _global_results
+
+    if not (BACKTEST_ROOT / "results" / "layer2" / "manifest.json").exists():
+        pytest.skip("no backtest output in this checkout")
+
+    g = _global_results()
+    if not g["beaten_by_hold"]:
+        pytest.skip("the survivors beat buy-and-hold in this data")
+
+    body = client.get("/").text
+    assert "Buy &amp; Hold" in body or "Buy & Hold" in body
+    best = g["windows"][0]["best"]["annual"]
+    assert f"{best:+.1f}%" in body, "the winning return is not shown"
+
+
+def test_the_lab_is_shown_as_well_as_described(client):
+    """Six Lab screens, so the funnel is something a reader can see."""
+    from vriddhix.api.routers.pages import APP_SCREENS
+
+    lab = [row for row in APP_SCREENS if row[1] == "Strategy Lab"]
+    assert len(lab) >= 6, f"only {len(lab)} Lab screens"
+    for slug, _surface, _title, _blurb in lab:
+        assert client.get(f"/static/screens/{slug}.png").status_code == 200

@@ -408,6 +408,16 @@ APP_SCREENS = [
      "Single-leg index selling with delta-based rebalancing."),
     ("lab-strategies", "Strategy Lab", "Backtest any strategy",
      "The same strategies the terminal runs, through a six-gate funnel."),
+    ("lab-funnel", "Strategy Lab", "The validation funnel",
+     "10,470 configurations entered; 248 cleared all six gates over ten years."),
+    ("lab-robustness", "Strategy Lab", "Robustness",
+     "Neighbouring parameters and bootstrapped trade order, per survivor."),
+    ("lab-regime", "Strategy Lab", "Regime and portfolio",
+     "What the survivors did in bull, bear and choppy markets separately."),
+    ("lab-data", "Strategy Lab", "Data and strategies",
+     "Every symbol and strategy the pipeline sweeps, with its coverage."),
+    ("lab-orbis", "Strategy Lab", "ORBIS — intraday NSE",
+     "Opening-range breakout on the Indian session, walked forward."),
     ("term-journal", "Trading terminal", "Trade journal",
      "FIFO pairing and per-algo attribution over every fill."),
     ("scanner",  "Research", "Live scanner",
@@ -421,6 +431,102 @@ APP_SCREENS = [
     ("api",      "Research", "Read API",
      "46 endpoints, every payload carrying its provenance."),
 ]
+
+
+#: Where the backtester writes its funnel output. Read at render rather
+#: than copied into this file: a number typed into a template is a claim,
+#: and the only defensible version of these is the one the pipeline wrote.
+BACKTEST_ROOT = Path(__file__).resolve().parents[5] / "quant_backtester"
+
+#: The two global windows, longest first.
+BACKTEST_WINDOWS = (("results", "10 years"), ("results_5y", "5 years"))
+
+
+def _read_window(folder: str) -> dict | None:
+    """One window's funnel, survivors and portfolio comparison."""
+    import csv
+    import json
+    from collections import Counter
+
+    base = BACKTEST_ROOT / folder
+    try:
+        manifest = json.loads((base / "layer2" / "manifest.json").read_text())
+    except (OSError, ValueError):
+        return None
+
+    strategies: Counter = Counter()
+    symbols = set()
+    try:
+        with (base / "layer2" / "survivors.csv").open() as fh:
+            for row in csv.DictReader(fh):
+                strategies[row["strategy"]] += 1
+                symbols.add(row["symbol"])
+    except OSError:
+        pass
+
+    portfolios = []
+    try:
+        with (base / "layer4" / "portfolio_comparison.csv").open() as fh:
+            for row in csv.DictReader(fh):
+                portfolios.append({
+                    "name": row["portfolio"],
+                    "annual": float(row["annualized_return"]) * 100,
+                    "sharpe": float(row["sharpe"]),
+                    "drawdown": float(row["max_drawdown"]) * 100,
+                    "total": float(row["total_return"]) * 100,
+                })
+    except (OSError, ValueError, KeyError):
+        pass
+
+    robust = 0
+    try:
+        with (base / "layer3" / "ultra_robust_strategies.csv").open() as fh:
+            robust = sum(1 for _ in csv.DictReader(fh))
+    except OSError:
+        pass
+
+    tested = manifest.get("num_configurations_tested") or 0
+    survived = manifest.get("num_survivors") or 0
+    return {
+        "tested": tested,
+        "survivors": survived,
+        "survival_pct": (survived / tested * 100) if tested else 0.0,
+        "robust": robust,
+        "symbols": len(symbols),
+        "strategies": strategies.most_common(),
+        "stages": manifest.get("stages") or [],
+        "portfolios": portfolios,
+        "best": max(portfolios, key=lambda r: r["annual"]) if portfolios else None,
+    }
+
+
+def _global_results() -> dict | None:
+    """The global backtest, over both windows, as the pipeline recorded it.
+
+    The point of showing this is not that the strategies won. Over ten
+    years, 248 of 10,470 configurations cleared a six-gate funnel; over
+    five, seven did. And in both windows the portfolio those survivors
+    build loses to buying the index and holding it. A page that showed
+    only the survivor count would be describing a search, not a result.
+    """
+    windows = []
+    for folder, label in BACKTEST_WINDOWS:
+        data = _read_window(folder)
+        if data:
+            windows.append({"label": label, "folder": folder, **data})
+    if len(windows) < 2:
+        return None
+
+    # A strategy that clears the funnel in both windows is the closest
+    # thing here to one that works in more than one kind of market.
+    in_both = set(dict(windows[0]["strategies"])) & set(dict(windows[1]["strategies"]))
+    return {
+        "windows": windows,
+        "in_both": sorted(in_both),
+        "beaten_by_hold": all(
+            w["best"] and w["best"]["name"] == "Buy & Hold" for w in windows
+        ),
+    }
 
 
 def _regime_surface(session, points: int = 420) -> list[float]:
@@ -584,6 +690,7 @@ def landing(request: Request, session: SessionDep, prov: ProvenanceDep):
             "screener": _screener_rows(session, prov.as_of),
             "rotation": _rotation(session, prov.as_of),
             "screens": APP_SCREENS,
+            "global_results": _global_results(),
             "clips": APP_CLIPS,
             "surface": _regime_surface(session),
             "results": _measured_results(session),

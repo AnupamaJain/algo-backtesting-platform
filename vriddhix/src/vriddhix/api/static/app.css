@@ -1297,3 +1297,91 @@ html.js .stagger-item.in { opacity: 1; transform: none; }
    signed-in header showed "Sign in / Create account" next to "Sign out".
    The DOM said hidden; the page did not. */
 #nav-in[hidden], #nav-out[hidden], #nav-apps[hidden] { display: none; }
+
+/* ── the global backtest, both windows ────────────────────────────────
+   Two funnels side by side. The bars are widths of the same denominator,
+   so the five-year column being visibly emptier than the ten-year one is
+   the finding rather than a rendering choice. */
+.gb-section { margin-top: 64px; }
+.gb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+.gb-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+}
+.gb-card > header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin-bottom: 14px;
+}
+.gb-window {
+  font-size: .72rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--accent-ink, #0a0d16); background: var(--accent);
+  border-radius: 999px; padding: 3px 10px;
+}
+.gb-headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.gb-headline > b { font-size: 2rem; line-height: 1; color: var(--text); }
+.gb-headline span { color: var(--muted); font-size: .88rem; }
+.gb-headline i { font-style: normal; color: var(--faint); }
+
+.gb-funnel { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
+.gb-funnel li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  align-items: center; gap: 10px;
+  font-size: .78rem;
+}
+.gb-stage { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gb-bar { height: 7px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.gb-bar i {
+  display: block; height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #6366f1));
+  min-width: 2px;
+}
+.gb-n { color: var(--text); font-size: .76rem; text-align: right; min-width: 4.2ch; }
+
+.gb-strats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 16px; }
+.gb-label {
+  display: block; width: 100%;
+  font-size: .68rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--faint); margin-bottom: 4px;
+}
+.gb-strats .gb-label { margin-bottom: 2px; }
+.gb-chip {
+  font-size: .74rem; color: var(--muted);
+  background: var(--panel-2, #141a29); border: 1px solid var(--line);
+  border-radius: 999px; padding: 2px 9px;
+}
+.gb-chip i { font-style: normal; color: var(--text); font-weight: 600; }
+
+.gb-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.gb-table th {
+  text-align: left; font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--faint); font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--line);
+}
+.gb-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft, #1a2233); color: var(--muted); }
+.gb-table td:first-child { color: var(--text); }
+.gb-table .r, .gb-table th.r { text-align: right; }
+/* The row that won is marked, even though it is the one selling nothing. */
+.gb-table tr.gb-win td { color: var(--bull, #34d399); font-weight: 600; }
+.gb-table tr:last-child td { border-bottom: 0; }
+
+.gb-verdict {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 18px; margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.gb-verdict p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.65; }
+.gb-verdict b { color: var(--text); }
+.gb-verdict em { color: var(--text); font-style: italic; }
+.gb-foot { margin-top: 14px; font-size: .78rem; }
+.gb-foot code { font-size: .95em; }
